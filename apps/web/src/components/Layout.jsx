@@ -14,6 +14,7 @@ import {
   ScanFace
 } from 'lucide-react';
 import { useState } from 'react';
+import lucyLogo from '../assets/lucy_logobg.png';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -58,10 +59,8 @@ export default function Layout({ children }) {
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-lg text-gray-900">EduLMS</span>
+            <img src={lucyLogo} alt="Lucy College" className="w-8 h-8 object-contain" />
+            <span className="font-bold text-lg text-primary-900">Lucy College</span>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 hover:bg-gray-100 rounded">
             <X className="w-5 h-5" />

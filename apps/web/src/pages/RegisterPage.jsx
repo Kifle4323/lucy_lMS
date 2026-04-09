@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api';
 import { GraduationCap, Mail, Lock, User, AlertCircle, Users } from 'lucide-react';
+import lucyLogo from '../assets/lucy_logobg.png';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -33,11 +34,11 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl shadow-lg mb-4">
-            <GraduationCap className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-4 p-2">
+            <img src={lucyLogo} alt="Lucy College" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-500 mt-2">Join our learning platform</p>
+          <h1 className="text-3xl font-bold text-primary-900">Lucy College</h1>
+          <p className="text-gray-500 mt-2">Create your account</p>
         </div>
 
         {/* Card */}

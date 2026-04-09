@@ -181,4 +181,35 @@ export function registerCourseRoutes(router: Router) {
 
     res.json(students);
   });
+
+  // Student: Get own attempts for a course
+  router.get('/courses/:courseId/my-attempts', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ courseId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    // Get all assessments for this course
+    const assessments = await prisma.assessment.findMany({
+      where: { courseId: params.courseId },
+      select: { id: true },
+    });
+
+    const assessmentIds = assessments.map(a => a.id);
+
+    // Get student's attempts for these assessments
+    const attempts = await prisma.attempt.findMany({
+      where: {
+        studentId: user.id,
+        assessmentId: { in: assessmentIds },
+      },
+      select: {
+        id: true,
+        assessmentId: true,
+        status: true,
+        score: true,
+        submittedAt: true,
+      },
+    });
+
+    res.json(attempts);
+  });
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { GraduationCap, Mail, Lock, AlertCircle } from 'lucide-react';
+import lucyLogo from '../assets/lucy_logobg.png';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,10 +31,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl shadow-lg mb-4">
-            <GraduationCap className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-4 p-2">
+            <img src={lucyLogo} alt="Lucy College" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
+          <h1 className="text-3xl font-bold text-primary-900">Lucy College</h1>
           <p className="text-gray-500 mt-2">Sign in to your account</p>
         </div>
 

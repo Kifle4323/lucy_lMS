@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading } from '../api';
+import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
 import {
@@ -78,6 +78,7 @@ export default function CoursePage() {
   const [profileImage, setProfileImage] = useState(null);
   const [faceTrackingActive, setFaceTrackingActive] = useState(false);
   const [faceMismatchDetected, setFaceMismatchDetected] = useState(false);
+  const [studentAttempts, setStudentAttempts] = useState([]); // Track completed attempts
 
   useEffect(() => {
     setLoading(true);
@@ -86,6 +87,7 @@ export default function CoursePage() {
       getCourseMaterials(courseId).then(setMaterials),
       user?.role === 'TEACHER' ? getCourseStudents(courseId).then(setStudents).catch(() => {}) : Promise.resolve(),
       user?.role === 'STUDENT' ? getProfileStatus().then(status => setProfileImage(status.profileImage)).catch(() => {}) : Promise.resolve(),
+      user?.role === 'STUDENT' ? getStudentAttempts(courseId).then(setStudentAttempts).catch(() => []) : Promise.resolve(),
     ]).finally(() => setLoading(false));
   }, [courseId, user?.role]);
 
@@ -215,7 +217,13 @@ export default function CoursePage() {
       setFaceTrackingActive(true);
       setFaceMismatchDetected(false);
     } catch (err) {
-      alert('Failed to start exam: ' + err.message);
+      if (err.message?.includes('already_submitted')) {
+        alert('You have already submitted this exam.');
+        // Refresh attempts list
+        getStudentAttempts(courseId).then(setStudentAttempts);
+      } else {
+        alert('Failed to start exam: ' + err.message);
+      }
     }
   };
 
@@ -249,6 +257,8 @@ export default function CoursePage() {
     if (!confirm('Submit this attempt?')) return;
     const result = await submitAttempt(activeAttempt.id);
     handleEndExam();
+    // Refresh attempts list
+    getStudentAttempts(courseId).then(setStudentAttempts);
     if (result.hasManualGrading) {
       alert(`Submitted! Auto-graded score: ${result.autoScore}. Short answer questions will be graded by your teacher.`);
     } else {
@@ -934,20 +944,37 @@ export default function CoursePage() {
                         </div>
                       )}
                       {user?.role === 'STUDENT' && (
-                        a.isOpen ? (
-                          <button
-                            onClick={() => handleStartAttempt(a.id)}
-                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
-                          >
-                            <ListChecks className="w-4 h-4" />
-                            Start Exam
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-2 text-gray-500 text-sm">
-                            <Lock className="w-4 h-4" />
-                            Waiting for teacher to open
-                          </div>
-                        )
+                        (() => {
+                          const existingAttempt = studentAttempts.find(att => att.assessmentId === a.id && att.status === 'SUBMITTED');
+                          return existingAttempt ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                                <div className="flex items-center gap-2 text-green-700">
+                                  <CheckCircle className="w-4 h-4" />
+                                  <span className="text-sm font-medium">Completed</span>
+                                </div>
+                                {existingAttempt.score !== null && (
+                                  <span className="text-sm font-bold text-green-700">
+                                    Score: {existingAttempt.score}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : a.isOpen ? (
+                            <button
+                              onClick={() => handleStartAttempt(a.id)}
+                              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
+                            >
+                              <ListChecks className="w-4 h-4" />
+                              Start Exam
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-2 text-gray-500 text-sm">
+                              <Lock className="w-4 h-4" />
+                              Waiting for teacher to open
+                            </div>
+                          );
+                        })()
                       )}
                     </div>
 

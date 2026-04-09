@@ -98,6 +98,11 @@ export async function getCourseStudents(courseId) {
   return apiFetch(`/courses/${courseId}/students`);
 }
 
+// Student: get own attempts for a course
+export async function getStudentAttempts(courseId) {
+  return apiFetch(`/courses/${courseId}/my-attempts`);
+}
+
 // Assessments
 export async function getCourseAssessments(courseId) {
   return apiFetch(`/courses/${courseId}/assessments`);
