@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+}
+
+enum ExamType {
+  QUIZ
+  MIDTERM
+  FINAL
+}
+
+enum QuestionType {
+  MCQ
+  FITB
+  SHORT_ANSWER
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  fullName        String
+  role            Role     @default(STUDENT)
+  profileImage    String?  // Base64 encoded profile image
+  isProfileComplete Boolean @default(false) // Student has completed profile
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  classStudents   ClassStudent[]
+  classTeachers   ClassTeacher[]
+  courseClasses   CourseClass[]   @relation("CourseClassTeacher")
+  attempts        Attempt[]
+  materials       Material[]
+  liveSessions    LiveSession[]
+  manualGrades    ManualGrade[]
+  attendance      Attendance[]
+  faceVerifications FaceVerification[]
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  year        Int?
+  section     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  students     ClassStudent[]
+  teachers     ClassTeacher[]
+  courses      CourseClass[]
+  liveSessions LiveSession[]
+}
+
+model ClassStudent {
+  id        String   @id @default(cuid())
+  classId   String
+  studentId String
+  createdAt DateTime @default(now())
+
+  class   Class @relation(fields: [classId], references: [id])
+  student User  @relation(fields: [studentId], references: [id])
+
+  @@unique([classId, studentId])
+}
+
+model ClassTeacher {
+  id        String   @id @default(cuid())
+  classId   String
+  teacherId String
+  createdAt DateTime @default(now())
+
+  class   Class @relation(fields: [classId], references: [id])
+  teacher User  @relation(fields: [teacherId], references: [id])
+
+  @@unique([classId, teacherId])
+}
+
+model CourseClass {
+  id        String   @id @default(cuid())
+  courseId  String
+  classId   String
+  teacherId String?
+  createdAt DateTime @default(now())
+
+  course   Course @relation(fields: [courseId], references: [id])
+  class    Class  @relation(fields: [classId], references: [id])
+  teacher  User?  @relation("CourseClassTeacher", fields: [teacherId], references: [id])
+
+  @@unique([courseId, classId])
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  courseClasses CourseClass[]
+  assessments   Assessment[]
+  materials     Material[]
+  liveSessions  LiveSession[]
+  gradeConfig   CourseGradeConfig?
+  attendance    Attendance[]
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  content     String?   // For text-based materials
+  fileUrl     String?   // For uploaded files (URL)
+  fileType    String?   // e.g., "pdf", "doc", "link"
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id])
+  author User   @relation(fields: [createdBy], references: [id])
+}
+
+model LiveSession {
+  id          String   @id @default(cuid())
+  courseId    String
+  classId     String
+  teacherId   String
+  title       String
+  description String?
+  scheduledAt DateTime
+  duration    Int      // in minutes
+  status      String   @default("SCHEDULED") // SCHEDULED, LIVE, ENDED
+  meetingUrl  String   // Jitsi meeting room URL
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course   Course @relation(fields: [courseId], references: [id])
+  class    Class  @relation(fields: [classId], references: [id])
+  teacher  User   @relation(fields: [teacherId], references: [id])
+}
+
+model Assessment {
+  id        String   @id @default(cuid())
+  courseId  String
+  title     String
+  examType  ExamType @default(QUIZ)
+  timeLimit Int?
+  maxScore  Int      @default(100) // Maximum score for this assessment
+  isOpen   Boolean  @default(false) // Teacher must open for students to take
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course       Course        @relation(fields: [courseId], references: [id])
+  questions    Question[]
+  attempts     Attempt[]
+  manualGrades ManualGrade[]
+}
+
+model Question {
+  id           String       @id @default(cuid())
+  assessmentId String
+  type         QuestionType @default(MCQ)
+  prompt       String
+  // MCQ fields
+  optionA      String?
+  optionB      String?
+  optionC      String?
+  optionD      String?
+  correct      String?      // For MCQ: A, B, C, or D
+  // FITB field
+  correctAnswer String?    // For fill-in-the-blank
+  // Short answer field
+  modelAnswer  String?      // For teacher reference during grading
+  points       Int          @default(1)
+  createdAt    DateTime     @default(now())
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+  answers    Answer[]
+}
+
+model Attempt {
+  id             String        @id @default(cuid())
+  assessmentId   String
+  studentId      String
+  status         AttemptStatus @default(IN_PROGRESS)
+  score          Int?
+  startedAt      DateTime      @default(now())
+  submittedAt    DateTime?
+  faceVerified   Boolean       @default(false) // Face matched during exam
+  faceVerifiedAt DateTime?     // When admin approved face match
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+  student    User       @relation(fields: [studentId], references: [id])
+  answers    Answer[]
+  faceVerification FaceVerification?
+
+  @@unique([assessmentId, studentId, startedAt])
+}
+
+// Face verification record for admin review when face doesn't match
+model FaceVerification {
+  id              String   @id @default(cuid())
+  attemptId       String   @unique
+  studentId       String
+  capturedImage   String   // Base64 encoded image captured during exam
+  matchedImage    String?  // Reference to stored profile image
+  matchResult     Boolean  // False = face didn't match, needs admin review
+  adminReviewed   Boolean  @default(false)
+  adminApproved   Boolean  @default(false) // Admin approved the face match
+  adminId         String?  // Admin who reviewed
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  attempt Attempt @relation(fields: [attemptId], references: [id])
+  student User   @relation(fields: [studentId], references: [id])
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  attemptId  String
+  questionId String
+  selected   String?  // For MCQ: A, B, C, or D
+  textAnswer String?  // For FITB and SHORT_ANSWER
+  score      Int?     // For teacher-graded questions
+  feedback   String?  // Teacher feedback
+  createdAt  DateTime @default(now())
+
+  attempt  Attempt  @relation(fields: [attemptId], references: [id])
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+}
+
+// Manual grades entered by teacher (for non-online assessments like participation, projects, etc.)
+model ManualGrade {
+  id           String   @id @default(cuid())
+  assessmentId String
+  studentId    String
+  score        Int      // Score out of maxScore
+  feedback     String?  // Teacher feedback
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+  student    User       @relation(fields: [studentId], references: [id])
+
+  @@unique([assessmentId, studentId])
+}
+
+// Grade configuration for a course (weights for each component)
+model CourseGradeConfig {
+  id             String   @id @default(cuid())
+  courseId       String   @unique
+  quizWeight     Int      @default(25)    // % weight for quizzes
+  midtermWeight  Int      @default(25)    // % weight for midterm
+  finalWeight    Int      @default(40)    // % weight for final
+  attendanceWeight Int    @default(10)    // % weight for attendance
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id])
+}
+
+// Attendance marks entered by teacher
+model Attendance {
+  id           String   @id @default(cuid())
+  courseId     String
+  studentId    String
+  score        Int      // Score out of 100 for attendance
+  feedback     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  course   Course @relation(fields: [courseId], references: [id])
+  student  User   @relation(fields: [studentId], references: [id])
+
+  @@unique([courseId, studentId])
+}
