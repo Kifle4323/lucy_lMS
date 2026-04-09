@@ -15,6 +15,8 @@ import GradebookPage from './pages/GradebookPage';
 import CompleteProfilePage from './pages/CompleteProfilePage';
 import AdminFaceVerificationPage from './pages/AdminFaceVerificationPage';
 import SettingsPage from './pages/SettingsPage';
+import StudentProfilePage from './pages/StudentProfilePage';
+import AdminStudentProfilesPage from './pages/AdminStudentProfilesPage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -135,6 +137,22 @@ export default function App() {
         element={
           <PrivateRoute>
             <SettingsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/student-profile"
+        element={
+          <PrivateRoute>
+            <StudentProfilePage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin/student-profiles"
+        element={
+          <PrivateRoute>
+            <AdminStudentProfilesPage />
           </PrivateRoute>
         }
       />

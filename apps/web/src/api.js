@@ -286,3 +286,48 @@ export async function deleteLiveSession(sessionId) {
 export async function getLiveSession(sessionId) {
   return apiFetch(`/live-sessions/${sessionId}`);
 }
+
+// Student Profile
+export async function getStudentProfile() {
+  return apiFetch('/student/profile');
+}
+
+export async function updateStudentProfile(data) {
+  return apiFetch('/student/profile', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function uploadStudentDocument(documentType, fileName, fileUrl) {
+  return apiFetch('/student/profile/documents', { 
+    method: 'POST', 
+    body: JSON.stringify({ documentType, fileName, fileUrl }) 
+  });
+}
+
+export async function deleteStudentDocument(documentId) {
+  return apiFetch(`/student/profile/documents/${documentId}`, { method: 'DELETE' });
+}
+
+// Admin - Student Profiles
+export async function getPendingStudentProfiles() {
+  return apiFetch('/admin/student-profiles/pending');
+}
+
+export async function getAllStudentProfiles(status) {
+  const query = status ? `?status=${status}` : '';
+  return apiFetch(`/admin/student-profiles${query}`);
+}
+
+export async function getStudentProfileById(profileId) {
+  return apiFetch(`/admin/student-profiles/${profileId}`);
+}
+
+export async function approveStudentProfile(profileId) {
+  return apiFetch(`/admin/student-profiles/${profileId}/approve`, { method: 'POST' });
+}
+
+export async function rejectStudentProfile(profileId, reason) {
+  return apiFetch(`/admin/student-profiles/${profileId}/reject`, { 
+    method: 'POST', 
+    body: JSON.stringify({ reason }) 
+  });
+}

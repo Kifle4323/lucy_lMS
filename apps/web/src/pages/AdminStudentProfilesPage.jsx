@@ -1,0 +1,410 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../AuthContext';
+import { getAllStudentProfiles, approveStudentProfile, rejectStudentProfile } from '../api';
+import Layout from '../components/Layout';
+import { 
+  User, Clock, CheckCircle, XCircle, Search, Eye, X, 
+  FileText, MapPin, GraduationCap, AlertCircle, ChevronDown, ChevronUp 
+} from 'lucide-react';
+
+export default function AdminStudentProfilesPage() {
+  const { user } = useAuth();
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('PENDING_APPROVAL');
+  const [search, setSearch] = useState('');
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    loadProfiles();
+  }, [statusFilter]);
+
+  const loadProfiles = async () => {
+    setLoading(true);
+    try {
+      const data = await getAllStudentProfiles(statusFilter);
+      setProfiles(data);
+    } catch (err) {
+      console.error('Failed to load profiles:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (profileId) => {
+    setProcessing(true);
+    try {
+      await approveStudentProfile(profileId);
+      setProfiles(profiles.filter(p => p.id !== profileId));
+      if (selectedProfile?.id === profileId) {
+        setSelectedProfile(null);
+      }
+    } catch (err) {
+      alert('Failed to approve profile');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      alert('Please provide a rejection reason');
+      return;
+    }
+    setProcessing(true);
+    try {
+      await rejectStudentProfile(selectedProfile.id, rejectionReason);
+      setProfiles(profiles.filter(p => p.id !== selectedProfile.id));
+      setShowRejectModal(false);
+      setSelectedProfile(null);
+      setRejectionReason('');
+    } catch (err) {
+      alert('Failed to reject profile');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const filteredProfiles = profiles.filter(p => 
+    p.user?.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+    p.user?.email?.toLowerCase().includes(search.toLowerCase()) ||
+    p.firstName?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'DRAFT':
+        return <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">Draft</span>;
+      case 'PENDING_APPROVAL':
+        return <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 rounded-full text-xs font-medium flex items-center gap-1"><Clock className="w-3 h-3" /> Pending</span>;
+      case 'APPROVED':
+        return <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-full text-xs font-medium flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Approved</span>;
+      case 'REJECTED':
+        return <span className="px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-full text-xs font-medium flex items-center gap-1"><XCircle className="w-3 h-3" /> Rejected</span>;
+      default:
+        return null;
+    }
+  };
+
+  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">Access denied</div>;
+
+  return (
+    <Layout>
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Student Profiles</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Review and approve student profile submissions</p>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or email..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="PENDING_APPROVAL">Pending Approval</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="DRAFT">Draft</option>
+              <option value="">All</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Profiles List */}
+        {loading ? (
+          <div className="p-8 text-center">Loading...</div>
+        ) : filteredProfiles.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center text-gray-500 dark:text-gray-400">
+            No profiles found
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Student</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Updated</th>
+                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {filteredProfiles.map(profile => (
+                  <tr key={profile.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {profile.user?.profileImage ? (
+                          <img src={profile.user.profileImage} alt="" className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                            <span className="text-primary-700 dark:text-primary-300 font-semibold">
+                              {profile.user?.fullName?.charAt(0) || profile.firstName?.charAt(0) || 'S'}
+                            </span>
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{profile.user?.fullName || `${profile.firstName} ${profile.fatherName}`}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{profile.user?.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">{getStatusBadge(profile.status)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(profile.updatedAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => setSelectedProfile(profile)}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg text-gray-500 dark:text-gray-300"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Profile Detail Modal */}
+        {selectedProfile && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {selectedProfile.user?.profileImage ? (
+                    <img src={selectedProfile.user.profileImage} alt="" className="w-12 h-12 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-primary-700 dark:text-primary-300" />
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                      {selectedProfile.user?.fullName || `${selectedProfile.firstName} ${selectedProfile.fatherName}`}
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{selectedProfile.user?.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {getStatusBadge(selectedProfile.status)}
+                  <button onClick={() => setSelectedProfile(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    <X className="w-5 h-5 dark:text-gray-300" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Personal Information */}
+                <Section title="Personal Information" icon={User}>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <Field label="First Name" value={selectedProfile.firstName} />
+                    <Field label="Father Name" value={selectedProfile.fatherName} />
+                    <Field label="Grandfather Name" value={selectedProfile.grandFatherName} />
+                    <Field label="First Name (Amharic)" value={selectedProfile.firstNameLocal} />
+                    <Field label="Father Name (Amharic)" value={selectedProfile.fatherNameLocal} />
+                    <Field label="Grandfather Name (Amharic)" value={selectedProfile.grandFatherNameLocal} />
+                    <Field label="Date of Birth (GC)" value={selectedProfile.dateOfBirthGC ? new Date(selectedProfile.dateOfBirthGC).toLocaleDateString() : null} />
+                    <Field label="Gender" value={selectedProfile.gender} />
+                    <Field label="Place of Birth" value={selectedProfile.placeOfBirth} />
+                    <Field label="Mother Tongue" value={selectedProfile.motherTongue} />
+                    <Field label="Health Status" value={selectedProfile.healthStatus} />
+                    <Field label="Marital Status" value={selectedProfile.maritalStatus} />
+                    <Field label="National ID (FAN)" value={selectedProfile.nationalIdFan} />
+                    <Field label="Economical Status" value={selectedProfile.economicalStatus} />
+                    <Field label="Area Type" value={selectedProfile.areaType} />
+                    <Field label="TIN Number" value={selectedProfile.tinNumber} />
+                    <Field label="Account Number" value={selectedProfile.accountNumber} />
+                  </div>
+                </Section>
+
+                {/* Location and Address */}
+                <Section title="Location and Address" icon={MapPin}>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <Field label="Citizenship" value={selectedProfile.citizenship} />
+                    <Field label="Country" value={selectedProfile.country} />
+                    <Field label="City" value={selectedProfile.city} />
+                    <Field label="Sub City" value={selectedProfile.subCity} />
+                    <Field label="Kebele" value={selectedProfile.kebele} />
+                    <Field label="Woreda" value={selectedProfile.woreda} />
+                    <Field label="House Number" value={selectedProfile.houseNumber} />
+                    <Field label="Phone" value={selectedProfile.phone} />
+                    <Field label="Email" value={selectedProfile.email} />
+                    <Field label="P.O. Box" value={selectedProfile.pobox} />
+                  </div>
+                </Section>
+
+                {/* Educational Information */}
+                <Section title="Educational Information" icon={GraduationCap}>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <Field label="Stream" value={selectedProfile.stream} />
+                    <Field label="Entry Year" value={selectedProfile.entryYear} />
+                    <Field label="Sponsor Category" value={selectedProfile.sponsorCategory} />
+                    <Field label="Sponsored By" value={selectedProfile.sponsoredBy} />
+                    <Field label="National Exam Year (EC)" value={selectedProfile.nationalExamYearEC} />
+                    <Field label="Examination ID" value={selectedProfile.examinationId} />
+                    <Field label="Admission Date" value={selectedProfile.admissionDate ? new Date(selectedProfile.admissionDate).toLocaleDateString() : null} />
+                    <Field label="Checked In Date" value={selectedProfile.checkedInDate ? new Date(selectedProfile.checkedInDate).toLocaleDateString() : null} />
+                    <Field label="National Exam Result Total" value={selectedProfile.nationalExamResultTotal} />
+                  </div>
+
+                  <h4 className="font-medium text-gray-900 dark:text-white mt-4 mb-2">National Exam Subject Results</h4>
+                  <div className="grid grid-cols-4 md:grid-cols-7 gap-2">
+                    {[
+                      { label: 'English', value: selectedProfile.examEnglish },
+                      { label: 'Physics', value: selectedProfile.examPhysics },
+                      { label: 'Civics', value: selectedProfile.examCivics },
+                      { label: 'Natural Math', value: selectedProfile.examNaturalMath },
+                      { label: 'Chemistry', value: selectedProfile.examChemistry },
+                      { label: 'Biology', value: selectedProfile.examBiology },
+                      { label: 'Aptitude', value: selectedProfile.examAptitude },
+                    ].map(item => (
+                      <div key={item.label} className="text-center p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{item.label}</p>
+                        <p className="font-bold text-gray-900 dark:text-white">{item.value || '-'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+
+                {/* Documents */}
+                <Section title="Documents" icon={FileText}>
+                  {selectedProfile.documents?.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedProfile.documents.map(doc => (
+                        <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-gray-400" />
+                            <div>
+                              <p className="font-medium text-gray-900 dark:text-white">{doc.documentType}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{doc.fileName}</p>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${doc.status === 'SUBMITTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+                            {doc.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 dark:text-gray-400">No documents uploaded</p>
+                  )}
+                </Section>
+
+                {/* Rejection Reason */}
+                {selectedProfile.status === 'REJECTED' && selectedProfile.rejectionReason && (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-red-700 dark:text-red-400 font-medium">Rejection Reason:</p>
+                    <p className="text-red-600 dark:text-red-300">{selectedProfile.rejectionReason}</p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {selectedProfile.status === 'PENDING_APPROVAL' && (
+                  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={() => handleApprove(selectedProfile.id)}
+                      disabled={processing}
+                      className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => setShowRejectModal(true)}
+                      disabled={processing}
+                      className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <XCircle className="w-5 h-5" />
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reject Modal */}
+        {showRejectModal && (
+          <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Reject Profile</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">Please provide a reason for rejection:</p>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Enter rejection reason..."
+              />
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => { setShowRejectModal(false); setRejectionReason(''); }}
+                  className="flex-1 py-2 px-4 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white font-medium rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={processing || !rejectionReason.trim()}
+                  className="flex-1 py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg disabled:opacity-50"
+                >
+                  {processing ? 'Rejecting...' : 'Reject'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+}
+
+function Section({ title, icon: Icon, children }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
+      >
+        <span className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
+          <Icon className="w-5 h-5" />
+          {title}
+        </span>
+        {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+      </button>
+      {open && <div className="p-4">{children}</div>}
+    </div>
+  );
+}
+
+function Field({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="font-medium text-gray-900 dark:text-white">{value || '-'}</p>
+    </div>
+  );
+}

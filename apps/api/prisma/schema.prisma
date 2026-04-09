@@ -31,6 +31,13 @@ enum QuestionType {
   SHORT_ANSWER
 }
 
+enum ProfileStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
 model User {
   id              String   @id @default(cuid())
   email           String   @unique
@@ -51,6 +58,90 @@ model User {
   manualGrades    ManualGrade[]
   attendance      Attendance[]
   faceVerifications FaceVerification[]
+  studentProfile  StudentProfile?
+}
+
+model StudentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  status    ProfileStatus @default(DRAFT)
+  adminReviewedBy String?
+  reviewedAt DateTime?
+  rejectionReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  // === Personal - Basic Information ===
+  firstName           String?
+  fatherName          String?
+  grandFatherName     String?
+  firstNameLocal      String?  // Amharic
+  fatherNameLocal     String?  // Amharic
+  grandFatherNameLocal String? // Amharic
+  dateOfBirthGC       DateTime?
+  gender              String?  // MALE, FEMALE, OTHER
+  placeOfBirth        String?
+  motherTongue        String?
+  healthStatus        String?  // Normal, etc.
+  maritalStatus       String?  // Single, Married, etc.
+  nationalIdFan       String?
+
+  // === Personal - Location and Address ===
+  citizenship         String?
+  country             String?
+  city                String?
+  subCity             String?
+  kebele              String?
+  woreda              String?
+  houseNumber         String?
+  phone               String?
+  email               String?
+  pobox               String?
+
+  // === Personal - Others ===
+  economicalStatus    String?  // Low, Medium, High
+  areaType            String?  // Pastoral, Non Pastoral
+  tinNumber           String?
+  accountNumber       String?
+
+  // === Educational - Campus Related ===
+  stream              String?  // Natural Science, Social Science
+  entryYear           Int?
+  sponsorCategory     String?  // Govt, Private, etc.
+  sponsoredBy         String?
+  nationalExamYearEC  Int?
+  examinationId       String?
+  admissionDate       DateTime?
+  checkedInDate        DateTime?
+  nationalExamResultTotal Int?
+
+  // === Educational - National Exam Results ===
+  examEnglish         Int?
+  examPhysics         Int?
+  examCivics          Int?
+  examNaturalMath     Int?
+  examChemistry       Int?
+  examBiology         Int?
+  examAptitude        Int?
+
+  // === Documents ===
+  documents           StudentDocument[]
+}
+
+model StudentDocument {
+  id              String   @id @default(cuid())
+  studentProfileId String
+  documentType    String   // Elementary Completion, High School Transcripts, etc.
+  fileName        String?
+  fileUrl         String?  // Base64 or file path
+  status          String   @default("NOT_SUBMITTED") // SUBMITTED, NOT_SUBMITTED
+  uploadedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
 }
 
 model Class {

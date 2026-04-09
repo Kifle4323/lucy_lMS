@@ -14,7 +14,9 @@ import {
   Video,
   ScanFace,
   Sun,
-  Moon
+  Moon,
+  FileText,
+  User
 } from 'lucide-react';
 import { useState } from 'react';
 import lucyLogo from '../assets/lucy_logobg.png';
@@ -38,6 +40,7 @@ export default function Layout({ children }) {
       { path: '/admin/users', label: 'Users', icon: UserCircle },
       { path: '/admin/courses', label: 'Courses', icon: BookOpen },
       { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
+      { path: '/admin/student-profiles', label: 'Student Profiles', icon: FileText },
     ] : []),
     ...(user?.role === 'TEACHER' ? [
       { path: '/my-classes', label: 'My Classes', icon: Users },
@@ -46,6 +49,7 @@ export default function Layout({ children }) {
     ...(user?.role === 'STUDENT' ? [
       { path: '/my-classes', label: 'My Classes', icon: GraduationCap },
       { path: '/live-sessions', label: 'Live Classes', icon: Video },
+      { path: '/student-profile', label: 'My Profile', icon: User },
     ] : []),
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
