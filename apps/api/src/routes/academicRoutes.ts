@@ -200,6 +200,7 @@ export function registerAcademicRoutes(router: Router) {
       courseId: z.string(),
       semesterId: z.string(),
       teacherId: z.string(),
+      classId: z.string().optional(), // Optional: assign to a class
       sectionCode: z.string().min(1), // e.g., "CS101-A"
       schedule: z.string().optional(),
       room: z.string().optional(),
@@ -211,12 +212,13 @@ export function registerAcademicRoutes(router: Router) {
         courseId: body.courseId,
         semesterId: body.semesterId,
         teacherId: body.teacherId,
+        classId: body.classId,
         sectionCode: body.sectionCode,
         schedule: body.schedule,
         room: body.room,
         maxCapacity: body.maxCapacity,
       },
-      include: { course: true, semester: true, teacher: true },
+      include: { course: true, semester: true, teacher: true, class: true },
     });
 
     res.status(201).json(courseSection);
@@ -232,6 +234,7 @@ export function registerAcademicRoutes(router: Router) {
         course: true,
         semester: true,
         teacher: { select: { id: true, fullName: true, email: true } },
+        class: { select: { id: true, name: true, code: true } },
         _count: { select: { enrollments: true } },
       },
       orderBy: { sectionCode: 'asc' },
@@ -245,6 +248,7 @@ export function registerAcademicRoutes(router: Router) {
     const params = z.object({ id: z.string() }).parse(req.params);
     const body = z.object({
       teacherId: z.string().optional(),
+      classId: z.string().nullable().optional(),
       sectionCode: z.string().min(1).optional(),
       schedule: z.string().optional(),
       room: z.string().optional(),
@@ -255,7 +259,7 @@ export function registerAcademicRoutes(router: Router) {
     const courseSection = await prisma.courseSection.update({
       where: { id: params.id },
       data: body,
-      include: { course: true, semester: true, teacher: true },
+      include: { course: true, semester: true, teacher: true, class: true },
     });
 
     res.json(courseSection);

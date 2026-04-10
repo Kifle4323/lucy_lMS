@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import {
   getAcademicYears, createAcademicYear, updateAcademicYear, deleteAcademicYear,
   getSemesters, createSemester, updateSemester, deleteSemester, publishSemesterGrades,
-  getCourses, getUsers, getCourseSections, createCourseSection, updateCourseSection, deleteCourseSection
+  getCourses, getUsers, getCourseSections, createCourseSection, updateCourseSection, deleteCourseSection,
+  getClasses
 } from '../api.js';
 
 export default function AdminAcademicPage() {
@@ -10,6 +11,7 @@ export default function AdminAcademicPage() {
   const [semesters, setSemesters] = useState([]);
   const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [courseSections, setCourseSections] = useState([]);
   const [selectedSemester, setSelectedSemester] = useState('');
   const [activeTab, setActiveTab] = useState('years');
@@ -23,7 +25,7 @@ export default function AdminAcademicPage() {
     registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
   });
   const [courseSectionForm, setCourseSectionForm] = useState({
-    courseId: '', semesterId: '', teacherId: '', sectionName: ''
+    courseId: '', semesterId: '', teacherId: '', classId: '', sectionCode: ''
   });
   const [editingYear, setEditingYear] = useState(null);
   const [editingSemester, setEditingSemester] = useState(null);
@@ -35,16 +37,18 @@ export default function AdminAcademicPage() {
 
   async function loadData() {
     try {
-      const [yearsData, semestersData, coursesData, usersData] = await Promise.all([
+      const [yearsData, semestersData, coursesData, usersData, classesData] = await Promise.all([
         getAcademicYears(),
         getSemesters(),
         getCourses(),
-        getUsers()
+        getUsers(),
+        getClasses()
       ]);
       setAcademicYears(yearsData);
       setSemesters(semestersData);
       setCourses(coursesData);
       setTeachers(usersData.filter(u => u.role === 'TEACHER'));
+      setClasses(classesData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -178,7 +182,7 @@ export default function AdminAcademicPage() {
     try {
       const newSection = await createCourseSection(courseSectionForm);
       setCourseSections([...courseSections, newSection]);
-      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', sectionName: '' });
+      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', classId: '', sectionCode: '' });
     } catch (err) {
       setError(err.message);
     }
@@ -190,7 +194,7 @@ export default function AdminAcademicPage() {
       const updated = await updateCourseSection(editingCourseSection.id, courseSectionForm);
       setCourseSections(courseSections.map(s => s.id === updated.id ? updated : s));
       setEditingCourseSection(null);
-      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', sectionName: '' });
+      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', classId: '', sectionCode: '' });
     } catch (err) {
       setError(err.message);
     }
@@ -212,7 +216,8 @@ export default function AdminAcademicPage() {
       courseId: section.courseId,
       semesterId: section.semesterId,
       teacherId: section.teacherId,
-      sectionName: section.sectionName || ''
+      classId: section.classId || '',
+      sectionCode: section.sectionCode || ''
     });
   }
 
@@ -593,6 +598,22 @@ export default function AdminAcademicPage() {
                     </select>
                   </div>
                   <div>
+                    <label className="block text-sm font-medium mb-1">Class (optional)</label>
+                    <select
+                      value={courseSectionForm.classId}
+                      onChange={e => setCourseSectionForm({ ...courseSectionForm, classId: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">-- No Class (Individual Enrollment) --</option>
+                      {classes.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.code}) - {c.year ? `Year ${c.year}` : ''} {c.section || ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Assign to a class to enroll all students in that class</p>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium mb-1">Teacher</label>
                     <select
                       value={courseSectionForm.teacherId}
@@ -609,13 +630,14 @@ export default function AdminAcademicPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Section Name (optional)</label>
+                    <label className="block text-sm font-medium mb-1">Section Code</label>
                     <input
                       type="text"
-                      value={courseSectionForm.sectionName}
-                      onChange={e => setCourseSectionForm({ ...courseSectionForm, sectionName: e.target.value })}
+                      value={courseSectionForm.sectionCode}
+                      onChange={e => setCourseSectionForm({ ...courseSectionForm, sectionCode: e.target.value })}
                       className="w-full border rounded px-3 py-2"
-                      placeholder="e.g., Section A"
+                      placeholder="e.g., CS101-A"
+                      required
                     />
                   </div>
                   <div className="flex gap-2">
@@ -630,7 +652,7 @@ export default function AdminAcademicPage() {
                         type="button"
                         onClick={() => {
                           setEditingCourseSection(null);
-                          setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', sectionName: '' });
+                          setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', classId: '', sectionCode: '' });
                         }}
                         className="px-4 py-2 border rounded"
                       >
@@ -653,9 +675,12 @@ export default function AdminAcademicPage() {
                           <p className="text-sm text-gray-500">
                             Teacher: {section.teacher?.fullName}
                           </p>
-                          {section.sectionName && (
-                            <p className="text-sm text-gray-500">
-                              Section: {section.sectionName}
+                          <p className="text-sm text-gray-500">
+                            Section: {section.sectionCode}
+                          </p>
+                          {section.class && (
+                            <p className="text-sm text-blue-600">
+                              Class: {section.class.name} ({section.class.code})
                             </p>
                           )}
                           <p className="text-xs text-gray-400 mt-1">

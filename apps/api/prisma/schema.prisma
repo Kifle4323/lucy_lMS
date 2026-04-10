@@ -185,10 +185,11 @@ model Class {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  students     ClassStudent[]
-  teachers     ClassTeacher[]
-  courses      CourseClass[]
-  liveSessions LiveSession[]
+  students       ClassStudent[]
+  teachers       ClassTeacher[]
+  courses        CourseClass[]
+  courseSections CourseSection[]
+  liveSessions   LiveSession[]
 }
 
 model ClassStudent {
@@ -467,6 +468,7 @@ model CourseSection {
   courseId    String
   semesterId  String
   teacherId   String
+  classId     String?  // Optional: assign to a class (group of students)
   sectionCode String   // e.g., "CS101-A" (course code + section)
   schedule    String?  // e.g., "Mon/Wed 9:00-10:30"
   room        String?  // e.g., "Room 101"
@@ -478,6 +480,7 @@ model CourseSection {
   course      Course   @relation(fields: [courseId], references: [id])
   semester    Semester @relation(fields: [semesterId], references: [id])
   teacher     User     @relation("CourseSectionTeacher", fields: [teacherId], references: [id])
+  class       Class?   @relation(fields: [classId], references: [id])
   enrollments StudentEnrollment[]
   examSchedules ExamSchedule[]
 
