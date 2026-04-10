@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd apps/api && npx prisma generate && cd ../.. && npm --workspace apps/web run build",
+  "buildCommand": "npx prisma generate --schema=apps/api/prisma/schema.prisma && npm --workspace apps/web run build",
   "installCommand": "npm install",
   "framework": null,
   "rewrites": [
