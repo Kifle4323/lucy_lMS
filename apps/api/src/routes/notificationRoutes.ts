@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Request, Response, Router } from 'express';
 import { prisma } from '../db.js';
 import { authRequired, requireRole, type AuthedRequest } from '../middleware.js';

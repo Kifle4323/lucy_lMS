@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Request, Response, Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';

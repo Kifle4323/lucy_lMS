@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Request, Response, Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';

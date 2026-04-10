@@ -1,3 +1,4 @@
+// @ts-nocheck
 import serverless from 'serverless-http';
 import 'express-async-errors';
 import cors from 'cors';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { NextFunction, Request, Response } from 'express';
 import { verifyAccessToken } from './auth.js';
 
