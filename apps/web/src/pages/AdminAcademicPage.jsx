@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   getAcademicYears, createAcademicYear, updateAcademicYear, deleteAcademicYear,
   getSemesters, createSemester, updateSemester, deleteSemester, publishSemesterGrades,
-  getCourses, getUsers
+  getCourses, getUsers, getCourseSections, createCourseSection, updateCourseSection, deleteCourseSection
 } from '../api.js';
 
 export default function AdminAcademicPage() {
@@ -10,6 +10,8 @@ export default function AdminAcademicPage() {
   const [semesters, setSemesters] = useState([]);
   const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [courseSections, setCourseSections] = useState([]);
+  const [selectedSemester, setSelectedSemester] = useState('');
   const [activeTab, setActiveTab] = useState('years');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,8 +22,12 @@ export default function AdminAcademicPage() {
     academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
     registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
   });
+  const [courseSectionForm, setCourseSectionForm] = useState({
+    courseId: '', semesterId: '', teacherId: '', sectionName: ''
+  });
   const [editingYear, setEditingYear] = useState(null);
   const [editingSemester, setEditingSemester] = useState(null);
+  const [editingCourseSection, setEditingCourseSection] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -156,6 +162,60 @@ export default function AdminAcademicPage() {
     });
   }
 
+  // Course Section handlers
+  async function loadCourseSections(semesterId) {
+    setSelectedSemester(semesterId);
+    try {
+      const data = await getCourseSections(semesterId);
+      setCourseSections(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleCreateCourseSection(e) {
+    e.preventDefault();
+    try {
+      const newSection = await createCourseSection(courseSectionForm);
+      setCourseSections([...courseSections, newSection]);
+      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', sectionName: '' });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleUpdateCourseSection(e) {
+    e.preventDefault();
+    try {
+      const updated = await updateCourseSection(editingCourseSection.id, courseSectionForm);
+      setCourseSections(courseSections.map(s => s.id === updated.id ? updated : s));
+      setEditingCourseSection(null);
+      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', sectionName: '' });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteCourseSection(id) {
+    if (!confirm('Delete this course section?')) return;
+    try {
+      await deleteCourseSection(id);
+      setCourseSections(courseSections.filter(s => s.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditCourseSection(section) {
+    setEditingCourseSection(section);
+    setCourseSectionForm({
+      courseId: section.courseId,
+      semesterId: section.semesterId,
+      teacherId: section.teacherId,
+      sectionName: section.sectionName || ''
+    });
+  }
+
   if (loading) return <div className="p-8">Loading...</div>;
 
   return (
@@ -177,6 +237,12 @@ export default function AdminAcademicPage() {
           className={`pb-2 px-4 ${activeTab === 'semesters' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
         >
           Semesters
+        </button>
+        <button
+          onClick={() => setActiveTab('sections')}
+          className={`pb-2 px-4 ${activeTab === 'sections' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+        >
+          Course Sections
         </button>
       </div>
 
@@ -479,6 +545,147 @@ export default function AdminAcademicPage() {
               {semesters.length === 0 && <p className="text-gray-500">No semesters yet.</p>}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Course Sections Tab */}
+      {activeTab === 'sections' && (
+        <div className="space-y-6">
+          {/* Semester Selector */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">Select Semester</h2>
+            <select
+              value={selectedSemester}
+              onChange={e => loadCourseSections(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+            >
+              <option value="">-- Select a Semester --</option>
+              {semesters.map(sem => (
+                <option key={sem.id} value={sem.id}>
+                  {sem.name} ({sem.academicYear?.name})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedSemester && (
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Course Section Form */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  {editingCourseSection ? 'Edit Course Section' : 'Add Course Section'}
+                </h2>
+                <form onSubmit={editingCourseSection ? handleUpdateCourseSection : handleCreateCourseSection} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Course</label>
+                    <select
+                      value={courseSectionForm.courseId}
+                      onChange={e => setCourseSectionForm({ ...courseSectionForm, courseId: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                      required
+                    >
+                      <option value="">-- Select Course --</option>
+                      {courses.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.code} - {c.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Teacher</label>
+                    <select
+                      value={courseSectionForm.teacherId}
+                      onChange={e => setCourseSectionForm({ ...courseSectionForm, teacherId: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                      required
+                    >
+                      <option value="">-- Select Teacher --</option>
+                      {teachers.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.fullName} ({t.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Section Name (optional)</label>
+                    <input
+                      type="text"
+                      value={courseSectionForm.sectionName}
+                      onChange={e => setCourseSectionForm({ ...courseSectionForm, sectionName: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                      placeholder="e.g., Section A"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    >
+                      {editingCourseSection ? 'Update' : 'Add'}
+                    </button>
+                    {editingCourseSection && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCourseSection(null);
+                          setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', sectionName: '' });
+                        }}
+                        className="px-4 py-2 border rounded"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Course Sections List */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold mb-4">Course Sections</h2>
+                <div className="space-y-3">
+                  {courseSections.map(section => (
+                    <div key={section.id} className="border rounded p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">{section.course?.code} - {section.course?.title}</h3>
+                          <p className="text-sm text-gray-500">
+                            Teacher: {section.teacher?.fullName}
+                          </p>
+                          {section.sectionName && (
+                            <p className="text-sm text-gray-500">
+                              Section: {section.sectionName}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-400 mt-1">
+                            {section._count?.enrollments || 0} students enrolled
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEditCourseSection(section)}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCourseSection(section.id)}
+                            className="text-red-600 hover:underline text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {courseSections.length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No course sections added yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
