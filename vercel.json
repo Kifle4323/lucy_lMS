@@ -1,11 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npx tsc -p apps/api/tsconfig.json && npm --workspace apps/web run build",
+  "buildCommand": "npm --workspace apps/web run build",
   "installCommand": "npm install",
   "framework": null,
-  "typescript": {
-    "ignoreBuildErrors": true
-  },
+  "typescript": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/health", "destination": "/api" }
