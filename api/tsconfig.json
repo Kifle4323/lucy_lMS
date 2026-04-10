@@ -2,18 +2,16 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "dist",
-    "rootDir": ".",
-    "paths": {
-      "@/*": ["./apps/api/src/*"]
-    }
+    "resolveJsonModule": true,
+    "declaration": false,
+    "outDir": "dist"
   },
-  "include": ["./**/*.ts"],
+  "include": ["./**/*.ts", "../apps/api/src/**/*.ts"],
   "exclude": ["node_modules"]
 }
