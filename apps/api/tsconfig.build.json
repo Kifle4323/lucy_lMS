@@ -5,8 +5,8 @@
     "moduleResolution": "node",
     "strict": false,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "esModuleInterop": true
   },
-  "include": ["apps/web/**/*.ts", "apps/web/**/*.tsx"],
-  "exclude": ["node_modules", "apps/api", "api"]
+  "include": ["src"]
 }
