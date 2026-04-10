@@ -1,0 +1,9 @@
+{
+  "name": "api-serverless",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "serverless-http": "^3.2.0",
+    "@vercel/node": "^3.2.8"
+  }
+}
