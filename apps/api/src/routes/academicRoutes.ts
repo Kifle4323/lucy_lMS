@@ -331,7 +331,7 @@ export function registerAcademicRoutes(router: Router) {
     res.status(204).send();
   });
 
-  // Student: Get available courses for registration
+  // Student: Get available courses for registration (courses assigned to their class)
   router.get('/student/available-courses', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
     const user = req.user!;
 
@@ -343,32 +343,118 @@ export function registerAcademicRoutes(router: Router) {
     });
 
     if (!currentSemester) {
-      return res.json([]);
+      return res.json({ semester: null, courses: [] });
     }
 
-    // Get published course sections that student is not enrolled in
-    const enrollments = await prisma.studentEnrollment.findMany({
+    // Get student's class
+    const classStudent = await prisma.classStudent.findFirst({
       where: { studentId: user.id },
+      include: { class: true },
+    });
+
+    if (!classStudent) {
+      return res.json({ semester: currentSemester, courses: [], message: 'You are not assigned to a class yet.' });
+    }
+
+    // Get course sections assigned to student's class for this semester
+    const courseSections = await prisma.courseSection.findMany({
+      where: {
+        semesterId: currentSemester.id,
+        classId: classStudent.classId,
+      },
+      include: {
+        course: true,
+        teacher: { select: { id: true, fullName: true, email: true } },
+        semester: true,
+        class: { select: { id: true, name: true, code: true } },
+        _count: { select: { enrollments: true } },
+      },
+    });
+
+    // Check which courses student is already enrolled in
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { studentId: user.id, courseSectionId: { in: courseSections.map(cs => cs.id) } },
       select: { courseSectionId: true },
     });
 
     const enrolledIds = enrollments.map(e => e.courseSectionId);
 
+    res.json({
+      semester: currentSemester,
+      class: classStudent.class,
+      courses: courseSections.map(cs => ({
+        ...cs,
+        isEnrolled: enrolledIds.includes(cs.id),
+      })),
+    });
+  });
+
+  // Student: Register for semester (enroll in all courses for their class)
+  router.post('/student/register-semester', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+
+    // Get current semester with registration open
+    const currentSemester = await prisma.semester.findFirst({
+      where: { status: 'REGISTRATION_OPEN' },
+    });
+
+    if (!currentSemester) {
+      return res.status(400).json({ error: 'No semester open for registration' });
+    }
+
+    // Get student's class
+    const classStudent = await prisma.classStudent.findFirst({
+      where: { studentId: user.id },
+    });
+
+    if (!classStudent) {
+      return res.status(400).json({ error: 'You are not assigned to a class' });
+    }
+
+    // Get course sections for student's class this semester
     const courseSections = await prisma.courseSection.findMany({
       where: {
         semesterId: currentSemester.id,
-        isPublished: true,
-        id: { notIn: enrolledIds },
-      },
-      include: {
-        course: true,
-        teacher: { select: { id: true, fullName: true } },
-        semester: true,
-        _count: { select: { enrollments: true } },
+        classId: classStudent.classId,
       },
     });
 
-    res.json(courseSections);
+    if (courseSections.length === 0) {
+      return res.status(400).json({ error: 'No courses assigned to your class for this semester' });
+    }
+
+    // Enroll student in all courses
+    const enrollments = [];
+    for (const cs of courseSections) {
+      // Check if already enrolled
+      const existing = await prisma.studentEnrollment.findUnique({
+        where: {
+          courseSectionId_studentId: {
+            courseSectionId: cs.id,
+            studentId: user.id,
+          },
+        },
+      });
+
+      if (!existing) {
+        const enrollment = await prisma.studentEnrollment.create({
+          data: {
+            courseSectionId: cs.id,
+            studentId: user.id,
+          },
+          include: {
+            courseSection: { include: { course: true } },
+          },
+        });
+        enrollments.push(enrollment);
+      }
+    }
+
+    res.json({
+      message: `Successfully registered for ${enrollments.length} courses`,
+      semester: currentSemester,
+      enrollments,
+    });
   });
 
   // Student: Get my enrollments

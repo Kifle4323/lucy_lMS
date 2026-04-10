@@ -102,6 +102,7 @@ export default function Layout({ children }) {
     ] : []),
     ...(user?.role === 'STUDENT' ? [
       { path: '/my-classes', label: 'My Classes', icon: GraduationCap },
+      { path: '/student/registration', label: 'Semester Registration', icon: ClipboardList },
       { path: '/student/exams', label: 'Exam Schedule', icon: CalendarClock },
       { path: '/student/results', label: 'My Results', icon: Award },
       { path: '/live-sessions', label: 'Live Classes', icon: Video },

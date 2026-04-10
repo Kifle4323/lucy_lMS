@@ -436,6 +436,10 @@ export async function getAvailableCourses() {
   return apiFetch('/student/available-courses');
 }
 
+export async function registerForSemester() {
+  return apiFetch('/student/register-semester', { method: 'POST' });
+}
+
 export async function getMyEnrollments() {
   return apiFetch('/student/my-courses');
 }

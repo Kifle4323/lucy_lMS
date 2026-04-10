@@ -21,6 +21,7 @@ import AdminStudentProfilesPage from './pages/AdminStudentProfilesPage';
 import TeacherGradesPage from './pages/TeacherGradesPage';
 import StudentResultsPage from './pages/StudentResultsPage';
 import StudentExamsPage from './pages/StudentExamsPage';
+import StudentRegistrationPage from './pages/StudentRegistrationPage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -181,6 +182,14 @@ export default function App() {
         element={
           <PrivateRoute>
             <StudentResultsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/student/registration"
+        element={
+          <PrivateRoute>
+            <StudentRegistrationPage />
           </PrivateRoute>
         }
       />

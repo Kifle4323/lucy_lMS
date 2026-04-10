@@ -149,6 +149,23 @@ export default function DashboardPage() {
 
             {user?.role === 'STUDENT' && (
               <Link
+                to="/student/registration"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <ClipboardList className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Semester Registration</p>
+                    <p className="text-sm text-gray-500">Register for courses</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            {user?.role === 'STUDENT' && (
+              <Link
                 to="/student/exams"
                 className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
               >
