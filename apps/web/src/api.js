@@ -466,3 +466,41 @@ export async function enterGrade(data) {
 export async function submitSectionGrades(sectionId) {
   return apiFetch(`/teacher/sections/${sectionId}/submit-grades`, { method: 'POST' });
 }
+
+// Teacher - Exam Schedules
+export async function createExamSchedule(data) {
+  return apiFetch('/teacher/exam-schedules', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function getSectionExamSchedules(sectionId) {
+  return apiFetch(`/teacher/sections/${sectionId}/exam-schedules`);
+}
+
+export async function updateExamSchedule(id, data) {
+  return apiFetch(`/teacher/exam-schedules/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteExamSchedule(id) {
+  return apiFetch(`/teacher/exam-schedules/${id}`, { method: 'DELETE' });
+}
+
+export async function getEarlyExamRequests(examScheduleId) {
+  return apiFetch(`/teacher/exam-schedules/${examScheduleId}/early-requests`);
+}
+
+export async function approveEarlyExam(examScheduleId) {
+  return apiFetch(`/teacher/exam-schedules/${examScheduleId}/approve-early`, { method: 'POST' });
+}
+
+// Student - Exam Schedules
+export async function getStudentExamSchedules() {
+  return apiFetch('/student/exam-schedules');
+}
+
+export async function requestEarlyExam(examScheduleId) {
+  return apiFetch(`/student/exam-schedules/${examScheduleId}/early-request`, { method: 'POST' });
+}
+
+export async function cancelEarlyExamRequest(examScheduleId) {
+  return apiFetch(`/student/exam-schedules/${examScheduleId}/early-request`, { method: 'DELETE' });
+}

@@ -765,4 +765,321 @@ export function registerAcademicRoutes(router: Router) {
 
     res.json(report.sort((a, b) => b.gpa - a.gpa));
   });
+
+  // ==================== EXAM SCHEDULING (Teacher) ====================
+
+  // Teacher: Create exam schedule
+  router.post('/teacher/exam-schedules', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const body = z.object({
+      courseSectionId: z.string(),
+      examType: z.enum(['QUIZ', 'MIDTERM', 'FINAL']),
+      title: z.string().min(1),
+      scheduledDate: z.string(),
+      duration: z.number().int().min(1),
+      location: z.string().optional(),
+      instructions: z.string().optional(),
+      isEarlyAllowed: z.boolean().optional(),
+      earlyExamDeadline: z.string().optional(),
+    }).parse(req.body);
+
+    const user = req.user!;
+
+    // Verify teacher owns this section
+    const section = await prisma.courseSection.findFirst({
+      where: { id: body.courseSectionId, teacherId: user.id },
+    });
+
+    if (!section) {
+      return res.status(404).json({ error: 'Course section not found' });
+    }
+
+    const examSchedule = await prisma.examSchedule.create({
+      data: {
+        courseSectionId: body.courseSectionId,
+        examType: body.examType,
+        title: body.title,
+        scheduledDate: new Date(body.scheduledDate),
+        duration: body.duration,
+        location: body.location,
+        instructions: body.instructions,
+        isEarlyAllowed: body.isEarlyAllowed ?? false,
+        earlyExamDeadline: body.earlyExamDeadline ? new Date(body.earlyExamDeadline) : null,
+      },
+      include: { courseSection: { include: { course: true } } },
+    });
+
+    res.status(201).json(examSchedule);
+  });
+
+  // Teacher: Get exam schedules for my section
+  router.get('/teacher/sections/:id/exam-schedules', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    // Verify teacher owns this section
+    const section = await prisma.courseSection.findFirst({
+      where: { id: params.id, teacherId: user.id },
+    });
+
+    if (!section) {
+      return res.status(404).json({ error: 'Course section not found' });
+    }
+
+    const examSchedules = await prisma.examSchedule.findMany({
+      where: { courseSectionId: params.id },
+      include: {
+        _count: { select: { earlyRequests: true } },
+      },
+      orderBy: { scheduledDate: 'asc' },
+    });
+
+    res.json(examSchedules);
+  });
+
+  // Teacher: Update exam schedule
+  router.patch('/teacher/exam-schedules/:id', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const body = z.object({
+      title: z.string().min(1).optional(),
+      scheduledDate: z.string().optional(),
+      duration: z.number().int().min(1).optional(),
+      location: z.string().optional(),
+      instructions: z.string().optional(),
+      isEarlyAllowed: z.boolean().optional(),
+      earlyExamDeadline: z.string().nullable().optional(),
+    }).parse(req.body);
+
+    const user = req.user!;
+
+    // Verify teacher owns this exam schedule
+    const exam = await prisma.examSchedule.findFirst({
+      where: { id: params.id },
+      include: { courseSection: true },
+    });
+
+    if (!exam || exam.courseSection.teacherId !== user.id) {
+      return res.status(404).json({ error: 'Exam schedule not found' });
+    }
+
+    const updated = await prisma.examSchedule.update({
+      where: { id: params.id },
+      data: {
+        ...body,
+        scheduledDate: body.scheduledDate ? new Date(body.scheduledDate) : undefined,
+        earlyExamDeadline: body.earlyExamDeadline ? new Date(body.earlyExamDeadline) : body.earlyExamDeadline === null ? null : undefined,
+      },
+    });
+
+    res.json(updated);
+  });
+
+  // Teacher: Delete exam schedule
+  router.delete('/teacher/exam-schedules/:id', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    const exam = await prisma.examSchedule.findFirst({
+      where: { id: params.id },
+      include: { courseSection: true },
+    });
+
+    if (!exam || exam.courseSection.teacherId !== user.id) {
+      return res.status(404).json({ error: 'Exam schedule not found' });
+    }
+
+    await prisma.examSchedule.delete({ where: { id: params.id } });
+    res.status(204).send();
+  });
+
+  // Teacher: Get early exam requests for an exam
+  router.get('/teacher/exam-schedules/:id/early-requests', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    const exam = await prisma.examSchedule.findFirst({
+      where: { id: params.id },
+      include: { courseSection: true },
+    });
+
+    if (!exam || exam.courseSection.teacherId !== user.id) {
+      return res.status(404).json({ error: 'Exam schedule not found' });
+    }
+
+    // Get all enrolled students and their early exam request status
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { courseSectionId: exam.courseSectionId },
+      include: {
+        student: { select: { id: true, fullName: true, email: true } },
+      },
+    });
+
+    const requests = await prisma.earlyExamRequest.findMany({
+      where: { examScheduleId: params.id },
+    });
+
+    const requestMap = new Map(requests.map(r => [r.studentId, r]));
+
+    const result = enrollments.map(e => ({
+      student: e.student,
+      hasRequested: requestMap.has(e.studentId),
+      request: requestMap.get(e.studentId) || null,
+    }));
+
+    // Check if all students have agreed
+    const allAgreed = enrollments.length > 0 && enrollments.every(e => requestMap.has(e.studentId));
+
+    res.json({
+      exam,
+      totalStudents: enrollments.length,
+      agreedCount: requests.length,
+      allAgreed,
+      students: result,
+    });
+  });
+
+  // Teacher: Approve early exam (when all students agreed)
+  router.post('/teacher/exam-schedules/:id/approve-early', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    const exam = await prisma.examSchedule.findFirst({
+      where: { id: params.id, isEarlyAllowed: true },
+      include: { courseSection: true },
+    });
+
+    if (!exam || exam.courseSection.teacherId !== user.id) {
+      return res.status(404).json({ error: 'Exam schedule not found or early exam not allowed' });
+    }
+
+    // Get all enrolled students
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { courseSectionId: exam.courseSectionId },
+    });
+
+    // Get all early exam requests
+    const requests = await prisma.earlyExamRequest.findMany({
+      where: { examScheduleId: params.id },
+    });
+
+    // Check if all students have agreed
+    const allAgreed = enrollments.length > 0 && enrollments.every(e =>
+      requests.some(r => r.studentId === e.studentId)
+    );
+
+    if (!allAgreed) {
+      return res.status(400).json({ error: 'Not all students have agreed to early exam' });
+    }
+
+    // Approve all early exam requests
+    await prisma.earlyExamRequest.updateMany({
+      where: { examScheduleId: params.id },
+      data: { status: 'APPROVED' },
+    });
+
+    res.json({ message: 'Early exam approved for all students' });
+  });
+
+  // ==================== STUDENT EXAM VIEWING ====================
+
+  // Student: Get exam schedules for my enrolled sections
+  router.get('/student/exam-schedules', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+
+    // Get student's enrollments
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { studentId: user.id },
+      select: { courseSectionId: true },
+    });
+
+    const sectionIds = enrollments.map(e => e.courseSectionId);
+
+    const examSchedules = await prisma.examSchedule.findMany({
+      where: { courseSectionId: { in: sectionIds } },
+      include: {
+        courseSection: {
+          include: { course: true, semester: true },
+        },
+        _count: { select: { earlyRequests: true } },
+      },
+      orderBy: { scheduledDate: 'asc' },
+    });
+
+    // Check if student has requested early exam for each
+    const earlyRequests = await prisma.earlyExamRequest.findMany({
+      where: {
+        studentId: user.id,
+        examScheduleId: { in: examSchedules.map(e => e.id) },
+      },
+    });
+
+    const requestMap = new Map(earlyRequests.map(r => [r.examScheduleId, r]));
+
+    const result = examSchedules.map(e => ({
+      ...e,
+      myEarlyRequest: requestMap.get(e.id) || null,
+    }));
+
+    res.json(result);
+  });
+
+  // Student: Request/Agree to early exam
+  router.post('/student/exam-schedules/:id/early-request', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    const exam = await prisma.examSchedule.findFirst({
+      where: { id: params.id, isEarlyAllowed: true },
+      include: { courseSection: { include: { enrollments: true } } },
+    });
+
+    if (!exam) {
+      return res.status(404).json({ error: 'Exam schedule not found or early exam not allowed' });
+    }
+
+    // Check if student is enrolled
+    const isEnrolled = exam.courseSection.enrollments.some(e => e.studentId === user.id);
+    if (!isEnrolled) {
+      return res.status(403).json({ error: 'You are not enrolled in this course' });
+    }
+
+    // Check if deadline has passed
+    if (exam.earlyExamDeadline && new Date() > exam.earlyExamDeadline) {
+      return res.status(400).json({ error: 'Early exam request deadline has passed' });
+    }
+
+    // Create or update early exam request
+    const request = await prisma.earlyExamRequest.upsert({
+      where: {
+        examScheduleId_studentId: {
+          examScheduleId: params.id,
+          studentId: user.id,
+        },
+      },
+      create: {
+        examScheduleId: params.id,
+        studentId: user.id,
+        status: 'PENDING',
+      },
+      update: {
+        status: 'PENDING',
+      },
+    });
+
+    res.json(request);
+  });
+
+  // Student: Cancel early exam request
+  router.delete('/student/exam-schedules/:id/early-request', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    await prisma.earlyExamRequest.deleteMany({
+      where: {
+        examScheduleId: params.id,
+        studentId: user.id,
+      },
+    });
+
+    res.status(204).send();
+  });
 }

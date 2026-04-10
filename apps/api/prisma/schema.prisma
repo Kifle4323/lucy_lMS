@@ -90,6 +90,7 @@ model User {
   studentProfile  StudentProfile?
   courseSections  CourseSection[]  @relation("CourseSectionTeacher")
   enrollments     StudentEnrollment[]
+  earlyExamRequests EarlyExamRequest[]
 }
 
 model StudentProfile {
@@ -475,6 +476,7 @@ model CourseSection {
   semester    Semester @relation(fields: [semesterId], references: [id])
   teacher     User     @relation("CourseSectionTeacher", fields: [teacherId], references: [id])
   enrollments StudentEnrollment[]
+  examSchedules ExamSchedule[]
 
   @@unique([courseId, semesterId, sectionCode])
 }
@@ -514,4 +516,39 @@ model StudentGrade {
   updatedAt       DateTime   @updatedAt
 
   enrollment      StudentEnrollment @relation(fields: [enrollmentId], references: [id])
+}
+
+// Exam Schedule for a course section (Midterm, Final, Quiz)
+model ExamSchedule {
+  id              String   @id @default(cuid())
+  courseSectionId String
+  examType        ExamType // QUIZ, MIDTERM, FINAL
+  title           String
+  scheduledDate   DateTime
+  duration        Int      // Duration in minutes
+  location        String?  // Exam room/location
+  instructions    String?
+  isEarlyAllowed  Boolean  @default(false) // Teacher allows early exam
+  earlyExamDeadline DateTime? // Deadline for early exam requests
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  courseSection   CourseSection @relation(fields: [courseSectionId], references: [id])
+  earlyRequests   EarlyExamRequest[]
+
+  @@unique([courseSectionId, examType])
+}
+
+// Early Exam Request - Students agree to take exam early
+model EarlyExamRequest {
+  id             String   @id @default(cuid())
+  examScheduleId String
+  studentId      String
+  agreedAt       DateTime @default(now()) // When student agreed
+  status         String  @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+
+  examSchedule   ExamSchedule @relation(fields: [examScheduleId], references: [id])
+  student        User        @relation(fields: [studentId], references: [id])
+
+  @@unique([examScheduleId, studentId])
 }
