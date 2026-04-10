@@ -13,7 +13,8 @@ import {
   User,
   ClipboardList,
   Award,
-  FileText
+  FileText,
+  CalendarClock
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -141,6 +142,23 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-medium text-gray-900">Grade Management</p>
                     <p className="text-sm text-gray-500">Enter student grades</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            {user?.role === 'STUDENT' && (
+              <Link
+                to="/student/exams"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                    <CalendarClock className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Exam Schedule</p>
+                    <p className="text-sm text-gray-500">Midterm & Final</p>
                   </div>
                 </div>
               </Link>

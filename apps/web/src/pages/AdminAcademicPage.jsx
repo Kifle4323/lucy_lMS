@@ -366,6 +366,16 @@ export default function AdminAcademicPage() {
                   />
                 </div>
               </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">
+                <div className="font-medium text-yellow-800 mb-1">Exam Period includes:</div>
+                <div className="flex gap-3 text-yellow-700">
+                  <span>Midterm Exam</span>
+                  <span>Final Exam</span>
+                </div>
+                <p className="text-xs text-yellow-600 mt-1">
+                  Teachers will schedule their Midterm and Final exams within this period. Students will be notified.
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Grading Deadline</label>
                 <input
@@ -391,18 +401,65 @@ export default function AdminAcademicPage() {
           {/* List */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Semesters</h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {semesters.map(sem => (
                 <div key={sem.id} className="border rounded p-4">
                   <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-medium">{sem.name}</div>
+                    <div className="flex-1">
+                      <div className="font-medium text-lg">{sem.name}</div>
                       <div className="text-sm text-gray-500">
                         {sem.academicYear?.name} | {sem.type}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(sem.startDate).toLocaleDateString()} - {new Date(sem.endDate).toLocaleDateString()}
+
+                      {/* Timeline */}
+                      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="bg-blue-50 rounded p-2">
+                          <div className="text-xs text-blue-600 font-medium">Semester Period</div>
+                          <div className="text-gray-700">
+                            {new Date(sem.startDate).toLocaleDateString()} - {new Date(sem.endDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="bg-green-50 rounded p-2">
+                          <div className="text-xs text-green-600 font-medium">Registration</div>
+                          <div className="text-gray-700">
+                            {sem.registrationStart && sem.registrationEnd
+                              ? `${new Date(sem.registrationStart).toLocaleDateString()} - ${new Date(sem.registrationEnd).toLocaleDateString()}`
+                              : 'Not set'}
+                          </div>
+                        </div>
+                        <div className="bg-red-50 rounded p-2">
+                          <div className="text-xs text-red-600 font-medium">Exam Period</div>
+                          <div className="text-gray-700">
+                            {sem.examPeriodStart && sem.examPeriodEnd
+                              ? `${new Date(sem.examPeriodStart).toLocaleDateString()} - ${new Date(sem.examPeriodEnd).toLocaleDateString()}`
+                              : 'Not set'}
+                          </div>
+                        </div>
+                        <div className="bg-purple-50 rounded p-2">
+                          <div className="text-xs text-purple-600 font-medium">Grading Deadline</div>
+                          <div className="text-gray-700">
+                            {sem.gradingDeadline
+                              ? new Date(sem.gradingDeadline).toLocaleDateString()
+                              : 'Not set'}
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Exam Types Reminder */}
+                      {sem.examPeriodStart && sem.examPeriodEnd && (
+                        <div className="mt-3 flex gap-2">
+                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+                            Midterm Exam
+                          </span>
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                            Final Exam
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Teachers will schedule these within the exam period
+                          </span>
+                        </div>
+                      )}
+
                       <div className="mt-2 flex gap-2 flex-wrap">
                         <span className={`text-xs px-2 py-1 rounded ${
                           sem.status === 'COMPLETED' ? 'bg-gray-100 text-gray-700' :

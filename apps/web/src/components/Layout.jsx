@@ -20,7 +20,8 @@ import {
   Bell,
   Calendar,
   ClipboardList,
-  Award
+  Award,
+  CalendarClock
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import lucyLogo from '../assets/lucy_logobg.png';
@@ -101,6 +102,7 @@ export default function Layout({ children }) {
     ] : []),
     ...(user?.role === 'STUDENT' ? [
       { path: '/my-classes', label: 'My Classes', icon: GraduationCap },
+      { path: '/student/exams', label: 'Exam Schedule', icon: CalendarClock },
       { path: '/student/results', label: 'My Results', icon: Award },
       { path: '/live-sessions', label: 'Live Classes', icon: Video },
       { path: '/student-profile', label: 'My Profile', icon: User },
