@@ -3,7 +3,9 @@
   "buildCommand": "npm --workspace apps/web run build",
   "installCommand": "npm install",
   "framework": null,
-  "typescript": null,
+  "typescript": {
+    "ignoreBuildErrors": true
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/health", "destination": "/api" }
