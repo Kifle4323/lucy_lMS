@@ -1,6 +1,9 @@
-apps/api/src/**/*.ts
-apps/api/src/**/*.tsx
-apps/api/prisma/**/*
-api/**/*
 *.ts
 *.tsx
+
+!api/[[...slug]].ts
+!apps/api/src/serverless.ts
+!apps/api/src/db.ts
+!apps/api/src/app.ts
+!apps/api/src/routes/**/*.ts
+!apps/api/prisma/schema.prisma
