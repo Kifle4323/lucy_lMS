@@ -1,4 +1,4 @@
-// Use current hostname for network access, fallback to localhost
+// API base URL - uses /api in production (Vercel), localhost:4000 in dev
 const API_BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:4000/api'
   : '/api';
