@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm --workspace apps/web run build",
+  "buildCommand": "npm --prefix apps/web run build",
   "installCommand": "npm install",
   "framework": null,
   "rewrites": [
