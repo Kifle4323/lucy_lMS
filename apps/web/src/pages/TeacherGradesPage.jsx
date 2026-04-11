@@ -4,6 +4,7 @@ import {
   createExamSchedule, getSectionExamSchedules, updateExamSchedule, deleteExamSchedule,
   proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam
 } from '../api.js';
+import Layout from '../components/Layout';
 
 export default function TeacherGradesPage() {
   const [sections, setSections] = useState([]);
@@ -239,19 +240,20 @@ export default function TeacherGradesPage() {
     }
   }
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Grade Management</h1>
+    <Layout>
+      <div className="p-6 max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Grade Management</h1>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-      {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>}
+      {error && <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4">{error}</div>}
+      {success && <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-3 rounded mb-4">{success}</div>}
 
       <div className="grid md:grid-cols-4 gap-6">
         {/* Sections List */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="font-semibold mb-3">My Course Sections</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h2 className="font-semibold mb-3 text-gray-900 dark:text-white">My Course Sections</h2>
           <div className="space-y-2">
             {sections.map(section => (
               <button
@@ -259,15 +261,15 @@ export default function TeacherGradesPage() {
                 onClick={() => selectSection(section)}
                 className={`w-full text-left p-3 rounded border ${
                   selectedSection?.id === section.id
-                    ? 'bg-blue-50 border-blue-500'
-                    : 'hover:bg-gray-50'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-blue-400'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700'
                 }`}
               >
-                <div className="font-medium">{section.course?.title}</div>
-                <div className="text-sm text-gray-500">
+                <div className="font-medium text-gray-900 dark:text-white">{section.course?.title}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
                   {section.sectionCode} | {section.semester?.name}
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-gray-400 dark:text-gray-500">
                   {section._count?.enrollments || 0} students
                 </div>
               </button>
@@ -281,11 +283,11 @@ export default function TeacherGradesPage() {
         {/* Students & Grades */}
         <div className="md:col-span-3">
           {selectedSection ? (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold">{selectedSection.course?.title}</h2>
-                  <p className="text-sm text-gray-500">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedSection.course?.title}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {selectedSection.sectionCode} | {selectedSection.semester?.name}
                   </p>
                 </div>
@@ -295,13 +297,13 @@ export default function TeacherGradesPage() {
               <div className="flex gap-4 mb-4 border-b">
                 <button
                   onClick={() => setActiveTab('grades')}
-                  className={`pb-2 px-4 ${activeTab === 'grades' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+                  className={`pb-2 px-4 ${activeTab === 'grades' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
                 >
                   Grades
                 </button>
                 <button
                   onClick={() => setActiveTab('exams')}
-                  className={`pb-2 px-4 ${activeTab === 'exams' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+                  className={`pb-2 px-4 ${activeTab === 'exams' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
                 >
                   Exam Schedules
                 </button>
@@ -322,24 +324,24 @@ export default function TeacherGradesPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b bg-gray-50">
-                          <th className="text-left p-3">Student</th>
-                          <th className="text-center p-3">Quiz<br/><span className="text-xs text-gray-400">/100</span></th>
-                          <th className="text-center p-3">Midterm<br/><span className="text-xs text-gray-400">/100</span></th>
-                          <th className="text-center p-3">Final<br/><span className="text-xs text-gray-400">/100</span></th>
-                          <th className="text-center p-3">Attendance<br/><span className="text-xs text-gray-400">/100</span></th>
-                          <th className="text-center p-3">Total</th>
-                          <th className="text-center p-3">Grade</th>
-                          <th className="text-center p-3">Status</th>
-                          <th className="text-center p-3">Action</th>
+                        <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                          <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Quiz<br/><span className="text-xs text-gray-400">/100</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Midterm<br/><span className="text-xs text-gray-400">/100</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Final<br/><span className="text-xs text-gray-400">/100</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Attendance<br/><span className="text-xs text-gray-400">/100</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Total</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Grade</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Status</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {students.map(student => (
-                          <tr key={student.id} className="border-b hover:bg-gray-50">
+                          <tr key={student.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td className="p-3">
-                              <div className="font-medium">{student.student?.fullName}</div>
-                              <div className="text-xs text-gray-500">{student.student?.email}</div>
+                              <div className="font-medium text-gray-900 dark:text-white">{student.student?.fullName}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">{student.student?.email}</div>
                             </td>
                             <td className="p-3">
                               <input
@@ -349,7 +351,7 @@ export default function TeacherGradesPage() {
                                 value={student.grade?.quizScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'quizScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
-                                className="w-16 border rounded px-2 py-1 text-center disabled:bg-gray-100"
+                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
                               />
                             </td>
                             <td className="p-3">
@@ -360,7 +362,7 @@ export default function TeacherGradesPage() {
                                 value={student.grade?.midtermScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'midtermScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
-                                className="w-16 border rounded px-2 py-1 text-center disabled:bg-gray-100"
+                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
                               />
                             </td>
                             <td className="p-3">
@@ -371,7 +373,7 @@ export default function TeacherGradesPage() {
                                 value={student.grade?.finalScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'finalScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
-                                className="w-16 border rounded px-2 py-1 text-center disabled:bg-gray-100"
+                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
                               />
                             </td>
                             <td className="p-3">
@@ -382,7 +384,7 @@ export default function TeacherGradesPage() {
                                 value={student.grade?.attendanceScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'attendanceScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
-                                className="w-16 border rounded px-2 py-1 text-center disabled:bg-gray-100"
+                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
                               />
                             </td>
                             <td className="p-3 text-center font-medium">
@@ -435,8 +437,8 @@ export default function TeacherGradesPage() {
               {activeTab === 'exams' && (
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Exam Form */}
-                  <div className="border rounded p-4">
-                    <h3 className="font-semibold mb-4">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-800">
+                    <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">
                       {editingExam ? 'Edit Exam Details' : 'Create Exam Schedule'}
                     </h3>
                     {!editingExam && (
@@ -449,11 +451,11 @@ export default function TeacherGradesPage() {
                     <form onSubmit={editingExam ? handleUpdateExam : handleCreateExam} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-1">Exam Type</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Exam Type</label>
                           <select
                             value={examForm.examType}
                             onChange={e => setExamForm({ ...examForm, examType: e.target.value })}
-                            className="w-full border rounded px-3 py-2"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             disabled={editingExam}
                           >
                             <option value="MIDTERM">Midterm</option>
@@ -461,32 +463,32 @@ export default function TeacherGradesPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1">Duration (min)</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Duration (min)</label>
                           <input
                             type="number"
                             min="1"
                             value={examForm.duration}
                             onChange={e => setExamForm({ ...examForm, duration: parseInt(e.target.value) })}
-                            className="w-full border rounded px-3 py-2"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Location</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Location</label>
                         <input
                           type="text"
                           value={examForm.location}
                           onChange={e => setExamForm({ ...examForm, location: e.target.value })}
-                          className="w-full border rounded px-3 py-2"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           placeholder="e.g., Room 101"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Instructions</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Instructions</label>
                         <textarea
                           value={examForm.instructions}
                           onChange={e => setExamForm({ ...examForm, instructions: e.target.value })}
-                          className="w-full border rounded px-3 py-2"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           rows={3}
                           placeholder="Exam instructions for students..."
                         />
@@ -522,10 +524,10 @@ export default function TeacherGradesPage() {
 
                   {/* Exam List */}
                   <div>
-                    <h3 className="font-semibold mb-4">Scheduled Exams</h3>
+                    <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Scheduled Exams</h3>
                     <div className="space-y-4">
                       {examSchedules.map(exam => (
-                        <div key={exam.id} className="border rounded p-4">
+                        <div key={exam.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-800">
                           <div className="flex justify-between items-start">
                             <div>
                               <span className={`text-xs px-2 py-1 rounded ${
@@ -598,22 +600,22 @@ export default function TeacherGradesPage() {
                               {showEarlyProposal === exam.id && (
                                 <form onSubmit={(e) => handleProposeEarlyExam(exam.id, e)} className="mt-3 space-y-3">
                                   <div>
-                                    <label className="block text-sm font-medium mb-1">Proposed Early Date</label>
+                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Early Date</label>
                                     <input
                                       type="date"
                                       value={earlyProposalForm.proposedDate}
                                       onChange={e => setEarlyProposalForm({ ...earlyProposalForm, proposedDate: e.target.value })}
-                                      className="w-full border rounded px-3 py-2"
+                                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                       required
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-sm font-medium mb-1">Response Deadline</label>
+                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline</label>
                                     <input
                                       type="date"
                                       value={earlyProposalForm.proposalDeadline}
                                       onChange={e => setEarlyProposalForm({ ...earlyProposalForm, proposalDeadline: e.target.value })}
-                                      className="w-full border rounded px-3 py-2"
+                                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                       required
                                     />
                                   </div>
@@ -732,12 +734,13 @@ export default function TeacherGradesPage() {
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400">
               Select a course section to manage grades and exams.
             </div>
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 }

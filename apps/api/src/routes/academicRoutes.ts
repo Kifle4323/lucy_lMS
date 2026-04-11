@@ -167,6 +167,11 @@ export function registerAcademicRoutes(router: Router) {
       });
     }
 
+    // Get old semester to check status change
+    const oldSemester = await prisma.semester.findUnique({
+      where: { id: params.id },
+    });
+
     const semester = await prisma.semester.update({
       where: { id: params.id },
       data: {
@@ -181,6 +186,26 @@ export function registerAcademicRoutes(router: Router) {
       },
       include: { academicYear: true },
     });
+
+    // If status changed to REGISTRATION_OPEN, notify all students
+    if (body.status === 'REGISTRATION_OPEN' && oldSemester?.status !== 'REGISTRATION_OPEN') {
+      // Get all students
+      const students = await prisma.user.findMany({
+        where: { role: 'STUDENT' },
+        select: { id: true },
+      });
+
+      // Create notifications for all students
+      await prisma.notification.createMany({
+        data: students.map(s => ({
+          userId: s.id,
+          type: 'REGISTRATION_OPEN',
+          title: 'Registration Open',
+          message: `Registration for ${semester.name} is now open. Register before ${semester.registrationEnd ? new Date(semester.registrationEnd).toLocaleDateString() : 'the deadline'}.`,
+          data: { semesterId: semester.id },
+        })),
+      });
+    }
 
     res.json(semester);
   });
@@ -787,7 +812,24 @@ export function registerAcademicRoutes(router: Router) {
   router.post('/admin/semesters/:id/publish-grades', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ id: z.string() }).parse(req.params);
 
-    // Get all submitted grades for this semester
+    // Get semester info
+    const semester = await prisma.semester.findUnique({
+      where: { id: params.id },
+    });
+
+    // Get all students with submitted grades for this semester
+    const enrollmentsWithGrades = await prisma.studentEnrollment.findMany({
+      where: {
+        courseSection: { semesterId: params.id },
+        grade: { isSubmitted: true, isPublished: false },
+      },
+      select: { studentId: true },
+    });
+
+    // Get unique student IDs
+    const studentIds = [...new Set(enrollmentsWithGrades.map(e => e.studentId))];
+
+    // Publish grades
     const result = await prisma.studentGrade.updateMany({
       where: {
         isSubmitted: true,
@@ -798,6 +840,19 @@ export function registerAcademicRoutes(router: Router) {
         publishedAt: new Date(),
       },
     });
+
+    // Create notifications for affected students
+    if (studentIds.length > 0) {
+      await prisma.notification.createMany({
+        data: studentIds.map(studentId => ({
+          userId: studentId,
+          type: 'GRADE_PUBLISHED',
+          title: 'Grades Published',
+          message: `Your grades for ${semester?.name || 'this semester'} have been published. Check your results now.`,
+          data: { semesterId: params.id },
+        })),
+      });
+    }
 
     res.json({ message: 'Grades published successfully', count: result.count });
   });

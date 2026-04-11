@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAvailableCourses, registerForSemester } from '../api.js';
+import Layout from '../components/Layout';
 
 export default function StudentRegistrationPage() {
   const [data, setData] = useState(null);
@@ -41,34 +42,38 @@ export default function StudentRegistrationPage() {
     }
   }
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
 
   const { semester, class: studentClass, courses, message } = data || {};
 
   // No semester open for registration
   if (!semester) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <p className="text-yellow-700">No semester is currently open for registration.</p>
-          <p className="text-sm text-yellow-600 mt-2">Please check back later or contact the registrar.</p>
+      <Layout>
+        <div className="p-6 max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <p className="text-yellow-700">No semester is currently open for registration.</p>
+            <p className="text-sm text-yellow-600 mt-2">Please check back later or contact the registrar.</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   // Student not assigned to a class
   if (message || !studentClass) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-2">{semester.name}</h2>
-          <p className="text-blue-700">{message || 'You are not assigned to a class yet.'}</p>
-          <p className="text-sm text-blue-600 mt-2">Please contact the registrar to be assigned to a class.</p>
+      <Layout>
+        <div className="p-6 max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold mb-2">{semester.name}</h2>
+            <p className="text-blue-700">{message || 'You are not assigned to a class yet.'}</p>
+            <p className="text-sm text-blue-600 mt-2">Please contact the registrar to be assigned to a class.</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
@@ -76,8 +81,9 @@ export default function StudentRegistrationPage() {
   const someEnrolled = courses.some(c => c.isEnrolled);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
+    <Layout>
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
 
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>}
@@ -95,29 +101,29 @@ export default function StudentRegistrationPage() {
         </div>
         
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="bg-gray-50 rounded p-3">
-            <div className="text-gray-500">Registration Period</div>
-            <div className="font-medium">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+            <div className="text-gray-500 dark:text-gray-400">Registration Period</div>
+            <div className="font-medium text-gray-900 dark:text-white">
               {semester.registrationStart && semester.registrationEnd
                 ? `${new Date(semester.registrationStart).toLocaleDateString()} - ${new Date(semester.registrationEnd).toLocaleDateString()}`
                 : 'Not specified'}
             </div>
           </div>
-          <div className="bg-gray-50 rounded p-3">
-            <div className="text-gray-500">Your Class</div>
-            <div className="font-medium">{studentClass.name} ({studentClass.code})</div>
+          <div className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+            <div className="text-gray-500 dark:text-gray-400">Your Class</div>
+            <div className="font-medium text-gray-900 dark:text-white">{studentClass.name} ({studentClass.code})</div>
           </div>
-          <div className="bg-yellow-50 rounded p-3">
-            <div className="text-yellow-600">Midterm Exam</div>
-            <div className="font-medium">
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded p-3">
+            <div className="text-yellow-600 dark:text-yellow-400">Midterm Exam</div>
+            <div className="font-medium text-gray-900 dark:text-white">
               {semester.midtermExamDate
                 ? new Date(semester.midtermExamDate).toLocaleDateString()
                 : 'Not set'}
             </div>
           </div>
-          <div className="bg-red-50 rounded p-3">
-            <div className="text-red-600">Final Exam</div>
-            <div className="font-medium">
+          <div className="bg-red-50 dark:bg-red-900/30 rounded p-3">
+            <div className="text-red-600 dark:text-red-400">Final Exam</div>
+            <div className="font-medium text-gray-900 dark:text-white">
               {semester.finalExamDate
                 ? new Date(semester.finalExamDate).toLocaleDateString()
                 : 'Not set'}
@@ -138,8 +144,8 @@ export default function StudentRegistrationPage() {
               <div key={course.id} className={`border rounded p-4 ${course.isEnrolled ? 'bg-green-50 border-green-200' : ''}`}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-medium">{course.course?.code} - {course.course?.title}</h4>
-                    <p className="text-sm text-gray-500">
+                    <h4 className="font-medium text-gray-900 dark:text-white">{course.course?.code} - {course.course?.title}</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Teacher: {course.teacher?.fullName}
                     </p>
                     <p className="text-sm text-gray-500">
@@ -184,6 +190,7 @@ export default function StudentRegistrationPage() {
           <p className="text-green-700 font-medium">You are registered for all courses this semester!</p>
         </div>
       )}
-    </div>
+      </div>
+    </Layout>
   );
 }

@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import lucyLogo from '../assets/lucy_logobg.png';
-import { getAdminNotifications } from '../api';
+import { getAdminNotifications, getNotifications, markAllNotificationsRead } from '../api';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -33,21 +33,34 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [notifications, setNotifications] = useState({
     faceVerifications: 0,
     studentProfiles: 0,
     pendingUsers: 0,
     total: 0,
   });
+  const [studentNotifications, setStudentNotifications] = useState({
+    notifications: [],
+    unreadCount: 0,
+  });
 
   // Fetch notifications for admin
   const fetchNotifications = useCallback(async () => {
-    if (user?.role !== 'ADMIN') return;
-    try {
-      const data = await getAdminNotifications();
-      setNotifications(data);
-    } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+    if (user?.role === 'ADMIN') {
+      try {
+        const data = await getAdminNotifications();
+        setNotifications(data);
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
+      }
+    } else if (user?.role === 'STUDENT') {
+      try {
+        const data = await getNotifications();
+        setStudentNotifications(data);
+      } catch (err) {
+        console.error('Failed to fetch student notifications:', err);
+      }
     }
   }, [user?.role]);
 
@@ -183,6 +196,59 @@ export default function Layout({ children }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Notification Bell - Student */}
+            {user?.role === 'STUDENT' && studentNotifications.unreadCount > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white relative"
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full animate-bounce">
+                    {studentNotifications.unreadCount > 99 ? '99+' : studentNotifications.unreadCount}
+                  </span>
+                </button>
+
+                {/* Dropdown */}
+                {showNotificationDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
+                    <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      <h3 className="font-semibold text-sm">Notifications</h3>
+                      <button
+                        onClick={async () => {
+                          await markAllNotificationsRead();
+                          setStudentNotifications({ ...studentNotifications, unreadCount: 0, notifications: studentNotifications.notifications.map(n => ({ ...n, isRead: true })) });
+                          setShowNotificationDropdown(false);
+                        }}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    </div>
+                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {studentNotifications.notifications.slice(0, 5).map(notif => (
+                        <Link
+                          key={notif.id}
+                          to={notif.type === 'REGISTRATION_OPEN' ? '/student/registration' : notif.type === 'GRADE_PUBLISHED' ? '/student/results' : '/'}
+                          onClick={() => setShowNotificationDropdown(false)}
+                          className={`block p-3 hover:bg-gray-50 dark:hover:bg-gray-700 ${!notif.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                        >
+                          <p className="text-sm font-medium">{notif.title}</p>
+                          <p className="text-xs text-gray-500 mt-1">{notif.message}</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(notif.createdAt).toLocaleDateString()} {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </Link>
+                      ))}
+                      {studentNotifications.notifications.length === 0 && (
+                        <p className="p-4 text-center text-gray-500 text-sm">No notifications</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Notification Bell - Admin only */}
             {user?.role === 'ADMIN' && notifications.total > 0 && (
               <div className="relative">

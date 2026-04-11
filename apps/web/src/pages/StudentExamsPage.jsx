@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getStudentExamSchedules, respondToEarlyExamProposal } from '../api.js';
+import Layout from '../components/Layout';
 
 export default function StudentExamsPage() {
   const [examSchedules, setExamSchedules] = useState([]);
@@ -32,7 +33,7 @@ export default function StudentExamsPage() {
     }
   }
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
 
   // Group exams by semester
   const examsBySemester = examSchedules.reduce((acc, exam) => {
@@ -48,8 +49,9 @@ export default function StudentExamsPage() {
   }, {});
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">My Exam Schedule</h1>
+    <Layout>
+      <div className="p-6 max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">My Exam Schedule</h1>
 
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>}
@@ -62,15 +64,15 @@ export default function StudentExamsPage() {
         Object.values(examsBySemester).map(({ semester, exams }) => (
           <div key={semester?.id || 'unknown'} className="mb-8">
             <div className="bg-gray-100 rounded-lg p-4 mb-4">
-              <h2 className="text-lg font-semibold">{semester?.name || 'Unknown Semester'}</h2>
-              <p className="text-sm text-gray-500">{semester?.academicYear?.name}</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{semester?.name || 'Unknown Semester'}</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{semester?.academicYear?.name}</p>
               <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
-                <div className="bg-yellow-50 rounded p-2">
-                  <span className="text-yellow-600 font-medium">Midterm:</span>{' '}
+                <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded p-2">
+                  <span className="text-yellow-600 dark:text-yellow-400 font-medium">Midterm:</span>{' '}
                   <span>{semester?.midtermExamDate ? new Date(semester.midtermExamDate).toLocaleDateString() : 'Not set'}</span>
                 </div>
-                <div className="bg-red-50 rounded p-2">
-                  <span className="text-red-600 font-medium">Final:</span>{' '}
+                <div className="bg-red-50 dark:bg-red-900/30 rounded p-2">
+                  <span className="text-red-600 dark:text-red-400 font-medium">Final:</span>{' '}
                   <span>{semester?.finalExamDate ? new Date(semester.finalExamDate).toLocaleDateString() : 'Not set'}</span>
                 </div>
               </div>
@@ -89,13 +91,13 @@ export default function StudentExamsPage() {
                   </div>
 
                   <div className="p-4">
-                    <h3 className="font-medium text-lg">{exam.courseSection?.course?.title}</h3>
+                    <h3 className="font-medium text-lg text-gray-900 dark:text-white">{exam.courseSection?.course?.title}</h3>
 
                     <div className="mt-3 space-y-2 text-sm">
                       {/* Show actual exam date */}
-                      <div className="bg-blue-50 rounded p-2">
-                        <span className="text-blue-600 font-medium">Exam Date: </span>
-                        <span className="font-bold">
+                      <div className="bg-blue-50 dark:bg-blue-900/30 rounded p-2">
+                        <span className="text-blue-600 dark:text-blue-400 font-medium">Exam Date: </span>
+                        <span className="font-bold text-gray-900 dark:text-white">
                           {exam.actualDate ? new Date(exam.actualDate).toLocaleDateString() : 'Not set'}
                         </span>
                         {exam.earlyExamStatus === 'APPROVED' && (
@@ -106,13 +108,13 @@ export default function StudentExamsPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Duration:</span>
-                        <span className="font-medium">{exam.duration} minutes</span>
+                        <span className="text-gray-500 dark:text-gray-300">Duration:</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{exam.duration} minutes</span>
                       </div>
                       {exam.location && (
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-500">Location:</span>
-                          <span className="font-medium">{exam.location}</span>
+                          <span className="text-gray-500 dark:text-gray-300">Location:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{exam.location}</span>
                         </div>
                       )}
                     </div>
@@ -185,6 +187,7 @@ export default function StudentExamsPage() {
           </div>
         ))
       )}
-    </div>
+      </div>
+    </Layout>
   );
 }

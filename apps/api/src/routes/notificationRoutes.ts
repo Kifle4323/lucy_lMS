@@ -45,4 +45,48 @@ export function registerNotificationRoutes(router: Router) {
   router.post('/admin/notifications/seen/pending-users', authRequired, requireRole(['ADMIN']), async (_req: AuthedRequest, res: Response) => {
     res.json({ success: true });
   });
+
+  // ==================== STUDENT NOTIFICATIONS ====================
+
+  // Get student notifications
+  router.get('/notifications', authRequired, async (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+
+    const notifications = await prisma.notification.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const unreadCount = await prisma.notification.count({
+      where: { userId: user.id, isRead: false },
+    });
+
+    res.json({ notifications, unreadCount });
+  });
+
+  // Mark notification as read
+  router.patch('/notifications/:id/read', authRequired, async (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const { id } = req.params;
+
+    const notification = await prisma.notification.update({
+      where: { id, userId: user.id },
+      data: { isRead: true },
+    });
+
+    res.json(notification);
+  });
+
+  // Mark all notifications as read
+  router.post('/notifications/read-all', authRequired, async (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+
+    await prisma.notification.updateMany({
+      where: { userId: user.id, isRead: false },
+      data: { isRead: true },
+    });
+
+    res.json({ success: true });
+  });
 }

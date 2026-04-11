@@ -5,6 +5,7 @@ import {
   getCourses, getUsers, getCourseSections, createCourseSection, updateCourseSection, deleteCourseSection,
   getClasses
 } from '../api.js';
+import Layout from '../components/Layout';
 
 export default function AdminAcademicPage() {
   const [academicYears, setAcademicYears] = useState([]);
@@ -24,9 +25,9 @@ export default function AdminAcademicPage() {
     academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
     registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
   });
-  const [courseSectionForm, setCourseSectionForm] = useState({
-    courseId: '', semesterId: '', teacherId: '', classId: '', sectionCode: ''
-  });
+  const [courseSectionRows, setCourseSectionRows] = useState([
+    { courseId: '', teacherId: '', classId: '', sectionCode: '' }
+  ]);
   const [editingYear, setEditingYear] = useState(null);
   const [editingSemester, setEditingSemester] = useState(null);
   const [editingCourseSection, setEditingCourseSection] = useState(null);
@@ -193,18 +194,43 @@ export default function AdminAcademicPage() {
     }
   }
 
-  async function handleCreateCourseSection(e) {
+  function addCourseSectionRow() {
+    setCourseSectionRows([...courseSectionRows, { courseId: '', teacherId: '', classId: '', sectionCode: '' }]);
+  }
+
+  function removeCourseSectionRow(index) {
+    if (courseSectionRows.length > 1) {
+      setCourseSectionRows(courseSectionRows.filter((_, i) => i !== index));
+    }
+  }
+
+  function updateCourseSectionRow(index, field, value) {
+    const updated = [...courseSectionRows];
+    updated[index][field] = value;
+    setCourseSectionRows(updated);
+  }
+
+  async function handleCreateCourseSections(e) {
     e.preventDefault();
     try {
-      // Prepare data - use selectedSemester and convert empty classId to null
-      const data = {
-        ...courseSectionForm,
-        semesterId: selectedSemester,
-        classId: courseSectionForm.classId || null
-      };
-      const newSection = await createCourseSection(data);
-      setCourseSections([...courseSections, newSection]);
-      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', classId: '', sectionCode: '' });
+      // Create all course sections
+      const createdSections = [];
+      for (const row of courseSectionRows) {
+        if (!row.courseId || !row.teacherId || !row.sectionCode) continue;
+
+        const data = {
+          courseId: row.courseId,
+          semesterId: selectedSemester,
+          teacherId: row.teacherId,
+          classId: row.classId || null,
+          sectionCode: row.sectionCode
+        };
+        const newSection = await createCourseSection(data);
+        createdSections.push(newSection);
+      }
+
+      setCourseSections([...courseSections, ...createdSections]);
+      setCourseSectionRows([{ courseId: '', teacherId: '', classId: '', sectionCode: '' }]);
     } catch (err) {
       setError(err.message);
     }
@@ -213,15 +239,13 @@ export default function AdminAcademicPage() {
   async function handleUpdateCourseSection(e) {
     e.preventDefault();
     try {
-      // Prepare data - convert empty classId to null
-      const data = {
-        ...courseSectionForm,
-        classId: courseSectionForm.classId || null
-      };
-      const updated = await updateCourseSection(editingCourseSection.id, data);
+      const updated = await updateCourseSection(editingCourseSection.id, {
+        teacherId: editingCourseSection.teacherId,
+        classId: editingCourseSection.classId || null,
+        sectionCode: editingCourseSection.sectionCode
+      });
       setCourseSections(courseSections.map(s => s.id === updated.id ? updated : s));
       setEditingCourseSection(null);
-      setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', classId: '', sectionCode: '' });
     } catch (err) {
       setError(err.message);
     }
@@ -248,31 +272,32 @@ export default function AdminAcademicPage() {
     });
   }
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Academic Management</h1>
+    <Layout>
+      <div className="p-6 max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Academic Management</h1>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+      {error && <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4">{error}</div>}
 
       {/* Tabs */}
-      <div className="flex gap-4 mb-6 border-b">
+      <div className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setActiveTab('years')}
-          className={`pb-2 px-4 ${activeTab === 'years' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+          className={`pb-2 px-4 ${activeTab === 'years' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
         >
           Academic Years
         </button>
         <button
           onClick={() => setActiveTab('semesters')}
-          className={`pb-2 px-4 ${activeTab === 'semesters' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+          className={`pb-2 px-4 ${activeTab === 'semesters' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
         >
           Semesters
         </button>
         <button
           onClick={() => setActiveTab('sections')}
-          className={`pb-2 px-4 ${activeTab === 'sections' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+          className={`pb-2 px-4 ${activeTab === 'sections' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
         >
           Course Sections
         </button>
@@ -282,38 +307,38 @@ export default function AdminAcademicPage() {
       {activeTab === 'years' && (
         <div className="grid md:grid-cols-2 gap-6">
           {/* Form */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               {editingYear ? 'Edit Academic Year' : 'Create Academic Year'}
             </h2>
             <form onSubmit={editingYear ? handleUpdateYear : handleCreateYear} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Name (e.g., 2024-2025)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Name (e.g., 2024-2025)</label>
                 <input
                   type="text"
                   value={yearForm.name}
                   onChange={e => setYearForm({ ...yearForm, name: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Start Date</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Start Date</label>
                 <input
                   type="date"
                   value={yearForm.startDate}
                   onChange={e => setYearForm({ ...yearForm, startDate: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">End Date</label>
                 <input
                   type="date"
                   value={yearForm.endDate}
                   onChange={e => setYearForm({ ...yearForm, endDate: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
@@ -322,7 +347,7 @@ export default function AdminAcademicPage() {
                   {editingYear ? 'Update' : 'Create'}
                 </button>
                 {editingYear && (
-                  <button type="button" onClick={() => { setEditingYear(null); setYearForm({ name: '', startDate: '', endDate: '' }); }} className="px-4 py-2 border rounded">
+                  <button type="button" onClick={() => { setEditingYear(null); setYearForm({ name: '', startDate: '', endDate: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                     Cancel
                   </button>
                 )}
@@ -331,17 +356,17 @@ export default function AdminAcademicPage() {
           </div>
 
           {/* List */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Academic Years</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Academic Years</h2>
             <div className="space-y-3">
               {academicYears.map(year => (
-                <div key={year.id} className="border rounded p-4 flex justify-between items-center">
+                <div key={year.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-700">
                   <div>
-                    <div className="font-medium">{year.name}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-medium text-gray-900 dark:text-white">{year.name}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {new Date(year.startDate).toLocaleDateString()} - {new Date(year.endDate).toLocaleDateString()}
                     </div>
-                    {year.isActive && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Active</span>}
+                    {year.isActive && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-1 rounded">Active</span>}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => startEditYear(year)} className="text-blue-600 hover:underline">Edit</button>
@@ -359,18 +384,18 @@ export default function AdminAcademicPage() {
       {activeTab === 'semesters' && (
         <div className="grid md:grid-cols-2 gap-6">
           {/* Form */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
               {editingSemester ? 'Edit Semester' : 'Create Semester'}
             </h2>
             <form onSubmit={editingSemester ? handleUpdateSemester : handleCreateSemester} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Academic Year</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Academic Year</label>
                   <select
                     value={semesterForm.academicYearId}
                     onChange={e => setSemesterForm({ ...semesterForm, academicYearId: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     required
                   >
                     <option value="">Select Year</option>
@@ -380,11 +405,11 @@ export default function AdminAcademicPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Type</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Type</label>
                   <select
                     value={semesterForm.type}
                     onChange={e => setSemesterForm({ ...semesterForm, type: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="FALL">Fall</option>
                     <option value="SPRING">Spring</option>
@@ -393,90 +418,90 @@ export default function AdminAcademicPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Name (e.g., Fall 2024)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Name (e.g., Fall 2024)</label>
                 <input
                   type="text"
                   value={semesterForm.name}
                   onChange={e => setSemesterForm({ ...semesterForm, name: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Start Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Start Date</label>
                   <input
                     type="date"
                     value={semesterForm.startDate}
                     onChange={e => setSemesterForm({ ...semesterForm, startDate: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">End Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">End Date</label>
                   <input
                     type="date"
                     value={semesterForm.endDate}
                     onChange={e => setSemesterForm({ ...semesterForm, endDate: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     required
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Registration Start</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Registration Start</label>
                   <input
                     type="date"
                     value={semesterForm.registrationStart}
                     onChange={e => setSemesterForm({ ...semesterForm, registrationStart: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Registration End</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Registration End</label>
                   <input
                     type="date"
                     value={semesterForm.registrationEnd}
                     onChange={e => setSemesterForm({ ...semesterForm, registrationEnd: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Midterm Exam Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Midterm Exam Date</label>
                   <input
                     type="date"
                     value={semesterForm.midtermExamDate}
                     onChange={e => setSemesterForm({ ...semesterForm, midtermExamDate: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Final Exam Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Final Exam Date</label>
                   <input
                     type="date"
                     value={semesterForm.finalExamDate}
                     onChange={e => setSemesterForm({ ...semesterForm, finalExamDate: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">
-                <div className="font-medium text-yellow-800 mb-1">Official Exam Dates</div>
-                <p className="text-xs text-yellow-600 mt-1">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3 text-sm">
+                <div className="font-medium text-yellow-800 dark:text-yellow-300 mb-1">Official Exam Dates</div>
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
                   These are the official Midterm and Final exam dates for all courses. Teachers can propose early exams if all students agree.
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Grading Deadline</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Grading Deadline</label>
                 <input
                   type="date"
                   value={semesterForm.gradingDeadline}
                   onChange={e => setSemesterForm({ ...semesterForm, gradingDeadline: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
               <div className="flex gap-2">
@@ -484,7 +509,7 @@ export default function AdminAcademicPage() {
                   {editingSemester ? 'Update' : 'Create'}
                 </button>
                 {editingSemester && (
-                  <button type="button" onClick={() => { setEditingSemester(null); setSemesterForm({ academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '', registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: '' }); }} className="px-4 py-2 border rounded">
+                  <button type="button" onClick={() => { setEditingSemester(null); setSemesterForm({ academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '', registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                     Cancel
                   </button>
                 )}
@@ -493,45 +518,45 @@ export default function AdminAcademicPage() {
           </div>
 
           {/* List */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Semesters</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Semesters</h2>
             <div className="space-y-4">
               {semesters.map(sem => (
-                <div key={sem.id} className="border rounded p-4">
+                <div key={sem.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-700">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="font-medium text-lg">{sem.name}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="font-medium text-lg text-gray-900 dark:text-white">{sem.name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {sem.academicYear?.name} | {sem.type}
                       </div>
 
                       {/* Timeline */}
                       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                        <div className="bg-blue-50 rounded p-2">
-                          <div className="text-xs text-blue-600 font-medium">Semester Period</div>
-                          <div className="text-gray-700">
+                        <div className="bg-blue-50 dark:bg-blue-900/30 rounded p-2">
+                          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Semester Period</div>
+                          <div className="text-gray-700 dark:text-gray-300">
                             {new Date(sem.startDate).toLocaleDateString()} - {new Date(sem.endDate).toLocaleDateString()}
                           </div>
                         </div>
-                        <div className="bg-green-50 rounded p-2">
-                          <div className="text-xs text-green-600 font-medium">Registration</div>
-                          <div className="text-gray-700">
+                        <div className="bg-green-50 dark:bg-green-900/30 rounded p-2">
+                          <div className="text-xs text-green-600 dark:text-green-400 font-medium">Registration</div>
+                          <div className="text-gray-700 dark:text-gray-300">
                             {sem.registrationStart && sem.registrationEnd
                               ? `${new Date(sem.registrationStart).toLocaleDateString()} - ${new Date(sem.registrationEnd).toLocaleDateString()}`
                               : 'Not set'}
                           </div>
                         </div>
-                        <div className="bg-yellow-50 rounded p-2">
-                          <div className="text-xs text-yellow-600 font-medium">Midterm Exam</div>
-                          <div className="text-gray-700">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded p-2">
+                          <div className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Midterm Exam</div>
+                          <div className="text-gray-700 dark:text-gray-300">
                             {sem.midtermExamDate
                               ? new Date(sem.midtermExamDate).toLocaleDateString()
                               : 'Not set'}
                           </div>
                         </div>
-                        <div className="bg-red-50 rounded p-2">
-                          <div className="text-xs text-red-600 font-medium">Final Exam</div>
-                          <div className="text-gray-700">
+                        <div className="bg-red-50 dark:bg-red-900/30 rounded p-2">
+                          <div className="text-xs text-red-600 dark:text-red-400 font-medium">Final Exam</div>
+                          <div className="text-gray-700 dark:text-gray-300">
                             {sem.finalExamDate
                               ? new Date(sem.finalExamDate).toLocaleDateString()
                               : 'Not set'}
@@ -541,22 +566,22 @@ export default function AdminAcademicPage() {
 
                       {/* Grading Deadline */}
                       {sem.gradingDeadline && (
-                        <div className="mt-2 text-sm text-purple-600">
+                        <div className="mt-2 text-sm text-purple-600 dark:text-purple-400">
                           Grading Deadline: {new Date(sem.gradingDeadline).toLocaleDateString()}
                         </div>
                       )}
 
                       <div className="mt-2 flex gap-2 flex-wrap">
                         <span className={`text-xs px-2 py-1 rounded ${
-                          sem.status === 'COMPLETED' ? 'bg-gray-100 text-gray-700' :
-                          sem.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-700' :
-                          sem.status === 'REGISTRATION_OPEN' ? 'bg-blue-100 text-blue-700' :
-                          sem.status === 'GRADING' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
+                          sem.status === 'COMPLETED' ? 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300' :
+                          sem.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                          sem.status === 'REGISTRATION_OPEN' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
+                          sem.status === 'GRADING' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                          'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300'
                         }`}>
                           {sem.status.replace('_', ' ')}
                         </span>
-                        {sem.isCurrent && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Current</span>}
+                        {sem.isCurrent && <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 rounded">Current</span>}
                       </div>
 
                       {/* Status Change Buttons */}
@@ -602,7 +627,7 @@ export default function AdminAcademicPage() {
                   </div>
                 </div>
               ))}
-              {semesters.length === 0 && <p className="text-gray-500">No semesters yet.</p>}
+              {semesters.length === 0 && <p className="text-gray-500 dark:text-gray-400">No semesters yet.</p>}
             </div>
           </div>
         </div>
@@ -612,12 +637,12 @@ export default function AdminAcademicPage() {
       {activeTab === 'sections' && (
         <div className="space-y-6">
           {/* Semester Selector */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Select Semester</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Select Semester</h2>
             <select
               value={selectedSemester}
               onChange={e => loadCourseSections(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="">-- Select a Semester --</option>
               {semesters.map(sem => (
@@ -629,35 +654,31 @@ export default function AdminAcademicPage() {
           </div>
 
           {selectedSemester && (
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Course Section Form */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold mb-4">
-                  {editingCourseSection ? 'Edit Course Section' : 'Add Course Section'}
-                </h2>
-                <form onSubmit={editingCourseSection ? handleUpdateCourseSection : handleCreateCourseSection} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Course</label>
+            <div className="space-y-6">
+              {/* Batch Course Section Form */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add Course Sections</h2>
+                  <button
+                    type="button"
+                    onClick={addCourseSectionRow}
+                    className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                  >
+                    + Add Another Course
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateCourseSections} className="space-y-4">
+                  {/* Class selector for all courses */}
+                  <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded mb-4">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Assign to Class (optional - applies to all courses)</label>
                     <select
-                      value={courseSectionForm.courseId}
-                      onChange={e => setCourseSectionForm({ ...courseSectionForm, courseId: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                      required
-                    >
-                      <option value="">-- Select Course --</option>
-                      {courses.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.code} - {c.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Class (optional)</label>
-                    <select
-                      value={courseSectionForm.classId}
-                      onChange={e => setCourseSectionForm({ ...courseSectionForm, classId: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
+                      value={courseSectionRows[0]?.classId || ''}
+                      onChange={e => {
+                        const updated = courseSectionRows.map(row => ({ ...row, classId: e.target.value }));
+                        setCourseSectionRows(updated);
+                      }}
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
                       <option value="">-- No Class (Individual Enrollment) --</option>
                       {classes.map(c => (
@@ -666,75 +687,107 @@ export default function AdminAcademicPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">Assign to a class to enroll all students in that class</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All courses will be assigned to this class</p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Teacher</label>
-                    <select
-                      value={courseSectionForm.teacherId}
-                      onChange={e => setCourseSectionForm({ ...courseSectionForm, teacherId: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                      required
-                    >
-                      <option value="">-- Select Teacher --</option>
-                      {teachers.map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.fullName} ({t.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Section Code</label>
-                    <input
-                      type="text"
-                      value={courseSectionForm.sectionCode}
-                      onChange={e => setCourseSectionForm({ ...courseSectionForm, sectionCode: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                      placeholder="e.g., CS101-A"
-                      required
-                    />
-                  </div>
-                  <div className="flex gap-2">
+
+                  {/* Course rows */}
+                  {courseSectionRows.map((row, index) => (
+                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-700">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Course #{index + 1}</span>
+                        {courseSectionRows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeCourseSectionRow(index)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Course</label>
+                          <select
+                            value={row.courseId}
+                            onChange={e => updateCourseSectionRow(index, 'courseId', e.target.value)}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            required
+                          >
+                            <option value="">-- Select --</option>
+                            {courses.map(c => (
+                              <option key={c.id} value={c.id}>
+                                {c.code} - {c.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Teacher</label>
+                          <select
+                            value={row.teacherId}
+                            onChange={e => updateCourseSectionRow(index, 'teacherId', e.target.value)}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            required
+                          >
+                            <option value="">-- Select --</option>
+                            {teachers.map(t => (
+                              <option key={t.id} value={t.id}>
+                                {t.fullName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Section Code</label>
+                          <input
+                            type="text"
+                            value={row.sectionCode}
+                            onChange={e => updateCourseSectionRow(index, 'sectionCode', e.target.value)}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            placeholder="e.g., CS101-A"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex gap-2 pt-2">
                     <button
                       type="submit"
-                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
                     >
-                      {editingCourseSection ? 'Update' : 'Add'}
+                      Create All Course Sections
                     </button>
-                    {editingCourseSection && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCourseSection(null);
-                          setCourseSectionForm({ courseId: '', semesterId: selectedSemester, teacherId: '', classId: '', sectionCode: '' });
-                        }}
-                        className="px-4 py-2 border rounded"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setCourseSectionRows([{ courseId: '', teacherId: '', classId: '', sectionCode: '' }])}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Clear All
+                    </button>
                   </div>
                 </form>
               </div>
 
               {/* Course Sections List */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold mb-4">Course Sections</h2>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Course Sections</h2>
                 <div className="space-y-3">
                   {courseSections.map(section => (
-                    <div key={section.id} className="border rounded p-4">
+                    <div key={section.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-700">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{section.course?.code} - {section.course?.title}</h3>
-                          <p className="text-sm text-gray-500">
+                          <h3 className="font-medium text-gray-900 dark:text-white">{section.course?.code} - {section.course?.title}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             Teacher: {section.teacher?.fullName}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             Section: {section.sectionCode}
                           </p>
                           {section.class && (
-                            <p className="text-sm text-blue-600">
+                            <p className="text-sm text-blue-600 dark:text-blue-400">
                               Class: {section.class.name} ({section.class.code})
                             </p>
                           )}
@@ -760,7 +813,7 @@ export default function AdminAcademicPage() {
                     </div>
                   ))}
                   {courseSections.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">No course sections added yet.</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">No course sections added yet.</p>
                   )}
                 </div>
               </div>
@@ -768,6 +821,7 @@ export default function AdminAcademicPage() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </Layout>
   );
 }

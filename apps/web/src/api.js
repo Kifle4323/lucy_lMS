@@ -463,6 +463,19 @@ export async function getSectionStudents(sectionId) {
   return apiFetch(`/teacher/sections/${sectionId}/students`);
 }
 
+// Notifications
+export async function getNotifications() {
+  return apiFetch('/notifications');
+}
+
+export async function markNotificationRead(id) {
+  return apiFetch(`/notifications/${id}/read`, { method: 'PATCH' });
+}
+
+export async function markAllNotificationsRead() {
+  return apiFetch('/notifications/read-all', { method: 'POST' });
+}
+
 export async function enterGrade(data) {
   return apiFetch('/teacher/grades', { method: 'POST', body: JSON.stringify(data) });
 }

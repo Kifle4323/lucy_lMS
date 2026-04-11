@@ -12,6 +12,8 @@ export function registerCourseRoutes(router: Router) {
         title: z.string().min(2),
         code: z.string().min(2),
         description: z.string().optional(),
+        creditHours: z.number().int().min(1),
+        ectsCredits: z.number().int().min(1),
       })
       .parse(req.body);
 
@@ -20,6 +22,8 @@ export function registerCourseRoutes(router: Router) {
         title: body.title,
         code: body.code,
         description: body.description,
+        creditHours: body.creditHours,
+        ectsCredits: body.ectsCredits,
       },
     });
 

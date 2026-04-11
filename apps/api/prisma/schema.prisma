@@ -91,6 +91,7 @@ model User {
   courseSections  CourseSection[]  @relation("CourseSectionTeacher")
   enrollments     StudentEnrollment[]
   earlyExamRequests EarlyExamRequest[]
+  notifications   Notification[]
 }
 
 model StudentProfile {
@@ -235,7 +236,8 @@ model Course {
   title        String
   code         String   @unique
   description  String?
-  creditHours  Int      @default(3) // Credit hours for the course
+  creditHours  Int      @default(3) // US Credit hours for the course
+  ectsCredits  Int      @default(5) // European Credit Transfer System (ECTS) credits
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -564,4 +566,21 @@ model EarlyExamRequest {
   student        User        @relation(fields: [studentId], references: [id])
 
   @@unique([examScheduleId, studentId])
+}
+
+// Notifications for users
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // REGISTRATION_OPEN, GRADE_PUBLISHED, etc.
+  title       String
+  message     String
+  data        Json?    // Additional data (semesterId, courseId, etc.)
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }

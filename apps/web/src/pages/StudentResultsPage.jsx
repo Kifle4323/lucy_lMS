@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getMyResults, getMyCGPA, getMyEnrollments } from '../api.js';
+import Layout from '../components/Layout';
 
 export default function StudentResultsPage() {
   const [currentResults, setCurrentResults] = useState(null);
@@ -40,13 +41,14 @@ export default function StudentResultsPage() {
     }
   }
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">My Academic Results</h1>
+    <Layout>
+      <div className="p-6 max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">My Academic Results</h1>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+        {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
 
       {/* CGPA Card */}
       {cgpaData && (
@@ -87,10 +89,10 @@ export default function StudentResultsPage() {
                     : 'hover:bg-gray-50'
                 }`}
               >
-                <div className="font-medium">{sem.semester.name}</div>
-                <div className="text-sm text-gray-500">{sem.semester.academicYear?.name}</div>
+                <div className="font-medium text-gray-900 dark:text-white">{sem.semester.name}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{sem.semester.academicYear?.name}</div>
                 <div className="mt-2 flex justify-between">
-                  <span className="text-sm">GPA: <strong>{sem.gpa.toFixed(2)}</strong></span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">GPA: <strong>{sem.gpa.toFixed(2)}</strong></span>
                   <span className="text-sm">Credits: {sem.credits}</span>
                 </div>
               </button>
@@ -125,24 +127,24 @@ export default function StudentResultsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left p-3">Course</th>
-                    <th className="text-center p-3">Credits</th>
-                    <th className="text-center p-3">Quiz</th>
-                    <th className="text-center p-3">Midterm</th>
-                    <th className="text-center p-3">Final</th>
-                    <th className="text-center p-3">Attendance</th>
-                    <th className="text-center p-3">Total</th>
-                    <th className="text-center p-3">Grade</th>
-                    <th className="text-center p-3">Status</th>
+                  <tr className="bg-gray-50">
+                    <th className="text-left p-3 font-medium text-gray-600 dark:text-gray-400">Course</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Credits</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Quiz</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Midterm</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Final</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Attendance</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Total</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Grade</th>
+                    <th className="text-center p-3 font-medium text-gray-600 dark:text-gray-400">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentResults.courses.map(course => (
-                    <tr key={course.id} className="border-b hover:bg-gray-50">
+                    <tr key={course.id} className="hover:bg-gray-50">
                       <td className="p-3">
-                        <div className="font-medium">{course.course?.title}</div>
-                        <div className="text-xs text-gray-500">{course.course?.code} | {course.sectionCode}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">{course.course?.title}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{course.course?.code} | {course.sectionCode}</div>
                       </td>
                       <td className="p-3 text-center">{course.creditHours}</td>
                       <td className="p-3 text-center">
@@ -194,7 +196,7 @@ export default function StudentResultsPage() {
           )}
 
           {/* Legend */}
-          <div className="mt-4 p-4 bg-gray-50 rounded text-sm">
+          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-300">
             <div className="font-medium mb-2">Grading Scale:</div>
             <div className="grid grid-cols-4 md:grid-cols-6 gap-2 text-xs">
               <div>A+ (90-100): 4.0</div>
@@ -218,9 +220,9 @@ export default function StudentResultsPage() {
         <h2 className="text-lg font-semibold mb-4">My Course Enrollments</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {enrollments.map(enrollment => (
-            <div key={enrollment.id} className="border rounded p-4">
-              <div className="font-medium">{enrollment.courseSection?.course?.title}</div>
-              <div className="text-sm text-gray-500">
+            <div key={enrollment.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-700">
+              <div className="font-medium text-gray-900 dark:text-white">{enrollment.courseSection?.course?.title}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
                 {enrollment.courseSection?.course?.code} | {enrollment.courseSection?.sectionCode}
               </div>
               <div className="text-sm text-gray-500">
@@ -250,6 +252,7 @@ export default function StudentResultsPage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 }
