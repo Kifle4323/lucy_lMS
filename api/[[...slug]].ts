@@ -17,6 +17,7 @@ export default async function (req: VercelRequest, res: VercelResponse) {
   // Ensure database connection
   await ensurePrismaConnection();
   
-  // Run the Express handler
+  // Fix path: Vercel sends /api/auth/login but Express expects /api/auth/login
+  // The serverless-http handler should work with the full path
   return handler(req, res);
 }
