@@ -3,17 +3,17 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 
-import { registerAuthRoutes } from './routes/authRoutes.js';
-import { registerCourseRoutes } from './routes/courseRoutes.js';
-import { registerAssessmentRoutes } from './routes/assessmentRoutes.js';
-import { registerClassRoutes } from './routes/classRoutes.js';
-import { registerMaterialRoutes } from './routes/materialRoutes.js';
-import { registerLiveSessionRoutes } from './routes/liveSessionRoutes.js';
-import { registerGradebookRoutes } from './routes/gradebookRoutes.js';
-import { registerFaceVerificationRoutes } from './routes/faceVerificationRoutes.js';
-import { registerStudentProfileRoutes } from './routes/studentProfileRoutes.js';
-import { registerNotificationRoutes } from './routes/notificationRoutes.js';
-import { registerAcademicRoutes } from './routes/academicRoutes.js';
+import { registerAuthRoutes } from './routes/authRoutes';
+import { registerCourseRoutes } from './routes/courseRoutes';
+import { registerAssessmentRoutes } from './routes/assessmentRoutes';
+import { registerClassRoutes } from './routes/classRoutes';
+import { registerMaterialRoutes } from './routes/materialRoutes';
+import { registerLiveSessionRoutes } from './routes/liveSessionRoutes';
+import { registerGradebookRoutes } from './routes/gradebookRoutes';
+import { registerFaceVerificationRoutes } from './routes/faceVerificationRoutes';
+import { registerStudentProfileRoutes } from './routes/studentProfileRoutes';
+import { registerNotificationRoutes } from './routes/notificationRoutes';
+import { registerAcademicRoutes } from './routes/academicRoutes';
 
 dotenv.config();
 

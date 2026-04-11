@@ -2,9 +2,9 @@
 import type { Request, Response, Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { prisma } from '../db.js';
-import { signAccessToken, signRefreshToken } from '../auth.js';
-import { authRequired, requireRole, type AuthedRequest } from '../middleware.js';
+import { prisma } from '../db';
+import { signAccessToken, signRefreshToken } from '../auth';
+import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
 export function registerAuthRoutes(router: Router) {
   // Public registration - only STUDENT and TEACHER allowed

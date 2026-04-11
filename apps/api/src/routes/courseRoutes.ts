@@ -1,8 +1,8 @@
 // @ts-nocheck
 import type { Request, Response, Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../db.js';
-import { authRequired, requireRole, type AuthedRequest } from '../middleware.js';
+import { prisma } from '../db';
+import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
 export function registerCourseRoutes(router: Router) {
   // Create course (Admin only)

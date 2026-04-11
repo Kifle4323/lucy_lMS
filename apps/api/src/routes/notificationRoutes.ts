@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { Request, Response, Router } from 'express';
-import { prisma } from '../db.js';
-import { authRequired, requireRole, type AuthedRequest } from '../middleware.js';
+import { prisma } from '../db';
+import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
 export function registerNotificationRoutes(router: Router) {
   // Get notification counts for admin

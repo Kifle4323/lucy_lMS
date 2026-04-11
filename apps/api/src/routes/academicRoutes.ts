@@ -1,8 +1,8 @@
 // @ts-nocheck
 import type { Request, Response, Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../db.js';
-import { authRequired, requireRole, type AuthedRequest } from '../middleware.js';
+import { prisma } from '../db';
+import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
 // Grade point mapping based on the grading scale
 const GRADE_POINTS: Record<string, { min: number; max: number; point: number; letter: string }> = {
