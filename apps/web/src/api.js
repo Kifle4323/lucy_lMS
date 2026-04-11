@@ -1,7 +1,7 @@
 // Use current hostname for network access, fallback to localhost
-const API_BASE = window.location.hostname === 'localhost' 
-  ? 'http://localhost:4000/api' 
-  : `http://${window.location.hostname}:4000/api`;
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:4000/api'
+  : '/api';
 
 function getToken() {
   return localStorage.getItem('accessToken');
