@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import handler from '../apps/api/src/serverless.ts';
+import handler from '../apps/api/src/serverless';
 
 // Initialize Prisma client
-import { prisma } from '../apps/api/src/db.ts';
+import { prisma } from '../apps/api/src/db';
 
 // Ensure Prisma is connected
 let prismaConnected = false;

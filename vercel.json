@@ -4,10 +4,9 @@
   "installCommand": "npm install",
   "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/health", "destination": "/api/health" }
-    ,
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/((?!api|health).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
