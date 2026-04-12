@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   getTeacherSections, getSectionStudents, enterGrade, submitSectionGrades,
   createExamSchedule, getSectionExamSchedules, updateExamSchedule, deleteExamSchedule,
@@ -7,6 +8,7 @@ import {
 import Layout from '../components/Layout';
 
 export default function TeacherGradesPage() {
+  const [searchParams] = useSearchParams();
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState(null);
   const [students, setStudents] = useState([]);
@@ -42,6 +44,23 @@ export default function TeacherGradesPage() {
     try {
       const data = await getTeacherSections();
       setSections(data);
+      
+      // Auto-select section from URL query param
+      const sectionId = searchParams.get('section');
+      const courseId = searchParams.get('course');
+      
+      if (sectionId) {
+        const section = data.find(s => s.id === sectionId);
+        if (section) {
+          selectSection(section);
+        }
+      } else if (courseId) {
+        // Filter to sections for this course and auto-select first one
+        const courseSections = data.filter(s => s.courseId === courseId);
+        if (courseSections.length === 1) {
+          selectSection(courseSections[0]);
+        }
+      }
     } catch (err) {
       setError(err.message);
     } finally {

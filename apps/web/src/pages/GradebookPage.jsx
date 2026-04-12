@@ -232,7 +232,7 @@ export default function GradebookPage() {
             <h1 className="text-2xl font-bold text-gray-900">Gradebook</h1>
             <p className="text-gray-500">Manage grades and attendance</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setActiveView('gradebook')}
               className={`px-4 py-2 font-medium rounded-lg ${activeView === 'gradebook' ? 'bg-primary-900 text-white' : 'bg-gray-100 text-gray-700'}`}
@@ -254,6 +254,15 @@ export default function GradebookPage() {
               <UserCheck className="w-4 h-4 inline mr-2" />
               Attendance
             </button>
+            {user?.role === 'TEACHER' && (
+              <Link
+                to={`/teacher/grades?course=${courseId}`}
+                className="px-4 py-2 font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Semester Grades
+              </Link>
+            )}
           </div>
         </div>
 
