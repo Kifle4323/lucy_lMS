@@ -1,0 +1,17 @@
+# A string used to distinguish different Supabase projects
+project_id = "lucy-lms"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[functions]
+enabled = true
+port = 54324
