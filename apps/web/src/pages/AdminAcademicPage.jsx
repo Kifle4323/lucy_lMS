@@ -242,7 +242,9 @@ export default function AdminAcademicPage() {
       const updated = await updateCourseSection(editingCourseSection.id, {
         teacherId: editingCourseSection.teacherId,
         classId: editingCourseSection.classId || null,
-        sectionCode: editingCourseSection.sectionCode
+        sectionCode: editingCourseSection.sectionCode,
+        schedule: editingCourseSection.schedule,
+        room: editingCourseSection.room
       });
       setCourseSections(courseSections.map(s => s.id === updated.id ? updated : s));
       setEditingCourseSection(null);
@@ -770,6 +772,92 @@ export default function AdminAcademicPage() {
                   </div>
                 </form>
               </div>
+
+              {/* Edit Course Section Form */}
+              {editingCourseSection && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg shadow p-6 border border-yellow-200 dark:border-yellow-800">
+                  <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Course Section</h2>
+                  <form onSubmit={handleUpdateCourseSection} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Course</label>
+                        <input
+                          type="text"
+                          value={editingCourseSection.course?.title || ''}
+                          disabled
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Teacher</label>
+                        <select
+                          value={editingCourseSection.teacherId}
+                          onChange={e => setEditingCourseSection({ ...editingCourseSection, teacherId: e.target.value })}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        >
+                          {teachers.map(t => (
+                            <option key={t.id} value={t.id}>{t.fullName}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Section Code</label>
+                        <input
+                          type="text"
+                          value={editingCourseSection.sectionCode || ''}
+                          onChange={e => setEditingCourseSection({ ...editingCourseSection, sectionCode: e.target.value })}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Class (optional)</label>
+                        <select
+                          value={editingCourseSection.classId || ''}
+                          onChange={e => setEditingCourseSection({ ...editingCourseSection, classId: e.target.value || null })}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        >
+                          <option value="">No Class</option>
+                          {classes.map(c => (
+                            <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Schedule</label>
+                        <input
+                          type="text"
+                          value={editingCourseSection.schedule || ''}
+                          onChange={e => setEditingCourseSection({ ...editingCourseSection, schedule: e.target.value })}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="e.g., Mon/Wed 9:00-10:30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Room</label>
+                        <input
+                          type="text"
+                          value={editingCourseSection.room || ''}
+                          onChange={e => setEditingCourseSection({ ...editingCourseSection, room: e.target.value })}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="e.g., Room 101"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Update
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingCourseSection(null)}
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
 
               {/* Course Sections List */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
