@@ -18,12 +18,13 @@ export function registerAssessmentRoutes(router: Router) {
         maxScore: z.number().int().positive().optional(),
       }).parse(req.body);
 
-      // Check if teacher is assigned to this course through CourseClass
-      const courseClass = await prisma.courseClass.findFirst({
+      // Check if teacher is assigned to this course through CourseSection
+      const courseSection = await prisma.courseSection.findFirst({
         where: { courseId: params.courseId, teacherId: req.user!.id },
+        include: { course: true },
       });
 
-      if (!courseClass) {
+      if (!courseSection) {
         res.status(403).json({ error: 'forbidden' });
         return;
       }
@@ -37,6 +38,26 @@ export function registerAssessmentRoutes(router: Router) {
           maxScore: body.maxScore ?? 100,
         },
       });
+
+      // Notify all students enrolled in this teacher's course sections
+      const enrollments = await prisma.studentEnrollment.findMany({
+        where: { 
+          courseSectionId: courseSection.id,
+          status: 'ENROLLED',
+        },
+        select: { studentId: true },
+      });
+
+      if (enrollments.length > 0) {
+        await prisma.notification.createMany({
+          data: enrollments.map(e => ({
+            userId: e.studentId,
+            type: 'NEW_ASSESSMENT',
+            title: 'New Assessment Available',
+            message: `A new ${body.examType?.toLowerCase() || 'quiz'} "${body.title}" has been created for ${courseSection.course?.title || 'your course'}.`,
+          })),
+        });
+      }
 
       res.json(assessment);
     },
