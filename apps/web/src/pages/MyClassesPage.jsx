@@ -8,6 +8,7 @@ import {
   BookOpen, 
   Users, 
   ChevronRight,
+  ChevronDown,
   User,
   FileText,
   Calendar,
@@ -19,6 +20,7 @@ export default function MyClassesPage() {
   const [classes, setClasses] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedClasses, setExpandedClasses] = useState({});
 
   useEffect(() => {
     setLoading(true);
@@ -34,6 +36,13 @@ export default function MyClassesPage() {
       .finally(() => setLoading(false));
   }, [user?.role]);
 
+  const toggleClass = (classId) => {
+    setExpandedClasses(prev => ({
+      ...prev,
+      [classId]: !prev[classId]
+    }));
+  };
+
   if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
 
   return (
@@ -43,7 +52,7 @@ export default function MyClassesPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Classes</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            {user?.role === 'TEACHER' ? 'Classes and course sections you are teaching' : 'Classes you are enrolled in'}
+            {user?.role === 'TEACHER' ? 'Classes you are teaching' : 'Classes you are enrolled in'}
           </p>
         </div>
 
@@ -184,10 +193,9 @@ export default function MyClassesPage() {
           </div>
         )}
 
-        {/* Teachers: Show Classes with their Course Sections */}
+        {/* Teachers: Show Classes with expandable Course Sections */}
         {user?.role === 'TEACHER' && (
           <>
-            {/* Group sections by class */}
             {(() => {
               // Safely filter sections
               const sectionsWithClass = sections.filter(s => s.classId && s.class);
@@ -208,80 +216,99 @@ export default function MyClassesPage() {
 
               return (
                 <>
-                  {/* Classes with Course Sections */}
-                  {Array.from(classMap.values()).map(({ class: cls, sections: classSections }) => (
-                    <div key={cls.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
-                      {/* Class Header */}
-                      <div className="p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{cls.name}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{cls.code}</p>
-                          </div>
-                          <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full">
-                            {classSections.length} course{classSections.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Course Sections in this Class */}
-                      <div className="p-5">
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {classSections.map((section) => (
-                            <div 
-                              key={section.id} 
-                              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors"
-                            >
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                                  <span className="font-medium text-gray-900 dark:text-white">{section.course?.title}</span>
-                                </div>
-                                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded">
-                                  {section.sectionCode}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{section.course?.code}</p>
-                              
-                              <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-3">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>{section.semester?.name}</span>
-                                </div>
-                                {section.schedule && (
-                                  <div className="flex items-center gap-1">
-                                    <Users className="w-3 h-3" />
-                                    <span>{section.schedule}</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-1">
-                                  <GraduationCap className="w-3 h-3" />
-                                  <span>{section._count?.enrollments || 0} students</span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap gap-2">
-                                <Link
-                                  to={`/courses/${section.courseId}`}
-                                  className="inline-flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
-                                >
-                                  <FileText className="w-3 h-3" />
-                                  Assessments
-                                </Link>
-                                <Link
-                                  to={`/teacher/grades?section=${section.id}`}
-                                  className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-700 font-medium"
-                                >
-                                  <FileText className="w-3 h-3" />
-                                  Grades
-                                </Link>
-                              </div>
+                  {/* Classes with Course Sections - Click to expand */}
+                  {Array.from(classMap.values()).map(({ class: cls, sections: classSections }) => {
+                    const isExpanded = expandedClasses[cls.id];
+                    
+                    return (
+                      <div key={cls.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-4">
+                        {/* Class Header - Clickable */}
+                        <button
+                          onClick={() => toggleClass(cls.id)}
+                          className="w-full p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                              <GraduationCap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                             </div>
-                          ))}
-                        </div>
+                            <div>
+                              <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{cls.name}</h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{cls.code}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full">
+                              {classSections.length} course{classSections.length !== 1 ? 's' : ''}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                            ) : (
+                              <ChevronRight className="w-5 h-5 text-gray-400" />
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Course Sections - Expanded view */}
+                        {isExpanded && (
+                          <div className="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                              {classSections.map((section) => (
+                                <div 
+                                  key={section.id} 
+                                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow"
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                      <span className="font-medium text-gray-900 dark:text-white">{section.course?.title}</span>
+                                    </div>
+                                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded">
+                                      {section.sectionCode}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{section.course?.code}</p>
+                                  
+                                  <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      <span>{section.semester?.name}</span>
+                                    </div>
+                                    {section.schedule && (
+                                      <div className="flex items-center gap-1">
+                                        <Users className="w-3 h-3" />
+                                        <span>{section.schedule}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-1">
+                                      <GraduationCap className="w-3 h-3" />
+                                      <span>{section._count?.enrollments || 0} students</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    <Link
+                                      to={`/courses/${section.courseId}`}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      Assessments
+                                    </Link>
+                                    <Link
+                                      to={`/teacher/grades?section=${section.id}`}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      Grades
+                                    </Link>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Course Sections without Class */}
                   {sectionsWithoutClass.length > 0 && (
