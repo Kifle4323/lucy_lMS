@@ -9,12 +9,12 @@ export function registerGradebookRoutes(router: Router) {
   router.get('/courses/:courseId/grade-config', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ courseId: z.string() }).parse(req.params);
 
-    // Verify teacher teaches this course
-    const courseClass = await prisma.courseClass.findFirst({
+    // Verify teacher teaches this course through CourseSection
+    const courseSection = await prisma.courseSection.findFirst({
       where: { courseId: params.courseId, teacherId: req.user!.id },
     });
 
-    if (!courseClass) {
+    if (!courseSection) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -43,12 +43,12 @@ export function registerGradebookRoutes(router: Router) {
       attendanceWeight: z.number().int().min(0).max(100).optional(),
     }).parse(req.body);
 
-    // Verify teacher teaches this course
-    const courseClass = await prisma.courseClass.findFirst({
+    // Verify teacher teaches this course through CourseSection
+    const courseSection = await prisma.courseSection.findFirst({
       where: { courseId: params.courseId, teacherId: req.user!.id },
     });
 
-    if (!courseClass) {
+    if (!courseSection) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -85,11 +85,11 @@ export function registerGradebookRoutes(router: Router) {
     const params = z.object({ courseId: z.string() }).parse(req.params);
 
     // Verify teacher teaches this course
-    const courseClass = await prisma.courseClass.findFirst({
+    const courseSection = await prisma.courseSection.findFirst({
       where: { courseId: params.courseId, teacherId: req.user!.id },
     });
 
-    if (!courseClass) {
+    if (!courseSection) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -111,11 +111,11 @@ export function registerGradebookRoutes(router: Router) {
     }).parse(req.body);
 
     // Verify teacher teaches this course
-    const courseClass = await prisma.courseClass.findFirst({
+    const courseSection = await prisma.courseSection.findFirst({
       where: { courseId: params.courseId, teacherId: req.user!.id },
     });
 
-    if (!courseClass) {
+    if (!courseSection) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -144,12 +144,12 @@ export function registerGradebookRoutes(router: Router) {
   router.get('/courses/:courseId/gradebook', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ courseId: z.string() }).parse(req.params);
 
-    // Verify teacher teaches this course
-    const courseClass = await prisma.courseClass.findFirst({
+    // Verify teacher teaches this course through CourseSection
+    const courseSection = await prisma.courseSection.findFirst({
       where: { courseId: params.courseId, teacherId: req.user!.id },
     });
 
-    if (!courseClass) {
+    if (!courseSection) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -159,42 +159,30 @@ export function registerGradebookRoutes(router: Router) {
       where: { courseId: params.courseId },
     }) || { quizWeight: 25, midtermWeight: 25, finalWeight: 40, attendanceWeight: 10 };
 
-    // Get students enrolled in this course
-    const courseClasses = await prisma.courseClass.findMany({
+    // Get students enrolled in this teacher's course sections
+    const sections = await prisma.courseSection.findMany({
       where: { courseId: params.courseId, teacherId: req.user!.id },
       include: {
-        class: {
-          include: {
-            students: {
-              include: { student: { select: { id: true, fullName: true, email: true } } },
-            },
-          },
+        class: true,
+        enrollments: {
+          where: { status: 'ENROLLED' },
+          include: { student: { select: { id: true, fullName: true, email: true } } },
         },
       },
     });
 
-    // Flatten students from all classes
-    type CourseClassWithStudents = {
-      classId: string;
-      class: {
-        id: string;
-        name: string;
-        students: { student: { id: string; fullName: string; email: string } }[];
-      };
-    };
-    
-    const typedCourseClasses = courseClasses as CourseClassWithStudents[];
-    
-    const students = typedCourseClasses.flatMap(cc =>
-      cc.class.students.map(s => ({
-        ...s.student,
-        classId: cc.classId,
-        className: cc.class.name,
+    // Flatten students from all sections
+    const students = sections.flatMap(section =>
+      section.enrollments.map(e => ({
+        ...e.student,
+        classId: section.classId,
+        className: section.class?.name || 'No Class',
+        sectionCode: section.sectionCode,
       }))
     );
 
     // Remove duplicates
-    type StudentWithClass = { id: string; fullName: string; email: string; classId: string; className: string };
+    type StudentWithClass = { id: string; fullName: string; email: string; classId: string | null; className: string; sectionCode: string };
     const uniqueStudents = students.reduce<StudentWithClass[]>((acc, student) => {
       if (!acc.find(s => s.id === student.id)) {
         acc.push(student);
