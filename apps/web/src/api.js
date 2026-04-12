@@ -1,7 +1,7 @@
-// API base URL - uses /api in production (Vercel), localhost:4000 in dev
+// API base URL - uses Render backend in production, localhost:4000 in dev
 const API_BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:4000/api'
-  : '/api';
+  : 'https://lucy-lms-back.onrender.com/api';
 
 function getToken() {
   return localStorage.getItem('accessToken');
