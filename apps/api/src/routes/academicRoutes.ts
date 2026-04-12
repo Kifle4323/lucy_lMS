@@ -589,6 +589,7 @@ export function registerAcademicRoutes(router: Router) {
             course: true,
             teacher: { select: { id: true, fullName: true } },
             semester: { include: { academicYear: true } },
+            class: true, // Include class for grouping
           },
         },
         grade: true,

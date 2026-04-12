@@ -56,62 +56,7 @@ export default function MyClassesPage() {
           </p>
         </div>
 
-        {/* Student Enrollments (New System) */}
-        {user?.role === 'STUDENT' && sections.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              My Enrolled Courses
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sections.map((enrollment) => (
-                <div 
-                  key={enrollment.id} 
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{enrollment.courseSection?.course?.title}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{enrollment.courseSection?.course?.code}</p>
-                    </div>
-                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded">
-                      {enrollment.courseSection?.sectionCode}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>{enrollment.courseSection?.semester?.name}</span>
-                    </div>
-                    {enrollment.courseSection?.schedule && (
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4" />
-                        <span>{enrollment.courseSection?.schedule}</span>
-                      </div>
-                    )}
-                    {enrollment.courseSection?.room && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        <span>{enrollment.courseSection?.room}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Link
-                    to={`/student/results`}
-                    className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
-                  >
-                    <FileText className="w-4 h-4" />
-                    View Results
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
+        
         {/* Teachers see Classes with Course Sections inside */}
         {user?.role === 'TEACHER' && sections.length === 0 && classes.length === 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
@@ -316,96 +261,186 @@ export default function MyClassesPage() {
         )}
 
         {/* Students: Show enrolled courses */}
-        {user?.role === 'STUDENT' && classes.length === 0 && sections.length === 0 && (
+        {user?.role === 'STUDENT' && sections.length === 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No classes yet</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No courses enrolled</h3>
             <p className="text-gray-500 dark:text-gray-400">
-              You haven't been added to any classes yet
+              You haven't been enrolled in any courses yet
             </p>
           </div>
         )}
 
-        {/* Old Classes - Only for STUDENTS */}
-        {user?.role === 'STUDENT' && classes.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Classes</h2>
-            <div className="space-y-6">
-              {classes.map((cls) => (
-                <div key={cls.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  {/* Class Header */}
-                  <div className="p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{cls.name}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{cls.code}</p>
-                      </div>
-                      {cls.year && (
-                        <span className="px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-sm font-medium rounded-full">
-                          Year {cls.year}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+        {/* Students: Show enrolled CourseSections grouped by class */}
+        {user?.role === 'STUDENT' && sections.length > 0 && (
+          <>
+            {(() => {
+              // Group enrollments by class
+              const sectionsWithClass = sections.filter(s => s.courseSection?.classId && s.courseSection?.class);
+              const sectionsWithoutClass = sections.filter(s => !s.courseSection?.classId || !s.courseSection?.class);
+              
+              // Group by class
+              const classMap = new Map();
+              sectionsWithClass.forEach(enrollment => {
+                const cls = enrollment.courseSection?.class;
+                if (!cls) return;
+                if (!classMap.has(cls.id)) {
+                  classMap.set(cls.id, {
+                    class: cls,
+                    enrollments: []
+                  });
+                }
+                classMap.get(cls.id).enrollments.push(enrollment);
+              });
 
-                  {/* Class Content */}
-                  <div className="p-5">
-                    {/* Stats Row */}
-                    <div className="flex gap-6 mb-4 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        <span>{cls.teachers?.length || 0} teacher{cls.teachers?.length !== 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4" />
-                        <span>{cls.students?.length || 0} student{cls.students?.length !== 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="w-4 h-4" />
-                        <span>{cls.courses?.length || 0} course{cls.courses?.length !== 1 ? 's' : ''}</span>
-                      </div>
-                    </div>
-
-                    {/* Courses List */}
-                    {cls.courses && cls.courses.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Courses</h4>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {cls.courses.map((cc) => (
-                            <div 
-                              key={cc.id} 
-                              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors"
-                            >
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                                  <span className="font-medium text-gray-900 dark:text-white">{cc.course?.title}</span>
-                                </div>
-                              </div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{cc.course?.code}</p>
-                              
-                              <Link
-                                to={`/courses/${cc.courseId}`}
-                                className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
-                              >
-                                <FileText className="w-4 h-4" />
-                                View Course
-                                <ChevronRight className="w-4 h-4" />
-                              </Link>
+              return (
+                <>
+                  {/* Classes with Courses */}
+                  {Array.from(classMap.values()).map(({ class: cls, enrollments: classEnrollments }) => {
+                    const isExpanded = expandedClasses[cls.id];
+                    
+                    return (
+                      <div key={cls.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-4">
+                        {/* Class Header - Clickable */}
+                        <button
+                          onClick={() => toggleClass(cls.id)}
+                          className="w-full p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                              <GraduationCap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                            <div>
+                              <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{cls.name}</h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{cls.code}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full">
+                              {classEnrollments.length} course{classEnrollments.length !== 1 ? 's' : ''}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                            ) : (
+                              <ChevronRight className="w-5 h-5 text-gray-400" />
+                            )}
+                          </div>
+                        </button>
 
-                    {(!cls.courses || cls.courses.length === 0) && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">No courses assigned to this class yet.</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                        {/* Courses - Expanded view */}
+                        {isExpanded && (
+                          <div className="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                              {classEnrollments.map((enrollment) => (
+                                <div 
+                                  key={enrollment.id} 
+                                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow"
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                      <span className="font-medium text-gray-900 dark:text-white">{enrollment.courseSection?.course?.title}</span>
+                                    </div>
+                                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded">
+                                      {enrollment.courseSection?.sectionCode}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{enrollment.courseSection?.course?.code}</p>
+                                  
+                                  <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      <span>{enrollment.courseSection?.semester?.name}</span>
+                                    </div>
+                                    {enrollment.courseSection?.teacher && (
+                                      <div className="flex items-center gap-1">
+                                        <User className="w-3 h-3" />
+                                        <span>{enrollment.courseSection?.teacher?.fullName}</span>
+                                      </div>
+                                    )}
+                                    {enrollment.courseSection?.schedule && (
+                                      <div className="flex items-center gap-1">
+                                        <Users className="w-3 h-3" />
+                                        <span>{enrollment.courseSection?.schedule}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <Link
+                                    to={`/student/results`}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    View Results
+                                  </Link>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Courses without Class */}
+                  {sectionsWithoutClass.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Other Courses
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {sectionsWithoutClass.map((enrollment) => (
+                          <div 
+                            key={enrollment.id} 
+                            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 dark:text-white">{enrollment.courseSection?.course?.title}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{enrollment.courseSection?.course?.code}</p>
+                              </div>
+                              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded">
+                                {enrollment.courseSection?.sectionCode}
+                              </span>
+                            </div>
+                            
+                            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>{enrollment.courseSection?.semester?.name}</span>
+                              </div>
+                              {enrollment.courseSection?.teacher && (
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4" />
+                                  <span>{enrollment.courseSection?.teacher?.fullName}</span>
+                                </div>
+                              )}
+                              {enrollment.courseSection?.schedule && (
+                                <div className="flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  <span>{enrollment.courseSection?.schedule}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <Link
+                              to={`/student/results`}
+                              className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
+                            >
+                              <FileText className="w-4 h-4" />
+                              View Results
+                              <ChevronRight className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </>
         )}
       </div>
     </Layout>
