@@ -233,18 +233,41 @@ export function registerAcademicRoutes(router: Router) {
         maxCapacity: z.number().int().optional(),
       }).parse(req.body);
 
-      const courseSection = await prisma.courseSection.create({
-        data: {
-          courseId: body.courseId,
-          semesterId: body.semesterId,
-          teacherId: body.teacherId,
-          classId: body.classId || null,
-          sectionCode: body.sectionCode,
-          schedule: body.schedule,
-          room: body.room,
-          maxCapacity: body.maxCapacity,
-        },
-        include: { course: true, semester: true, teacher: true, class: true },
+      // Create course section and optionally add teacher to class
+      const courseSection = await prisma.$transaction(async (tx) => {
+        // Create the course section
+        const section = await tx.courseSection.create({
+          data: {
+            courseId: body.courseId,
+            semesterId: body.semesterId,
+            teacherId: body.teacherId,
+            classId: body.classId || null,
+            sectionCode: body.sectionCode,
+            schedule: body.schedule,
+            room: body.room,
+            maxCapacity: body.maxCapacity,
+          },
+          include: { course: true, semester: true, teacher: true, class: true },
+        });
+
+        // If classId is provided, add teacher to class (if not already added)
+        if (body.classId) {
+          await tx.classTeacher.upsert({
+            where: {
+              classId_teacherId: {
+                classId: body.classId,
+                teacherId: body.teacherId,
+              },
+            },
+            create: {
+              classId: body.classId,
+              teacherId: body.teacherId,
+            },
+            update: {}, // No-op if already exists
+          });
+        }
+
+        return section;
       });
 
       res.status(201).json(courseSection);
@@ -275,24 +298,63 @@ export function registerAcademicRoutes(router: Router) {
 
   // Update course section
   router.patch('/admin/course-sections/:id', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
-    const params = z.object({ id: z.string() }).parse(req.params);
-    const body = z.object({
-      teacherId: z.string().optional(),
-      classId: z.string().nullable().optional(),
-      sectionCode: z.string().min(1).optional(),
-      schedule: z.string().optional(),
-      room: z.string().optional(),
-      maxCapacity: z.number().int().optional(),
-      isPublished: z.boolean().optional(),
-    }).parse(req.body);
+    try {
+      const params = z.object({ id: z.string() }).parse(req.params);
+      const body = z.object({
+        teacherId: z.string().optional(),
+        classId: z.string().nullable().optional(),
+        sectionCode: z.string().min(1).optional(),
+        schedule: z.string().optional(),
+        room: z.string().optional(),
+        maxCapacity: z.number().int().optional(),
+        isPublished: z.boolean().optional(),
+      }).parse(req.body);
 
-    const courseSection = await prisma.courseSection.update({
-      where: { id: params.id },
-      data: body,
-      include: { course: true, semester: true, teacher: true, class: true },
-    });
+      // Get current course section
+      const current = await prisma.courseSection.findUnique({
+        where: { id: params.id },
+      });
 
-    res.json(courseSection);
+      if (!current) {
+        return res.status(404).json({ error: 'Course section not found' });
+      }
+
+      // Update course section and sync teacher to class
+      const courseSection = await prisma.$transaction(async (tx) => {
+        const section = await tx.courseSection.update({
+          where: { id: params.id },
+          data: body,
+          include: { course: true, semester: true, teacher: true, class: true },
+        });
+
+        // If classId or teacherId changed, sync to ClassTeacher
+        const newClassId = body.classId !== undefined ? body.classId : current.classId;
+        const newTeacherId = body.teacherId || current.teacherId;
+
+        if (newClassId) {
+          await tx.classTeacher.upsert({
+            where: {
+              classId_teacherId: {
+                classId: newClassId,
+                teacherId: newTeacherId,
+              },
+            },
+            create: {
+              classId: newClassId,
+              teacherId: newTeacherId,
+            },
+            update: {},
+          });
+        }
+
+        return section;
+      });
+
+      res.json(courseSection);
+    } catch (error) {
+      console.error('Error updating course section:', error);
+      res.status(500).json({ error: error.message || 'Failed to update course section' });
+    }
   });
 
   // Delete course section
