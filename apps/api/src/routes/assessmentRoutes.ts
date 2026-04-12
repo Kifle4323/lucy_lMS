@@ -360,16 +360,20 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if student already has a submitted attempt for this assessment
+    // Check if student already has any attempt for this assessment (submitted or in progress)
     const existingAttempt = await prisma.attempt.findFirst({
       where: {
         assessmentId: params.assessmentId,
         studentId: req.user!.id,
-        status: 'SUBMITTED',
       },
     });
 
     if (existingAttempt) {
+      if (existingAttempt.status === 'IN_PROGRESS') {
+        // Return the existing in-progress attempt instead of creating a new one
+        res.json(existingAttempt);
+        return;
+      }
       res.status(400).json({ error: 'already_submitted', message: 'You have already submitted this assessment' });
       return;
     }
