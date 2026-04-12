@@ -610,6 +610,7 @@ export function registerAcademicRoutes(router: Router) {
       include: {
         course: true,
         semester: { include: { academicYear: true } },
+        class: true, // Include class for grouping
         _count: { select: { enrollments: true } },
       },
       orderBy: { createdAt: 'desc' },
