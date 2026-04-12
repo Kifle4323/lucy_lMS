@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { getClasses } from '../api';
+import { getClasses, getMyEnrollments, getTeacherSections } from '../api';
 import Layout from '../components/Layout';
 import {
   GraduationCap,
@@ -20,14 +20,24 @@ import {
 export default function DashboardPage() {
   const { user } = useAuth();
   const [classes, setClasses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [teacherSections, setTeacherSections] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    getClasses()
-      .then(setClasses)
+    Promise.all([
+      getClasses().catch(() => []),
+      user?.role === 'STUDENT' ? getMyEnrollments().catch(() => []) : Promise.resolve([]),
+      user?.role === 'TEACHER' ? getTeacherSections().catch(() => []) : Promise.resolve([]),
+    ])
+      .then(([classesData, enrollmentsData, sectionsData]) => {
+        setClasses(classesData);
+        setEnrollments(enrollmentsData);
+        setTeacherSections(sectionsData);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user?.role]);
 
   if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
 
@@ -68,7 +78,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {classes.reduce((sum, c) => sum + (c.students?.length || 0), 0)}
+                    {teacherSections.reduce((sum, s) => sum + (s._count?.enrollments || 0), 0)}
                   </p>
                   <p className="text-sm text-gray-500">Students</p>
                 </div>
@@ -84,7 +94,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {classes.reduce((sum, c) => sum + (c.courses?.filter(cc => cc.teacherId === user.id).length || 0), 0)}
+                    {teacherSections.length}
                   </p>
                   <p className="text-sm text-gray-500">Courses Teaching</p>
                 </div>
@@ -100,7 +110,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {classes.reduce((sum, c) => sum + (c.courses?.length || 0), 0)}
+                    {enrollments.length}
                   </p>
                   <p className="text-sm text-gray-500">Courses</p>
                 </div>
