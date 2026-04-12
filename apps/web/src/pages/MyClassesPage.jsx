@@ -93,14 +93,24 @@ export default function MyClassesPage() {
                     </div>
                   </div>
 
-                  <Link
-                    to={`/teacher/grades?section=${section.id}`}
-                    className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Manage Grades
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      to={`/courses/${section.courseId}`}
+                      className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Manage Assessments
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                    <Link
+                      to={`/teacher/grades?section=${section.id}`}
+                      className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400 hover:text-green-700 font-medium"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Manage Grades
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>
