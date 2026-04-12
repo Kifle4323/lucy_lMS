@@ -415,7 +415,19 @@ export async function updateCourseSection(id, data) {
 }
 
 export async function deleteCourseSection(id) {
-  return apiFetch(`/admin/course-sections/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${API_BASE}/admin/course-sections/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  // 204 No Content - return success
+  return { success: true };
 }
 
 // Enrollments (Admin)
