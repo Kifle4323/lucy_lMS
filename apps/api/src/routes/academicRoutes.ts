@@ -297,9 +297,37 @@ export function registerAcademicRoutes(router: Router) {
 
   // Delete course section
   router.delete('/admin/course-sections/:id', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
-    const params = z.object({ id: z.string() }).parse(req.params);
-    await prisma.courseSection.delete({ where: { id: params.id } });
-    res.status(204).send();
+    try {
+      const params = z.object({ id: z.string() }).parse(req.params);
+
+      // First delete related records
+      await prisma.$transaction([
+        // Delete student grades
+        prisma.studentGrade.deleteMany({
+          where: { enrollment: { courseSectionId: params.id } }
+        }),
+        // Delete exam schedules
+        prisma.examSchedule.deleteMany({
+          where: { courseSectionId: params.id }
+        }),
+        // Delete enrollments
+        prisma.studentEnrollment.deleteMany({
+          where: { courseSectionId: params.id }
+        }),
+        // Finally delete the course section
+        prisma.courseSection.delete({
+          where: { id: params.id }
+        }),
+      ]);
+
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting course section:', error);
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Course section not found' });
+      }
+      res.status(500).json({ error: 'Failed to delete course section. It may have related records.' });
+    }
   });
 
   // ==================== STUDENT ENROLLMENT ====================
