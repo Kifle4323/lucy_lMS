@@ -373,6 +373,13 @@ export default function MyClassesPage() {
                                     <FileText className="w-3 h-3" />
                                     View Results
                                   </Link>
+                                  <Link
+                                    to={`/courses/${enrollment.courseSection?.courseId}`}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                                  >
+                                    <BookOpen className="w-3 h-3" />
+                                    Take Assessments
+                                  </Link>
                                 </div>
                               ))}
                             </div>
@@ -430,6 +437,14 @@ export default function MyClassesPage() {
                             >
                               <FileText className="w-4 h-4" />
                               View Results
+                              <ChevronRight className="w-4 h-4" />
+                            </Link>
+                            <Link
+                              to={`/courses/${enrollment.courseSection?.courseId}`}
+                              className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400 hover:text-green-700 font-medium"
+                            >
+                              <BookOpen className="w-4 h-4" />
+                              Take Assessments
                               <ChevronRight className="w-4 h-4" />
                             </Link>
                           </div>
