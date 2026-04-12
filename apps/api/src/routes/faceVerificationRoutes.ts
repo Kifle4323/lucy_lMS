@@ -187,7 +187,7 @@ export function registerFaceVerificationRoutes(router: Router) {
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: params.assessmentId },
-      include: { course: { include: { courseClasses: true } } },
+      include: { course: { include: { courseSections: true } } },
     });
 
     if (!assessment) {
@@ -195,9 +195,9 @@ export function registerFaceVerificationRoutes(router: Router) {
       return;
     }
 
-    // Check if teacher is assigned to this course
-    const courseClass = assessment.course.courseClasses.find((cc: { teacherId: string | null }) => cc.teacherId === req.user!.id);
-    if (!courseClass) {
+    // Check if teacher is assigned to this course through CourseSection
+    const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+    if (!courseSection) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
