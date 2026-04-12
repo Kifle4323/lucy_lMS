@@ -173,24 +173,196 @@ export default function MyClassesPage() {
           </div>
         )}
 
-        {/* Old Classes System - Only show for STUDENTS, not TEACHERS */}
+        {/* Teachers see Classes with Course Sections inside */}
+        {user?.role === 'TEACHER' && sections.length === 0 && classes.length === 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No classes assigned</h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              You haven't been assigned to any classes or course sections yet
+            </p>
+          </div>
+        )}
+
+        {/* Teachers: Show Classes with their Course Sections */}
+        {user?.role === 'TEACHER' && (
+          <>
+            {/* Group sections by class */}
+            {(() => {
+              const sectionsWithClass = sections.filter(s => s.classId);
+              const sectionsWithoutClass = sections.filter(s => !s.classId);
+              
+              // Group by class
+              const classMap = new Map();
+              sectionsWithClass.forEach(section => {
+                if (!classMap.has(section.classId)) {
+                  classMap.set(section.classId, {
+                    class: section.class,
+                    sections: []
+                  });
+                }
+                classMap.get(section.classId).sections.push(section);
+              });
+
+              return (
+                <>
+                  {/* Classes with Course Sections */}
+                  {Array.from(classMap.values()).map(({ class: cls, sections: classSections }) => (
+                    <div key={cls.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
+                      {/* Class Header */}
+                      <div className="p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{cls.name}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{cls.code}</p>
+                          </div>
+                          <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full">
+                            {classSections.length} course{classSections.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Course Sections in this Class */}
+                      <div className="p-5">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {classSections.map((section) => (
+                            <div 
+                              key={section.id} 
+                              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors"
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                  <span className="font-medium text-gray-900 dark:text-white">{section.course?.title}</span>
+                                </div>
+                                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded">
+                                  {section.sectionCode}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{section.course?.code}</p>
+                              
+                              <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>{section.semester?.name}</span>
+                                </div>
+                                {section.schedule && (
+                                  <div className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    <span>{section.schedule}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1">
+                                  <GraduationCap className="w-3 h-3" />
+                                  <span>{section._count?.enrollments || 0} students</span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <Link
+                                  to={`/courses/${section.courseId}`}
+                                  className="inline-flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  Assessments
+                                </Link>
+                                <Link
+                                  to={`/teacher/grades?section=${section.id}`}
+                                  className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-700 font-medium"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  Grades
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Course Sections without Class */}
+                  {sectionsWithoutClass.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Other Course Sections
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {sectionsWithoutClass.map((section) => (
+                          <div 
+                            key={section.id} 
+                            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-semibold text-gray-900 dark:text-white">{section.course?.title}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{section.course?.code}</p>
+                              </div>
+                              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded">
+                                {section.sectionCode}
+                              </span>
+                            </div>
+                            
+                            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>{section.semester?.name} {section.semester?.academicYear?.year}</span>
+                              </div>
+                              {section.schedule && (
+                                <div className="flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  <span>{section.schedule}</span>
+                                </div>
+                              )}
+                              {section.room && (
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-4 h-4" />
+                                  <span>{section.room}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4" />
+                                <span>{section._count?.enrollments || 0} students</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                              <Link
+                                to={`/courses/${section.courseId}`}
+                                className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
+                              >
+                                <BookOpen className="w-4 h-4" />
+                                Manage Assessments
+                                <ChevronRight className="w-4 h-4" />
+                              </Link>
+                              <Link
+                                to={`/teacher/grades?section=${section.id}`}
+                                className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400 hover:text-green-700 font-medium"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Manage Grades
+                                <ChevronRight className="w-4 h-4" />
+                              </Link>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </>
+        )}
+
+        {/* Students: Show enrolled courses */}
         {user?.role === 'STUDENT' && classes.length === 0 && sections.length === 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No classes yet</h3>
             <p className="text-gray-500 dark:text-gray-400">
-              You haven\'t been added to any classes yet
-            </p>
-          </div>
-        )}
-
-        {/* Teachers only see Course Sections */}
-        {user?.role === 'TEACHER' && sections.length === 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-            <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No course sections yet</h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              You haven\'t been assigned to any course sections yet
+              You haven't been added to any classes yet
             </p>
           </div>
         )}
