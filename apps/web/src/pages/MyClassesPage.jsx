@@ -189,12 +189,14 @@ export default function MyClassesPage() {
           <>
             {/* Group sections by class */}
             {(() => {
-              const sectionsWithClass = sections.filter(s => s.classId);
-              const sectionsWithoutClass = sections.filter(s => !s.classId);
+              // Safely filter sections
+              const sectionsWithClass = sections.filter(s => s.classId && s.class);
+              const sectionsWithoutClass = sections.filter(s => !s.classId || !s.class);
               
               // Group by class
               const classMap = new Map();
               sectionsWithClass.forEach(section => {
+                if (!section.class) return;
                 if (!classMap.has(section.classId)) {
                   classMap.set(section.classId, {
                     class: section.class,
