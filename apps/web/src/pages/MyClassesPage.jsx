@@ -173,18 +173,30 @@ export default function MyClassesPage() {
           </div>
         )}
 
-        {/* Old Classes System */}
-        {classes.length === 0 && sections.length === 0 ? (
+        {/* Old Classes System - Only show for STUDENTS, not TEACHERS */}
+        {user?.role === 'STUDENT' && classes.length === 0 && sections.length === 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No classes yet</h3>
             <p className="text-gray-500 dark:text-gray-400">
-              {user?.role === 'TEACHER' 
-                ? 'You haven\'t been assigned to any classes or course sections yet' 
-                : 'You haven\'t been added to any classes yet'}
+              You haven\'t been added to any classes yet
             </p>
           </div>
-        ) : classes.length > 0 && (
+        )}
+
+        {/* Teachers only see Course Sections */}
+        {user?.role === 'TEACHER' && sections.length === 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No course sections yet</h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              You haven\'t been assigned to any course sections yet
+            </p>
+          </div>
+        )}
+
+        {/* Old Classes - Only for STUDENTS */}
+        {user?.role === 'STUDENT' && classes.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Classes</h2>
             <div className="space-y-6">
@@ -228,11 +240,7 @@ export default function MyClassesPage() {
                       <div className="mt-4">
                         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Courses</h4>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {/* For teachers, only show courses they teach */}
-                          {(user?.role === 'TEACHER' 
-                            ? cls.courses.filter(cc => cc.teacherId === user.id)
-                            : cls.courses
-                          ).map((cc) => (
+                          {cls.courses.map((cc) => (
                             <div 
                               key={cc.id} 
                               className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors"
@@ -245,32 +253,16 @@ export default function MyClassesPage() {
                               </div>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{cc.course?.code}</p>
                               
-                              {user?.role === 'TEACHER' && (
-                                <Link
-                                  to={`/courses/${cc.courseId}`}
-                                  className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
-                                >
-                                  <FileText className="w-4 h-4" />
-                                  Manage Assessments
-                                  <ChevronRight className="w-4 h-4" />
-                                </Link>
-                              )}
-
-                              {user?.role === 'STUDENT' && (
-                                <Link
-                                  to={`/courses/${cc.courseId}`}
-                                  className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
-                                >
-                                  <FileText className="w-4 h-4" />
-                                  View Course
-                                  <ChevronRight className="w-4 h-4" />
-                                </Link>
-                              )}
+                              <Link
+                                to={`/courses/${cc.courseId}`}
+                                className="inline-flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium"
+                              >
+                                <FileText className="w-4 h-4" />
+                                View Course
+                                <ChevronRight className="w-4 h-4" />
+                              </Link>
                             </div>
                           ))}
-                          {user?.role === 'TEACHER' && cls.courses.filter(cc => cc.teacherId === user.id).length === 0 && (
-                            <p className="col-span-full text-sm text-gray-500 dark:text-gray-400 italic">You are not teaching any courses in this class.</p>
-                          )}
                         </div>
                       </div>
                     )}
