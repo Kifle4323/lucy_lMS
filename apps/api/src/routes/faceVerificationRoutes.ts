@@ -203,7 +203,7 @@ export function registerFaceVerificationRoutes(router: Router) {
     }
 
     const attempts = await prisma.attempt.findMany({
-      where: { assessmentId: params.assessmentId, status: 'SUBMITTED' },
+      where: { assessmentId: params.assessmentId, status: { in: ['SUBMITTED', 'GRADED'] } },
       include: {
         student: { select: { id: true, fullName: true, email: true, profileImage: true } },
         faceVerification: true,
