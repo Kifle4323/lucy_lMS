@@ -108,7 +108,17 @@ export default function MyClassesPage() {
                             </div>
                             <div>
                               <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{cls.name}</h3>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{cls.code}</p>
+                              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                <span>{cls.code}</span>
+                                {cls.year && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium rounded">
+                                      Year {cls.year}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -312,7 +322,17 @@ export default function MyClassesPage() {
                             </div>
                             <div>
                               <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{cls.name}</h3>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{cls.code}</p>
+                              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                <span>{cls.code}</span>
+                                {cls.year && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium rounded">
+                                      Year {cls.year}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -366,20 +386,22 @@ export default function MyClassesPage() {
                                     )}
                                   </div>
 
-                                  <Link
-                                    to={`/student/results`}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
-                                  >
-                                    <FileText className="w-3 h-3" />
-                                    View Results
-                                  </Link>
-                                  <Link
-                                    to={`/courses/${enrollment.courseSection?.courseId}`}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
-                                  >
-                                    <BookOpen className="w-3 h-3" />
-                                    Take Assessments
-                                  </Link>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Link
+                                      to={`/student/results`}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      View Results
+                                    </Link>
+                                    <Link
+                                      to={`/courses/${enrollment.courseSection?.courseId}`}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                                    >
+                                      <BookOpen className="w-3 h-3" />
+                                      Take Assessments
+                                    </Link>
+                                  </div>
                                 </div>
                               ))}
                             </div>
