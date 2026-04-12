@@ -20,14 +20,16 @@ dotenv.config();
 const app = express();
 
 // Parse CORS origins from env (comma-separated)
-const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+// If CORS_ORIGIN is "*" or not set, allow all origins
+const corsOrigin = process.env.CORS_ORIGIN;
+const corsOrigins = corsOrigin && corsOrigin !== '*'
+  ? corsOrigin.split(',').map(o => o.trim())
   : true;
 
 app.use(
   cors({
     origin: corsOrigins,
-    credentials: true,
+    credentials: corsOrigins === true ? false : true,
   }),
 );
 app.use(express.json({ limit: '50mb' })); // Increased for document uploads
