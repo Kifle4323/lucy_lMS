@@ -315,18 +315,20 @@ export function registerAddDropRoutes(router: Router) {
   // Admin: Get all add/drop requests
   router.get('/admin/add-drop-requests', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
     const query = z.object({
-      status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
-      type: z.enum(['ADD', 'DROP']).optional(),
-      semesterId: z.string().optional(),
+      status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional().or(z.literal('')),
+      type: z.enum(['ADD', 'DROP']).optional().or(z.literal('')),
+      semesterId: z.string().optional().or(z.literal('')),
     }).parse(req.query);
+    
+    // Build where clause, filtering out empty strings
+    const where: any = {};
+    if (query.status && query.status !== '') where.status = query.status;
+    if (query.type && query.type !== '') where.type = query.type;
+    if (query.semesterId && query.semesterId !== '') where.semesterId = query.semesterId;
     
     try {
       const requests = await prisma.addDropRequest.findMany({
-        where: {
-          status: query.status,
-          type: query.type,
-          semesterId: query.semesterId,
-        },
+        where,
         include: {
           student: { 
             select: { id: true, fullName: true, email: true, studentId: true } 
