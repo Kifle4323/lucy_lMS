@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { updateProfile, getProfileStatus } from '../api';
 import Layout from '../components/Layout';
-import { Camera, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { Camera, User, CheckCircle, AlertCircle, Upload } from 'lucide-react';
 import lucyLogo from '../assets/lucy_logobg.png';
 
 export default function CompleteProfilePage() {
@@ -17,6 +17,7 @@ export default function CompleteProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [cameraActive, setCameraActive] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     // Check if profile is already complete
@@ -71,6 +72,26 @@ export default function CompleteProfilePage() {
   const retakePhoto = () => {
     setCapturedImage(null);
     startCamera();
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCapturedImage(event.target.result);
+      stopCamera();
+      setError('');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -155,10 +176,10 @@ export default function CompleteProfilePage() {
                   </div>
                   <button
                     type="button"
-                    onClick={retakePhoto}
+                    onClick={() => setCapturedImage(null)}
                     className="mt-4 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
                   >
-                    Retake Photo
+                    Change Photo
                   </button>
                 </div>
               ) : (
@@ -187,13 +208,27 @@ export default function CompleteProfilePage() {
                       <p className="text-gray-500 mb-4">
                         Take a clear photo of your face for verification
                       </p>
-                      <button
-                        type="button"
-                        onClick={startCamera}
-                        className="px-6 py-3 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
-                      >
-                        Start Camera
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button
+                          type="button"
+                          onClick={startCamera}
+                          className="px-6 py-3 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg inline-flex items-center justify-center gap-2"
+                        >
+                          <Camera className="w-5 h-5" />
+                          Start Camera
+                        </button>
+                        <label className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer inline-flex items-center justify-center gap-2">
+                          <Upload className="w-5 h-5" />
+                          Upload Image
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                     </div>
                   )}
                 </div>
