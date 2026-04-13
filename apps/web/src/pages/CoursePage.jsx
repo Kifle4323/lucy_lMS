@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
@@ -33,6 +34,7 @@ export default function CoursePage() {
   const { courseId } = useParams();
   const { user } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const [assessments, setAssessments] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [students, setStudents] = useState([]);
