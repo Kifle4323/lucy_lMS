@@ -27,6 +27,8 @@ export default function TeacherGradesPage() {
     location: '',
     instructions: '',
     weight: 30,
+    examDate: '',
+    examTime: '09:00',
     proposeEarly: false,
     proposedDate: '',
     proposedTime: '09:00',
@@ -159,6 +161,8 @@ export default function TeacherGradesPage() {
         location: examForm.location,
         instructions: examForm.instructions,
         weight: examForm.weight,
+        // Teacher-set exam date and time
+        examDate: examForm.examDate + 'T' + examForm.examTime,
         // Include early exam proposal if checked
         ...(examForm.proposeEarly && {
           proposedDate: examForm.proposedDate + 'T' + examForm.proposedTime,
@@ -173,6 +177,8 @@ export default function TeacherGradesPage() {
         location: '',
         instructions: '',
         weight: 30,
+        examDate: '',
+        examTime: '09:00',
         proposeEarly: false,
         proposedDate: '',
         proposedTime: '09:00',
@@ -202,6 +208,8 @@ export default function TeacherGradesPage() {
         location: '',
         instructions: '',
         weight: 30,
+        examDate: '',
+        examTime: '09:00',
         proposeEarly: false,
         proposedDate: '',
         proposedTime: '09:00',
@@ -489,11 +497,11 @@ export default function TeacherGradesPage() {
                     <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">
                       {editingExam ? 'Edit Exam Details' : 'Create Exam Schedule'}
                     </h3>
-                    {!editingExam && (
+                    {!editingExam && selectedSection?.semester?.midtermExamDate && (
                       <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4 text-sm">
-                        <p className="font-medium text-blue-800">Official Exam Dates</p>
-                        <p className="text-blue-700">Midterm: {selectedSection?.semester?.midtermExamDate ? new Date(selectedSection.semester.midtermExamDate).toLocaleDateString() : 'Not set by admin'}</p>
-                        <p className="text-blue-700">Final: {selectedSection?.semester?.finalExamDate ? new Date(selectedSection.semester.finalExamDate).toLocaleDateString() : 'Not set by admin'}</p>
+                        <p className="font-medium text-blue-800">Official Exam Dates (set by admin)</p>
+                        <p className="text-blue-700">Midterm: {new Date(selectedSection.semester.midtermExamDate).toLocaleString()}</p>
+                        <p className="text-blue-700">Final: {selectedSection?.semester?.finalExamDate ? new Date(selectedSection.semester.finalExamDate).toLocaleString() : 'Not set'}</p>
                       </div>
                     )}
                     <form onSubmit={editingExam ? handleUpdateExam : handleCreateExam} className="space-y-4">
@@ -520,6 +528,28 @@ export default function TeacherGradesPage() {
                             onChange={e => setExamForm({ ...examForm, weight: parseInt(e.target.value) })}
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             disabled={editingExam}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Exam Date</label>
+                          <input
+                            type="date"
+                            value={examForm.examDate}
+                            onChange={e => setExamForm({ ...examForm, examDate: e.target.value })}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Exam Time</label>
+                          <input
+                            type="time"
+                            value={examForm.examTime}
+                            onChange={e => setExamForm({ ...examForm, examTime: e.target.value })}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            required
                           />
                         </div>
                       </div>

@@ -1019,6 +1019,8 @@ export function registerAcademicRoutes(router: Router) {
       location: z.string().optional(),
       instructions: z.string().optional(),
       weight: z.number().int().min(1).max(100).optional(),
+      // Teacher-set exam date and time
+      examDate: z.string().optional(),
       // Early exam proposal fields
       proposedDate: z.string().optional(),
       proposalDeadline: z.string().optional(),
@@ -1036,8 +1038,13 @@ export function registerAcademicRoutes(router: Router) {
       return res.status(404).json({ error: 'Course section not found' });
     }
 
-    // Get official date from semester
-    const officialDate = body.examType === 'MIDTERM' ? section.semester.midtermExamDate : section.semester.finalExamDate;
+    // Use teacher-set date or fallback to official date from semester
+    let officialDate: Date | null = null;
+    if (body.examDate) {
+      officialDate = new Date(body.examDate);
+    } else {
+      officialDate = body.examType === 'MIDTERM' ? section.semester.midtermExamDate : section.semester.finalExamDate;
+    }
 
     // Determine early exam status
     let earlyExamStatus: 'NONE' | 'PROPOSED' = 'NONE';
