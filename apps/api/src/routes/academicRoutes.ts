@@ -752,6 +752,145 @@ export function registerAcademicRoutes(router: Router) {
     res.json({ message: 'Grades submitted successfully' });
   });
 
+  // Teacher: Sync assessment results to grades for a course section
+  router.post('/teacher/sections/:id/sync-assessments', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    // Verify teacher owns this section
+    const section = await prisma.courseSection.findFirst({
+      where: { id: params.id, teacherId: user.id },
+      include: { 
+        course: { include: { gradeConfig: true, assessments: true } },
+        enrollments: { 
+          where: { status: 'ENROLLED' },
+          include: { student: true, grade: true }
+        }
+      },
+    });
+
+    if (!section) {
+      return res.status(404).json({ error: 'Course section not found' });
+    }
+
+    const courseId = section.courseId;
+    const config = section.course.gradeConfig || {
+      quizWeight: 25,
+      midtermWeight: 25,
+      finalWeight: 40,
+      attendanceWeight: 10,
+    };
+
+    // Get all assessments for this course
+    const assessments = await prisma.assessment.findMany({
+      where: { courseId },
+      include: {
+        questions: true,
+        attempts: {
+          where: { status: 'GRADED' },
+        },
+      },
+    });
+
+    // Get attendance for this course
+    const attendanceRecords = await prisma.attendance.findMany({
+      where: { courseId },
+    });
+
+    // Process each enrolled student
+    const results = [];
+    for (const enrollment of section.enrollments) {
+      const studentId = enrollment.studentId;
+
+      // Calculate quiz average from QUIZ assessments
+      const quizzes = assessments.filter(a => a.examType === 'QUIZ');
+      let quizScore = 0;
+      let quizCount = 0;
+      for (const quiz of quizzes) {
+        const attempt = quiz.attempts.find(at => at.studentId === studentId);
+        if (attempt && attempt.score !== null && quiz.maxScore) {
+          quizScore += (attempt.score / quiz.maxScore) * 100;
+          quizCount++;
+        }
+      }
+      const quizAverage = quizCount > 0 ? Math.round((quizScore / quizCount) * 10) / 10 : 0;
+
+      // Calculate midterm score
+      const midterm = assessments.find(a => a.examType === 'MIDTERM');
+      let midtermScore = 0;
+      if (midterm) {
+        const attempt = midterm.attempts.find(at => at.studentId === studentId);
+        if (attempt && attempt.score !== null && midterm.maxScore) {
+          midtermScore = Math.round(((attempt.score / midterm.maxScore) * 100) * 10) / 10;
+        }
+      }
+
+      // Calculate final score
+      const final = assessments.find(a => a.examType === 'FINAL');
+      let finalScore = 0;
+      if (final) {
+        const attempt = final.attempts.find(at => at.studentId === studentId);
+        if (attempt && attempt.score !== null && final.maxScore) {
+          finalScore = Math.round(((attempt.score / final.maxScore) * 100) * 10) / 10;
+        }
+      }
+
+      // Get attendance score
+      const attendance = attendanceRecords.find(a => a.studentId === studentId);
+      const attendanceScore = attendance?.score || 0;
+
+      // Calculate total
+      const totalScore = Math.round(
+        (quizAverage * config.quizWeight / 100) +
+        (midtermScore * config.midtermWeight / 100) +
+        (finalScore * config.finalWeight / 100) +
+        (attendanceScore * config.attendanceWeight / 100)
+      );
+
+      const { letter, point } = getGradeFromScore(totalScore);
+
+      // Upsert grade
+      const grade = await prisma.studentGrade.upsert({
+        where: { enrollmentId: enrollment.id },
+        create: {
+          enrollmentId: enrollment.id,
+          quizScore: quizAverage,
+          midtermScore,
+          finalScore,
+          attendanceScore,
+          totalScore,
+          gradeLetter: letter as any,
+          gradePoint: point,
+        },
+        update: {
+          quizScore: quizAverage,
+          midtermScore,
+          finalScore,
+          attendanceScore,
+          totalScore,
+          gradeLetter: letter as any,
+          gradePoint: point,
+        },
+      });
+
+      results.push({
+        studentId,
+        studentName: enrollment.student.fullName,
+        quizScore: quizAverage,
+        midtermScore,
+        finalScore,
+        attendanceScore,
+        totalScore,
+        gradeLetter: letter,
+      });
+    }
+
+    res.json({ 
+      message: `Synced ${results.length} student grades from assessments`,
+      results 
+    });
+  });
+
   // ==================== STUDENT RESULTS ====================
 
   // Student: Get my results for a semester

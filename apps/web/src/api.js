@@ -500,6 +500,10 @@ export async function submitSectionGrades(sectionId) {
   return apiFetch(`/teacher/sections/${sectionId}/submit-grades`, { method: 'POST' });
 }
 
+export async function syncAssessmentsToGrades(sectionId) {
+  return apiFetch(`/teacher/sections/${sectionId}/sync-assessments`, { method: 'POST' });
+}
+
 // Teacher - Exam Schedules
 export async function createExamSchedule(data) {
   return apiFetch('/teacher/exam-schedules', { method: 'POST', body: JSON.stringify(data) });

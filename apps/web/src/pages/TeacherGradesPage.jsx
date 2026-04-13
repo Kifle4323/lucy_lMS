@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  getTeacherSections, getSectionStudents, enterGrade, submitSectionGrades,
+  getTeacherSections, getSectionStudents, enterGrade, submitSectionGrades, syncAssessmentsToGrades,
   createExamSchedule, getSectionExamSchedules, updateExamSchedule, deleteExamSchedule,
   proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam
 } from '../api.js';
@@ -145,6 +145,24 @@ export default function TeacherGradesPage() {
       setStudents(data);
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function syncFromAssessments() {
+    if (!confirm('Sync assessment results to grades? This will overwrite existing quiz, midterm, and final scores with assessment data.')) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await syncAssessmentsToGrades(selectedSection.id);
+      setSuccess(result.message);
+      // Refresh students list
+      const data = await getSectionStudents(selectedSection.id);
+      setStudents(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -368,7 +386,14 @@ export default function TeacherGradesPage() {
               {/* Grades Tab */}
               {activeTab === 'grades' && (
                 <>
-                  <div className="flex justify-end mb-4">
+                  <div className="flex justify-end gap-3 mb-4">
+                    <button
+                      onClick={syncFromAssessments}
+                      disabled={saving}
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {saving ? 'Syncing...' : 'Sync from Assessments'}
+                    </button>
                     <button
                       onClick={submitAllGrades}
                       className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
