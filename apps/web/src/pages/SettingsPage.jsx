@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { updateMyProfile, changePassword } from '../api';
 import Layout from '../components/Layout';
-import { Camera, User, Lock, AlertCircle, CheckCircle, Save } from 'lucide-react';
+import { Camera, User, Lock, AlertCircle, CheckCircle, Save, Upload } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -72,6 +73,26 @@ export default function SettingsPage() {
     setCapturedImage(dataUrl);
     setProfileImage(dataUrl);
     stopCamera();
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setProfileError('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError('Image must be less than 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setProfileImage(event.target.result);
+      setCapturedImage(event.target.result);
+      setProfileError('');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleProfileSubmit = async (e) => {
@@ -180,6 +201,17 @@ export default function SettingsPage() {
                     <Camera className="w-4 h-4" />
                     {cameraActive ? 'Stop Camera' : 'Take Photo'}
                   </button>
+                  <label className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    Upload Image
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
                   {profileImage && (
                     <button
                       type="button"

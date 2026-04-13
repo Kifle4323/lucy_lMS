@@ -24,7 +24,8 @@ import {
   Lock,
   Unlock,
   Edit3,
-  Award
+  Award,
+  Upload
 } from 'lucide-react';
 
 export default function CoursePage() {
@@ -46,7 +47,8 @@ export default function CoursePage() {
 
   // Teacher: create material form
   const [showCreateMaterial, setShowCreateMaterial] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({ title: '', content: '', fileUrl: '', fileType: 'text' });
+  const [newMaterial, setNewMaterial] = useState({ title: '', content: '', fileUrl: '', fileType: 'text', fileName: '' });
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   // Teacher: add question form
   const [selectedAssessment, setSelectedAssessment] = useState(null);
@@ -162,17 +164,54 @@ export default function CoursePage() {
     }
   };
 
+  const handleMaterialFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Check file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      alert('File must be less than 20MB');
+      return;
+    }
+    
+    setUploadingFile(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setNewMaterial({
+        ...newMaterial,
+        fileUrl: event.target.result,
+        fileName: file.name,
+        fileType: file.name.toLowerCase().endsWith('.pdf') ? 'pdf' :
+                  file.name.toLowerCase().endsWith('.doc') || file.name.toLowerCase().endsWith('.docx') ? 'doc' :
+                  file.name.toLowerCase().endsWith('.ppt') || file.name.toLowerCase().endsWith('.pptx') ? 'ppt' :
+                  file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx') ? 'xls' :
+                  'file'
+      });
+      setUploadingFile(false);
+    };
+    reader.onerror = () => {
+      alert('Failed to read file');
+      setUploadingFile(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreateMaterial = async (e) => {
     e.preventDefault();
-    const material = await createMaterial(courseId, {
-      title: newMaterial.title,
-      content: newMaterial.content || undefined,
-      fileUrl: newMaterial.fileUrl || undefined,
-      fileType: newMaterial.fileType,
-    });
-    setMaterials([...materials, material]);
-    setNewMaterial({ title: '', content: '', fileUrl: '', fileType: 'text' });
-    setShowCreateMaterial(false);
+    try {
+      const material = await createMaterial(courseId, {
+        title: newMaterial.title,
+        content: newMaterial.content || undefined,
+        fileUrl: newMaterial.fileUrl || undefined,
+        fileType: newMaterial.fileType,
+        fileName: newMaterial.fileName || undefined,
+      });
+      setMaterials([...materials, material]);
+      setNewMaterial({ title: '', content: '', fileUrl: '', fileType: 'text', fileName: '' });
+      setShowCreateMaterial(false);
+    } catch (err) {
+      alert('Failed to create material: ' + err.message);
+    }
   };
 
   const handleDeleteMaterial = async (materialId) => {
@@ -635,13 +674,15 @@ export default function CoursePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                     <select
                       value={newMaterial.fileType}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, fileType: e.target.value })}
+                      onChange={(e) => setNewMaterial({ ...newMaterial, fileType: e.target.value, fileUrl: '', fileName: '' })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                     >
                       <option value="text">Text Content</option>
                       <option value="link">External Link</option>
                       <option value="pdf">PDF Document</option>
                       <option value="doc">Word Document</option>
+                      <option value="ppt">PowerPoint</option>
+                      <option value="xls">Excel Spreadsheet</option>
                       <option value="video">Video</option>
                     </select>
                   </div>
@@ -657,7 +698,7 @@ export default function CoursePage() {
                       />
                     </div>
                   )}
-                  {newMaterial.fileType !== 'text' && (
+                  {newMaterial.fileType === 'link' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
                       <input
@@ -668,6 +709,49 @@ export default function CoursePage() {
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="https://..."
                       />
+                    </div>
+                  )}
+                  {newMaterial.fileType === 'video' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Video URL</label>
+                      <input
+                        type="url"
+                        value={newMaterial.fileUrl}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, fileUrl: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="https://youtube.com/... or https://vimeo.com/..."
+                      />
+                    </div>
+                  )}
+                  {(newMaterial.fileType === 'pdf' || newMaterial.fileType === 'doc' || newMaterial.fileType === 'ppt' || newMaterial.fileType === 'xls') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Upload File</label>
+                      <div className="flex gap-3">
+                        <label className="flex-1 px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 cursor-pointer flex flex-col items-center justify-center gap-2 transition-colors">
+                          <Upload className="w-8 h-8 text-gray-400" />
+                          <span className="text-sm text-gray-600">
+                            {uploadingFile ? 'Uploading...' : newMaterial.fileName ? `Selected: ${newMaterial.fileName}` : 'Click to upload file'}
+                          </span>
+                          <input
+                            type="file"
+                            accept={newMaterial.fileType === 'pdf' ? '.pdf' : newMaterial.fileType === 'doc' ? '.doc,.docx' : newMaterial.fileType === 'ppt' ? '.ppt,.pptx' : '.xls,.xlsx'}
+                            onChange={handleMaterialFileUpload}
+                            className="hidden"
+                            disabled={uploadingFile}
+                          />
+                        </label>
+                        {newMaterial.fileUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setNewMaterial({ ...newMaterial, fileUrl: '', fileName: '' })}
+                            className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">Max file size: 20MB</p>
                     </div>
                   )}
                   <div className="flex gap-3">

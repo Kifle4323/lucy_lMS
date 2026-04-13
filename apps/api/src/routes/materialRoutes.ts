@@ -66,6 +66,7 @@ export function registerMaterialRoutes(router: Router) {
       content: z.string().optional(),
       fileUrl: z.string().optional(),
       fileType: z.string().optional(),
+      fileName: z.string().optional(),
     }).parse(req.body);
     const user = req.user!;
 
@@ -85,6 +86,7 @@ export function registerMaterialRoutes(router: Router) {
         content: body.content,
         fileUrl: body.fileUrl,
         fileType: body.fileType,
+        fileName: body.fileName,
         createdBy: user.id,
       },
       include: { author: { select: { id: true, fullName: true, email: true } } },
@@ -100,6 +102,7 @@ export function registerMaterialRoutes(router: Router) {
       content: z.string().optional(),
       fileUrl: z.string().optional(),
       fileType: z.string().optional(),
+      fileName: z.string().optional(),
     }).parse(req.body);
     const user = req.user!;
 

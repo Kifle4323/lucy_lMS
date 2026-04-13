@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../AuthContext';
-import { getStudentProfile, updateStudentProfile, uploadStudentDocument, deleteStudentDocument } from '../api';
+import { getStudentProfile, updateStudentProfile, uploadStudentDocument, deleteStudentDocument, updateMyProfile } from '../api';
 import Layout from '../components/Layout';
 import { 
   User, MapPin, FileText, GraduationCap, Upload, Trash2, Save, Send, 
-  CheckCircle, AlertCircle, Clock, X, ChevronDown, ChevronUp 
+  CheckCircle, AlertCircle, Clock, X, ChevronDown, ChevronUp, Camera
 } from 'lucide-react';
 
 const DOCUMENT_TYPES = [
@@ -24,15 +24,16 @@ const STREAMS = ['Natural Science', 'Social Science'];
 const SPONSOR_CATEGORIES = ['Govt', 'Private', 'NGO', 'Self'];
 
 export default function StudentProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const fileInputRef = useRef(null);
+  const profileImageInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeSection, setActiveSection] = useState('personal');
   const [uploadingDoc, setUploadingDoc] = useState(null);
-
+  const [profileImage, setProfileImage] = useState(user?.profileImage || null);
   const [profile, setProfile] = useState({
     status: 'DRAFT',
     // Basic Information
@@ -111,6 +112,32 @@ export default function StudentProfilePage() {
 
   const handleChange = (field, value) => {
     setProfile(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleProfileImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target.result;
+      setProfileImage(base64);
+      try {
+        await updateMyProfile({ profileImage: base64 });
+        await refreshUser();
+        setSuccess('Profile picture updated!');
+      } catch (err) {
+        setError('Failed to update profile picture');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async (submitForApproval = false) => {
@@ -269,6 +296,53 @@ export default function StudentProfilePage() {
                 <User className="w-5 h-5" />
                 Basic Information
               </h2>
+
+              {/* Profile Picture */}
+              <div className="flex items-center gap-6 mb-6">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover border-2 border-primary-900 dark:border-primary-700"
+                  />
+                ) : (
+                  <div className="w-24 h-24 bg-primary-900 dark:bg-primary-700 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-2xl">
+                      {profile.firstName?.charAt(0)?.toUpperCase() || user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <label className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    Upload Photo
+                    <input
+                      type="file"
+                      ref={profileImageInputRef}
+                      accept="image/*"
+                      onChange={handleProfileImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {profileImage && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setProfileImage(null);
+                        try {
+                          await updateMyProfile({ profileImage: null });
+                          await refreshUser();
+                        } catch (err) {
+                          setError('Failed to remove profile picture');
+                        }
+                      }}
+                      className="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>

@@ -255,8 +255,9 @@ model Material {
   courseId    String
   title       String
   content     String?   // For text-based materials
-  fileUrl     String?   // For uploaded files (URL)
-  fileType    String?   // e.g., "pdf", "doc", "link"
+  fileUrl     String?   // For uploaded files (URL or base64)
+  fileType    String?   // e.g., "pdf", "doc", "ppt", "link"
+  fileName    String?   // Original file name
   createdBy   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
