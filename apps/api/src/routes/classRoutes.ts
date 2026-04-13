@@ -52,24 +52,22 @@ export function registerClassRoutes(router: Router) {
     }
 
     if (user.role === 'TEACHER') {
-      // Get classes where teacher is either a class teacher OR teaches a course in that class
+      // Get classes where teacher is either a class teacher OR teaches a course section in that class
       const classes = await prisma.class.findMany({
         where: {
           OR: [
             { teachers: { some: { teacherId: user.id } } },
-            { courses: { some: { teacherId: user.id } } },
+            { courseSections: { some: { teacherId: user.id } } },
           ],
         },
         include: {
           students: { include: { student: { select: { id: true, fullName: true, email: true } } } },
           teachers: { include: { teacher: { select: { id: true, fullName: true, email: true } } } },
-          courses: {
-            select: {
-              id: true,
-              teacherId: true,
-              courseId: true,
+          courseSections: {
+            where: { teacherId: user.id },
+            include: {
               course: true,
-              teacher: { select: { id: true, fullName: true } },
+              semester: { include: { academicYear: true } },
             },
           },
         },

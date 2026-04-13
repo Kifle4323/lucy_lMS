@@ -54,13 +54,16 @@ export default function LiveSessionsPage() {
     ]).finally(() => setLoading(false));
   }, []);
 
-  // Get courses the teacher teaches
+  // Get courses the teacher teaches (from CourseSections with semester)
   const teacherCourses = classes.flatMap(c => 
-    (c.courses || []).filter(cc => cc.teacherId === user?.id).map(cc => ({
-      courseId: cc.courseId,
+    (c.courseSections || []).map(section => ({
+      courseSectionId: section.id,
+      courseId: section.courseId,
       classId: c.id,
       className: c.name,
-      courseTitle: cc.course?.title
+      courseTitle: section.course?.title,
+      semester: section.semester?.name,
+      academicYear: section.semester?.academicYear?.year
     }))
   );
   
