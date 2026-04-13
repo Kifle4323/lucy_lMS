@@ -22,6 +22,8 @@ import TeacherGradesPage from './pages/TeacherGradesPage';
 import StudentResultsPage from './pages/StudentResultsPage';
 import StudentExamsPage from './pages/StudentExamsPage';
 import StudentRegistrationPage from './pages/StudentRegistrationPage';
+import AddDropPage from './pages/AddDropPage';
+import AdminAddDropRequestsPage from './pages/AdminAddDropRequestsPage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -198,6 +200,22 @@ export default function App() {
         element={
           <PrivateRoute>
             <StudentExamsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/student/add-drop"
+        element={
+          <PrivateRoute>
+            <AddDropPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin/add-drop-requests"
+        element={
+          <PrivateRoute>
+            <AdminAddDropRequestsPage />
           </PrivateRoute>
         }
       />

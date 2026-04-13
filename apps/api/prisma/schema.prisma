@@ -91,6 +91,8 @@ model User {
   courseSections  CourseSection[]  @relation("CourseSectionTeacher")
   enrollments     StudentEnrollment[]
   earlyExamRequests EarlyExamRequest[]
+  addDropRequests AddDropRequest[]  @relation("AddDropStudent")
+  reviewedAddDrop AddDropRequest[] @relation("AddDropReviewer")
   notifications   Notification[]
 }
 
@@ -247,6 +249,7 @@ model Course {
   materials     Material[]
   liveSessions  LiveSession[]
   gradeConfig   CourseGradeConfig?
+  addDropRequests AddDropRequest[]
   attendance    Attendance[]
 }
 
@@ -448,6 +451,9 @@ model Semester {
   endDate         DateTime
   registrationStart DateTime?
   registrationEnd   DateTime?
+  // Add/Drop period
+  addDropStart     DateTime?    // Start of add/drop period
+  addDropEnd       DateTime?    // End of add/drop period
   // Official exam dates set by admin
   midtermExamDate   DateTime?   // Official midterm exam date
   finalExamDate     DateTime?   // Official final exam date
@@ -461,6 +467,7 @@ model Semester {
 
   academicYear    AcademicYear  @relation(fields: [academicYearId], references: [id])
   courseSections  CourseSection[]
+  addDropRequests AddDropRequest[]
 
   @@unique([academicYearId, type])
 }
@@ -486,6 +493,7 @@ model CourseSection {
   class       Class?   @relation(fields: [classId], references: [id])
   enrollments StudentEnrollment[]
   examSchedules ExamSchedule[]
+  addDropRequests AddDropRequest[]
 
   @@unique([courseId, semesterId, sectionCode])
 }
@@ -501,6 +509,7 @@ model StudentEnrollment {
   courseSection   CourseSection @relation(fields: [courseSectionId], references: [id])
   student         User          @relation(fields: [studentId], references: [id])
   grade           StudentGrade?
+  dropRequests    AddDropRequest[]
 
   @@unique([courseSectionId, studentId])
 }
@@ -585,4 +594,43 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+// Add/Drop Request for courses
+model AddDropRequest {
+  id              String          @id @default(cuid())
+  studentId       String
+  semesterId      String
+  type            AddDropType     // ADD, DROP
+  courseSectionId String?         // For ADD: target section to enroll in
+  dropEnrollmentId String?        // For DROP: enrollment to drop
+  courseId        String          // Course being added or dropped
+  reason          String?         // Student's reason for request
+  status          AddDropStatus   @default(PENDING)
+  adminReviewedBy String?
+  reviewedAt      DateTime?
+  adminNotes      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  student         User            @relation("AddDropStudent", fields: [studentId], references: [id])
+  semester        Semester        @relation(fields: [semesterId], references: [id])
+  courseSection   CourseSection?  @relation(fields: [courseSectionId], references: [id])
+  dropEnrollment  StudentEnrollment? @relation(fields: [dropEnrollmentId], references: [id])
+  course          Course          @relation(fields: [courseId], references: [id])
+  reviewedBy      User?           @relation("AddDropReviewer", fields: [adminReviewedBy], references: [id])
+
+  @@index([studentId, semesterId])
+  @@index([semesterId, status])
+}
+
+enum AddDropType {
+  ADD
+  DROP
+}
+
+enum AddDropStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

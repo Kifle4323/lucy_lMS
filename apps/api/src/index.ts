@@ -14,6 +14,7 @@ import { registerFaceVerificationRoutes } from './routes/faceVerificationRoutes'
 import { registerStudentProfileRoutes } from './routes/studentProfileRoutes';
 import { registerNotificationRoutes } from './routes/notificationRoutes';
 import { registerAcademicRoutes } from './routes/academicRoutes';
+import { registerAddDropRoutes } from './routes/addDropRoutes';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ registerFaceVerificationRoutes(router);
 registerStudentProfileRoutes(router);
 registerNotificationRoutes(router);
 registerAcademicRoutes(router);
+registerAddDropRoutes(router);
 
 app.get('/health', (_req: express.Request, res: express.Response) => {
   res.json({ ok: true });

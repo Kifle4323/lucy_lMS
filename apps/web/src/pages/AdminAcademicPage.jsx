@@ -23,7 +23,8 @@ export default function AdminAcademicPage() {
   const [yearForm, setYearForm] = useState({ name: '', startDate: '', endDate: '' });
   const [semesterForm, setSemesterForm] = useState({
     academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
-    registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
+    registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '',
+    midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
   });
   const [courseSectionRows, setCourseSectionRows] = useState([
     { courseId: '', teacherId: '', classId: '', sectionCode: '' }
@@ -108,7 +109,8 @@ export default function AdminAcademicPage() {
       setSemesters([...semesters, newSem]);
       setSemesterForm({
         academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
-        registrationStart: '', registrationEnd: '', examPeriodStart: '', examPeriodEnd: '', gradingDeadline: ''
+        registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '',
+        midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
       });
     } catch (err) {
       setError(err.message);
@@ -123,7 +125,8 @@ export default function AdminAcademicPage() {
       setEditingSemester(null);
       setSemesterForm({
         academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
-        registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
+        registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '',
+        midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
       });
     } catch (err) {
       setError(err.message);
@@ -177,6 +180,8 @@ export default function AdminAcademicPage() {
       endDate: sem.endDate.split('T')[0],
       registrationStart: sem.registrationStart?.split('T')[0] || '',
       registrationEnd: sem.registrationEnd?.split('T')[0] || '',
+      addDropStart: sem.addDropStart?.split('T')[0] || '',
+      addDropEnd: sem.addDropEnd?.split('T')[0] || '',
       midtermExamDate: sem.midtermExamDate?.split('T')[0] || '',
       finalExamDate: sem.finalExamDate?.split('T')[0] || '',
       gradingDeadline: sem.gradingDeadline?.split('T')[0] || ''
@@ -471,6 +476,32 @@ export default function AdminAcademicPage() {
                   />
                 </div>
               </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3 text-sm">
+                <div className="font-medium text-blue-800 dark:text-blue-300 mb-1">Add/Drop Period</div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Students can add courses they failed or drop courses during this period.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Add/Drop Start</label>
+                  <input
+                    type="date"
+                    value={semesterForm.addDropStart}
+                    onChange={e => setSemesterForm({ ...semesterForm, addDropStart: e.target.value })}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Add/Drop End</label>
+                  <input
+                    type="date"
+                    value={semesterForm.addDropEnd}
+                    onChange={e => setSemesterForm({ ...semesterForm, addDropEnd: e.target.value })}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Midterm Exam Date</label>
@@ -511,7 +542,7 @@ export default function AdminAcademicPage() {
                   {editingSemester ? 'Update' : 'Create'}
                 </button>
                 {editingSemester && (
-                  <button type="button" onClick={() => { setEditingSemester(null); setSemesterForm({ academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '', registrationStart: '', registrationEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <button type="button" onClick={() => { setEditingSemester(null); setSemesterForm({ academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '', registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                     Cancel
                   </button>
                 )}

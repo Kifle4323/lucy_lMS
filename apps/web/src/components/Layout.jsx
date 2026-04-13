@@ -107,6 +107,7 @@ export default function Layout({ children }) {
       { path: '/admin/academic', label: 'Academic', icon: Calendar },
       { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
       { path: '/admin/student-profiles', label: 'Student Profiles', icon: FileText },
+      { path: '/admin/add-drop-requests', label: 'Add/Drop Requests', icon: ClipboardList },
     ] : []),
     ...(user?.role === 'TEACHER' ? [
       { path: '/my-classes', label: 'My Classes', icon: Users },
@@ -116,6 +117,7 @@ export default function Layout({ children }) {
     ...(user?.role === 'STUDENT' ? [
       { path: '/my-classes', label: 'My Classes', icon: GraduationCap },
       { path: '/student/registration', label: 'Semester Registration', icon: ClipboardList },
+      { path: '/student/add-drop', label: 'Add/Drop Courses', icon: ClipboardList },
       { path: '/student/exams', label: 'Exam Schedule', icon: CalendarClock },
       { path: '/student/results', label: 'My Results', icon: Award },
       { path: '/live-sessions', label: 'Live Classes', icon: Video },

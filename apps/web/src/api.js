@@ -537,3 +537,46 @@ export async function getStudentExamSchedules() {
 export async function respondToEarlyExamProposal(examScheduleId, agreed) {
   return apiFetch(`/student/exam-schedules/${examScheduleId}/respond`, { method: 'POST', body: JSON.stringify({ agreed }) });
 }
+
+// Add/Drop - Student
+export async function getAddDropEligibility() {
+  return apiFetch('/add-drop/eligibility');
+}
+
+export async function submitAddRequest(courseSectionId, reason) {
+  return apiFetch('/add-drop/add', { method: 'POST', body: JSON.stringify({ courseSectionId, reason }) });
+}
+
+export async function submitDropRequest(enrollmentId, reason) {
+  return apiFetch('/add-drop/drop', { method: 'POST', body: JSON.stringify({ enrollmentId, reason }) });
+}
+
+export async function cancelAddDropRequest(requestId) {
+  return apiFetch(`/add-drop/${requestId}`, { method: 'DELETE' });
+}
+
+// Add/Drop - Admin
+export async function getAdminAddDropRequests(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.status) params.append('status', filters.status);
+  if (filters.type) params.append('type', filters.type);
+  if (filters.semesterId) params.append('semesterId', filters.semesterId);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch(`/admin/add-drop-requests${query}`);
+}
+
+export async function approveAddDropRequest(requestId, adminNotes) {
+  return apiFetch(`/admin/add-drop-requests/${requestId}/approve`, { method: 'POST', body: JSON.stringify({ adminNotes }) });
+}
+
+export async function rejectAddDropRequest(requestId, adminNotes) {
+  return apiFetch(`/admin/add-drop-requests/${requestId}/reject`, { method: 'POST', body: JSON.stringify({ adminNotes }) });
+}
+
+export async function getSemestersAddDrop() {
+  return apiFetch('/admin/semesters/add-drop');
+}
+
+export async function updateSemesterAddDrop(semesterId, addDropStart, addDropEnd) {
+  return apiFetch(`/admin/semesters/${semesterId}/add-drop`, { method: 'PATCH', body: JSON.stringify({ addDropStart, addDropEnd }) });
+}
