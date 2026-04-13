@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
 import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
@@ -31,6 +32,7 @@ import {
 export default function CoursePage() {
   const { courseId } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
   const [assessments, setAssessments] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [students, setStudents] = useState([]);
@@ -105,8 +107,9 @@ export default function CoursePage() {
       setAssessments([...assessments, assessment]);
       setNewAssessment({ title: '', examType: 'QUIZ', timeLimit: '', maxScore: '100' });
       setShowCreateAssessment(false);
+      toast.success('Assessment created!');
     } catch (err) {
-      alert('Failed to create assessment: ' + err.message);
+      toast.error('Failed to create assessment: ' + err.message);
     }
   };
 
@@ -115,7 +118,7 @@ export default function CoursePage() {
       const updated = await toggleAssessmentOpen(assessmentId, isOpen);
       setAssessments(assessments.map(a => a.id === assessmentId ? updated : a));
     } catch (err) {
-      alert('Failed to update assessment: ' + err.message);
+      toast.error('Failed to update assessment: ' + err.message);
     }
   };
 
@@ -133,9 +136,9 @@ export default function CoursePage() {
         maxScore: parseInt(maxScore) || 100,
       });
       setAssessments(assessments.map(a => a.id === assessment.id ? updated : a));
-      alert('Assessment updated!');
+      toast.success('Assessment updated!');
     } catch (err) {
-      alert('Failed to update assessment: ' + err.message);
+      toast.error('Failed to update assessment: ' + err.message);
     }
   };
 
@@ -145,9 +148,9 @@ export default function CoursePage() {
     try {
       await deleteAssessment(assessment.id);
       setAssessments(assessments.filter(a => a.id !== assessment.id));
-      alert('Assessment deleted!');
+      toast.success('Assessment deleted!');
     } catch (err) {
-      alert('Failed to delete assessment: ' + err.message);
+      toast.error('Failed to delete assessment: ' + err.message);
     }
   };
 
@@ -174,9 +177,9 @@ export default function CoursePage() {
     
     try {
       await setManualGrade(showGradeModal.id, studentId, parseInt(grade.score), grade.feedback || undefined);
-      alert('Grade saved!');
+      toast.success('Grade saved!');
     } catch (err) {
-      alert('Failed to save grade: ' + err.message);
+      toast.error('Failed to save grade: ' + err.message);
     }
   };
 
@@ -189,10 +192,10 @@ export default function CoursePage() {
         .map(([studentId, g]) => setManualGrade(showGradeModal.id, studentId, parseInt(g.score), g.feedback || undefined));
       
       await Promise.all(promises);
-      alert('All grades saved!');
+      toast.success('All grades saved!');
       setShowGradeModal(null);
     } catch (err) {
-      alert('Failed to save some grades: ' + err.message);
+      toast.error('Failed to save some grades: ' + err.message);
     }
   };
 
@@ -202,7 +205,7 @@ export default function CoursePage() {
     
     // Check file size (max 20MB)
     if (file.size > 20 * 1024 * 1024) {
-      alert('File must be less than 20MB');
+      toast.warning('File must be less than 20MB');
       return;
     }
     
@@ -222,7 +225,7 @@ export default function CoursePage() {
       setUploadingFile(false);
     };
     reader.onerror = () => {
-      alert('Failed to read file');
+      toast.error('Failed to read file');
       setUploadingFile(false);
     };
     reader.readAsDataURL(file);
@@ -241,8 +244,9 @@ export default function CoursePage() {
       setMaterials([...materials, material]);
       setNewMaterial({ title: '', content: '', fileUrl: '', fileType: 'text', fileName: '' });
       setShowCreateMaterial(false);
+      toast.success('Material created!');
     } catch (err) {
-      alert('Failed to create material: ' + err.message);
+      toast.error('Failed to create material: ' + err.message);
     }
   };
 
@@ -250,13 +254,14 @@ export default function CoursePage() {
     if (!confirm('Delete this material?')) return;
     await deleteMaterial(materialId);
     setMaterials(materials.filter(m => m.id !== materialId));
+    toast.success('Material deleted!');
   };
 
   const handleAddQuestion = async (e) => {
     e.preventDefault();
     try {
       await createQuestion(selectedAssessment.id, questionForm);
-      alert('Question added!');
+      toast.success('Question added!');
       setQuestionForm({
         type: questionType,
         prompt: '',
@@ -270,7 +275,7 @@ export default function CoursePage() {
         points: 1,
       });
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -289,11 +294,11 @@ export default function CoursePage() {
       setFaceMismatchDetected(false);
     } catch (err) {
       if (err.message?.includes('already_submitted')) {
-        alert('You have already submitted this exam.');
+        toast.warning('You have already submitted this exam.');
         // Refresh attempts list
         getStudentAttempts(courseId).then(setStudentAttempts);
       } else {
-        alert('Failed to start exam: ' + err.message);
+        toast.error('Failed to start exam: ' + err.message);
       }
     }
   };
@@ -331,9 +336,9 @@ export default function CoursePage() {
     // Refresh attempts list
     getStudentAttempts(courseId).then(setStudentAttempts);
     if (result.hasManualGrading) {
-      alert(`Submitted! Auto-graded score: ${result.autoScore}. Short answer questions will be graded by your teacher.`);
+      toast.success(`Submitted! Auto-graded score: ${result.autoScore}. Short answer questions will be graded by your teacher.`);
     } else {
-      alert(`Submitted! Score: ${result.score}`);
+      toast.success(`Submitted! Score: ${result.score}`);
     }
     setActiveAttempt(null);
     setAnswers({});
@@ -352,7 +357,7 @@ export default function CoursePage() {
   const handleGradeSubmit = async () => {
     if (!confirm('Submit grades?')) return;
     await gradeAttempt(gradingAttempt.id, gradingAnswers);
-    alert('Grades submitted!');
+    toast.success('Grades submitted!');
     setGradingAttempt(null);
     setGradingAnswers([]);
   };
@@ -363,7 +368,7 @@ export default function CoursePage() {
       setSubmissions(attempts);
       setSubmissionsAssessment(assessment);
     } catch (err) {
-      alert('Failed to load submissions: ' + err.message);
+      toast.error('Failed to load submissions: ' + err.message);
     }
   };
 
