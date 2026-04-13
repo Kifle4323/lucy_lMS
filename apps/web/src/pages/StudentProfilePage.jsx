@@ -32,6 +32,7 @@ export default function StudentProfilePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeSection, setActiveSection] = useState('personal');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [uploadingDoc, setUploadingDoc] = useState(null);
   const [profileImage, setProfileImage] = useState(user?.profileImage || null);
   const [profile, setProfile] = useState({
@@ -118,7 +119,59 @@ export default function StudentProfilePage() {
 
   const handleChange = (field, value) => {
     setProfile(prev => ({ ...prev, [field]: value }));
+    // Clear field error when user types
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: null }));
+    }
   };
+
+  const fieldLabels = {
+    firstName: 'First Name',
+    fatherName: 'Father Name',
+    grandFatherName: 'Grandfather Name',
+    dateOfBirthGC: 'Date of Birth',
+    gender: 'Gender',
+    placeOfBirth: 'Place of Birth',
+    citizenship: 'Citizenship',
+    country: 'Country',
+    city: 'City',
+    phone: 'Phone Number',
+    stream: 'Stream',
+    entryYear: 'Entry Year'
+  };
+
+  // Helper component for input with error
+  const InputWithError = ({ label, field, type = 'text', required = false }) => (
+    <div>
+      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        value={profile[field] || ''}
+        onChange={(e) => handleChange(field, e.target.value)}
+        className={`w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${fieldErrors[field] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+      />
+      {fieldErrors[field] && <p className="text-red-500 text-xs mt-1">{fieldErrors[field]}</p>}
+    </div>
+  );
+
+  const SelectWithError = ({ label, field, options, required = false }) => (
+    <div>
+      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        value={profile[field] || ''}
+        onChange={(e) => handleChange(field, e.target.value)}
+        className={`w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${fieldErrors[field] ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+      >
+        <option value="">Select {label}</option>
+        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+      </select>
+      {fieldErrors[field] && <p className="text-red-500 text-xs mt-1">{fieldErrors[field]}</p>}
+    </div>
+  );
 
   const handleProfileImageUpload = (e) => {
     const file = e.target.files[0];
@@ -149,6 +202,7 @@ export default function StudentProfilePage() {
   const handleSave = async (submitForApproval = false) => {
     setError('');
     setSuccess('');
+    setFieldErrors({});
     setSaving(true);
 
     try {
@@ -167,28 +221,23 @@ export default function StudentProfilePage() {
       }));
       setSuccess(submitForApproval ? 'Profile submitted for approval!' : 'Profile saved successfully!');
     } catch (err) {
-      // Handle validation errors with missing fields
+      // Handle validation errors with missing fields - show inline
       if (err.missingFields && err.missingFields.length > 0) {
-        const fieldLabels = {
-          firstName: 'First Name',
-          fatherName: 'Father Name',
-          grandFatherName: 'Grandfather Name',
-          dateOfBirthGC: 'Date of Birth',
-          gender: 'Gender',
-          placeOfBirth: 'Place of Birth',
-          citizenship: 'Citizenship',
-          country: 'Country',
-          city: 'City',
-          phone: 'Phone Number',
-          stream: 'Stream',
-          entryYear: 'Entry Year'
-        };
-        const missingLabels = err.missingFields.map(f => fieldLabels[f] || f).join(', ');
-        setError(`${err.message}: ${missingLabels}`);
+        const errors = {};
+        err.missingFields.forEach(field => {
+          errors[field] = `${fieldLabels[field] || field} is required`;
+        });
+        setFieldErrors(errors);
+        setError('Please fill in all required fields');
       } else if (err.details) {
-        // Zod validation errors
-        const messages = err.details.map(d => `${d.path.join('.')}: ${d.message}`).join('; ');
-        setError(`Validation error: ${messages}`);
+        // Zod validation errors - show inline
+        const errors = {};
+        err.details.forEach(d => {
+          const field = d.path.join('.');
+          errors[field] = d.message;
+        });
+        setFieldErrors(errors);
+        setError('Please correct the errors below');
       } else {
         setError(err.message || 'Failed to save profile');
       }
@@ -376,16 +425,19 @@ export default function StudentProfilePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
-                  <input type="text" value={profile.firstName} onChange={(e) => handleChange('firstName', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={profile.firstName} onChange={(e) => handleChange('firstName', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.firstName ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} />
+                  {fieldErrors.firstName && <p className="text-red-500 text-xs mt-1">{fieldErrors.firstName}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Father Name</label>
-                  <input type="text" value={profile.fatherName} onChange={(e) => handleChange('fatherName', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Father Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={profile.fatherName} onChange={(e) => handleChange('fatherName', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.fatherName ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} />
+                  {fieldErrors.fatherName && <p className="text-red-500 text-xs mt-1">{fieldErrors.fatherName}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Grandfather Name</label>
-                  <input type="text" value={profile.grandFatherName} onChange={(e) => handleChange('grandFatherName', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Grandfather Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={profile.grandFatherName} onChange={(e) => handleChange('grandFatherName', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.grandFatherName ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} />
+                  {fieldErrors.grandFatherName && <p className="text-red-500 text-xs mt-1">{fieldErrors.grandFatherName}</p>}
                 </div>
               </div>
 
@@ -406,19 +458,22 @@ export default function StudentProfilePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date of Birth (GC)</label>
-                  <input type="date" value={profile.dateOfBirthGC} onChange={(e) => handleChange('dateOfBirthGC', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date of Birth (GC) <span className="text-red-500">*</span></label>
+                  <input type="date" value={profile.dateOfBirthGC} onChange={(e) => handleChange('dateOfBirthGC', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.dateOfBirthGC ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} />
+                  {fieldErrors.dateOfBirthGC && <p className="text-red-500 text-xs mt-1">{fieldErrors.dateOfBirthGC}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Gender</label>
-                  <select value={profile.gender} onChange={(e) => handleChange('gender', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Gender <span className="text-red-500">*</span></label>
+                  <select value={profile.gender} onChange={(e) => handleChange('gender', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.gender ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}>
                     <option value="">Select</option>
                     {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
+                  {fieldErrors.gender && <p className="text-red-500 text-xs mt-1">{fieldErrors.gender}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Place of Birth</label>
-                  <input type="text" value={profile.placeOfBirth} onChange={(e) => handleChange('placeOfBirth', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Place of Birth <span className="text-red-500">*</span></label>
+                  <input type="text" value={profile.placeOfBirth} onChange={(e) => handleChange('placeOfBirth', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.placeOfBirth ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} />
+                  {fieldErrors.placeOfBirth && <p className="text-red-500 text-xs mt-1">{fieldErrors.placeOfBirth}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mother Tongue</label>
@@ -487,16 +542,19 @@ export default function StudentProfilePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Citizenship</label>
-                  <input type="text" value={profile.citizenship} onChange={(e) => handleChange('citizenship', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="Ethiopian" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Citizenship <span className="text-red-500">*</span></label>
+                  <input type="text" value={profile.citizenship} onChange={(e) => handleChange('citizenship', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.citizenship ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} placeholder="Ethiopian" />
+                  {fieldErrors.citizenship && <p className="text-red-500 text-xs mt-1">{fieldErrors.citizenship}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Country</label>
-                  <input type="text" value={profile.country} onChange={(e) => handleChange('country', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="Ethiopia" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Country <span className="text-red-500">*</span></label>
+                  <input type="text" value={profile.country} onChange={(e) => handleChange('country', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.country ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} placeholder="Ethiopia" />
+                  {fieldErrors.country && <p className="text-red-500 text-xs mt-1">{fieldErrors.country}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">City</label>
-                  <input type="text" value={profile.city} onChange={(e) => handleChange('city', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="Addis Ababa" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">City <span className="text-red-500">*</span></label>
+                  <input type="text" value={profile.city} onChange={(e) => handleChange('city', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.city ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} placeholder="Addis Ababa" />
+                  {fieldErrors.city && <p className="text-red-500 text-xs mt-1">{fieldErrors.city}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sub City</label>
@@ -525,8 +583,9 @@ export default function StudentProfilePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone</label>
-                  <input type="tel" value={profile.phone} onChange={(e) => handleChange('phone', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone <span className="text-red-500">*</span></label>
+                  <input type="tel" value={profile.phone} onChange={(e) => handleChange('phone', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.phone ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} />
+                  {fieldErrors.phone && <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
@@ -546,15 +605,17 @@ export default function StudentProfilePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stream</label>
-                  <select value={profile.stream} onChange={(e) => handleChange('stream', e.target.value)} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stream <span className="text-red-500">*</span></label>
+                  <select value={profile.stream} onChange={(e) => handleChange('stream', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.stream ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}>
                     <option value="">Select</option>
                     {STREAMS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
+                  {fieldErrors.stream && <p className="text-red-500 text-xs mt-1">{fieldErrors.stream}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Entry Year</label>
-                  <input type="number" value={profile.entryYear} onChange={(e) => handleChange('entryYear', parseInt(e.target.value))} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Entry Year <span className="text-red-500">*</span></label>
+                  <input type="number" value={profile.entryYear} onChange={(e) => handleChange('entryYear', e.target.value)} className={`w-full px-4 py-3 border dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 ${fieldErrors.entryYear ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`} />
+                  {fieldErrors.entryYear && <p className="text-red-500 text-xs mt-1">{fieldErrors.entryYear}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sponsor Category</label>
