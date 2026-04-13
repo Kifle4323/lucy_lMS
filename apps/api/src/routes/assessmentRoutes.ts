@@ -276,6 +276,11 @@ export function registerAssessmentRoutes(router: Router) {
           await tx.answer.deleteMany({
             where: { attemptId: { in: attemptIds } },
           });
+          
+          // Delete face verifications for these attempts
+          await tx.faceVerification.deleteMany({
+            where: { attemptId: { in: attemptIds } },
+          });
         }
 
         // Delete attempts
