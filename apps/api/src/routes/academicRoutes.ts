@@ -1018,6 +1018,10 @@ export function registerAcademicRoutes(router: Router) {
       duration: z.number().int().min(1),
       location: z.string().optional(),
       instructions: z.string().optional(),
+      weight: z.number().int().min(1).max(100).optional(),
+      // Early exam proposal fields
+      proposedDate: z.string().optional(),
+      proposalDeadline: z.string().optional(),
     }).parse(req.body);
 
     const user = req.user!;
@@ -1035,6 +1039,17 @@ export function registerAcademicRoutes(router: Router) {
     // Get official date from semester
     const officialDate = body.examType === 'MIDTERM' ? section.semester.midtermExamDate : section.semester.finalExamDate;
 
+    // Determine early exam status
+    let earlyExamStatus: 'NONE' | 'PROPOSED' = 'NONE';
+    let proposedDate: Date | null = null;
+    let proposalDeadline: Date | null = null;
+
+    if (body.proposedDate && body.proposalDeadline) {
+      earlyExamStatus = 'PROPOSED';
+      proposedDate = new Date(body.proposedDate);
+      proposalDeadline = new Date(body.proposalDeadline);
+    }
+
     const examSchedule = await prisma.examSchedule.create({
       data: {
         courseSectionId: body.courseSectionId,
@@ -1043,7 +1058,10 @@ export function registerAcademicRoutes(router: Router) {
         duration: body.duration,
         location: body.location,
         instructions: body.instructions,
-        earlyExamStatus: 'NONE',
+        weight: body.weight || 30,
+        earlyExamStatus,
+        proposedDate,
+        proposalDeadline,
       },
       include: { courseSection: { include: { course: true, semester: true } } },
     });

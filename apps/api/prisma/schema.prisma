@@ -539,6 +539,7 @@ model ExamSchedule {
   duration        Int      // Duration in minutes
   location        String?  // Exam room/location
   instructions    String?
+  weight          Int      @default(30) // Weight percentage for grade calculation
   // Early exam proposal status
   earlyExamStatus String?  @default("NONE") // NONE, PROPOSED, ALL_AGREED, APPROVED, REJECTED
   proposalDeadline DateTime? // Deadline for students to respond to early exam proposal

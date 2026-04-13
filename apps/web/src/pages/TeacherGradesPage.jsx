@@ -26,6 +26,10 @@ export default function TeacherGradesPage() {
     duration: 60,
     location: '',
     instructions: '',
+    weight: 30,
+    proposeEarly: false,
+    proposedDate: '',
+    proposalDeadline: '',
   });
   const [editingExam, setEditingExam] = useState(null);
 
@@ -147,8 +151,17 @@ export default function TeacherGradesPage() {
     setError('');
     try {
       const data = {
-        ...examForm,
         courseSectionId: selectedSection.id,
+        examType: examForm.examType,
+        duration: examForm.duration,
+        location: examForm.location,
+        instructions: examForm.instructions,
+        weight: examForm.weight,
+        // Include early exam proposal if checked
+        ...(examForm.proposeEarly && {
+          proposedDate: examForm.proposedDate,
+          proposalDeadline: examForm.proposalDeadline,
+        }),
       };
       const newExam = await createExamSchedule(data);
       setExamSchedules([...examSchedules, newExam]);
@@ -157,8 +170,14 @@ export default function TeacherGradesPage() {
         duration: 60,
         location: '',
         instructions: '',
+        weight: 30,
+        proposeEarly: false,
+        proposedDate: '',
+        proposalDeadline: '',
       });
-      setSuccess('Exam schedule created! Official date from semester is used.');
+      setSuccess(examForm.proposeEarly 
+        ? 'Exam schedule created with early exam proposal! Students will be notified.' 
+        : 'Exam schedule created!');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -178,6 +197,10 @@ export default function TeacherGradesPage() {
         duration: 60,
         location: '',
         instructions: '',
+        weight: 30,
+        proposeEarly: false,
+        proposedDate: '',
+        proposalDeadline: '',
       });
       setSuccess('Exam schedule updated!');
     } catch (err) {
@@ -482,6 +505,20 @@ export default function TeacherGradesPage() {
                           </select>
                         </div>
                         <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Weight (%)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={examForm.weight}
+                            onChange={e => setExamForm({ ...examForm, weight: parseInt(e.target.value) })}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            disabled={editingExam}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
                           <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Duration (min)</label>
                           <input
                             type="number"
@@ -491,16 +528,16 @@ export default function TeacherGradesPage() {
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           />
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Location</label>
-                        <input
-                          type="text"
-                          value={examForm.location}
-                          onChange={e => setExamForm({ ...examForm, location: e.target.value })}
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          placeholder="e.g., Room 101"
-                        />
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Location</label>
+                          <input
+                            type="text"
+                            value={examForm.location}
+                            onChange={e => setExamForm({ ...examForm, location: e.target.value })}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            placeholder="e.g., Room 101"
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Instructions</label>
@@ -512,6 +549,50 @@ export default function TeacherGradesPage() {
                           placeholder="Exam instructions for students..."
                         />
                       </div>
+
+                      {/* Early Exam Proposal Option */}
+                      {!editingExam && (
+                        <div className="border-t pt-4 mt-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={examForm.proposeEarly}
+                              onChange={e => setExamForm({ ...examForm, proposeEarly: e.target.checked })}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Propose Early Exam Date</span>
+                          </label>
+                          {examForm.proposeEarly && (
+                            <div className="mt-3 space-y-3 pl-6">
+                              <p className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded">
+                                Students will be notified to accept or reject the early exam proposal.
+                              </p>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Date</label>
+                                  <input
+                                    type="date"
+                                    value={examForm.proposedDate}
+                                    onChange={e => setExamForm({ ...examForm, proposedDate: e.target.value })}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline</label>
+                                  <input
+                                    type="date"
+                                    value={examForm.proposalDeadline}
+                                    onChange={e => setExamForm({ ...examForm, proposalDeadline: e.target.value })}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    required
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <button
                           type="submit"
