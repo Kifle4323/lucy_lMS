@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 import { getClasses, createClass, getUsers, addStudentToClass, addTeacherToClass, removeStudentFromClass, removeTeacherFromClass, getCourses, assignCourseToClass, removeCourseFromClass } from '../api';
 import Layout from '../components/Layout';
 import { 
@@ -18,6 +20,8 @@ import {
 
 export default function AdminClassesPage() {
   const { user } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -54,7 +58,7 @@ export default function AdminClassesPage() {
       setShowCreateModal(false);
       setNewClass({ name: '', code: '', year: '', section: '' });
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -66,13 +70,21 @@ export default function AdminClassesPage() {
           ? { ...c, students: [...c.students, result] }
           : c
       ));
+      toast.success('Student added to class!');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleRemoveStudent = async (classId, studentId) => {
-    if (!confirm('Remove this student from class?')) return;
+    const confirmed = await confirm({
+      title: 'Remove Student',
+      message: 'Remove this student from class?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await removeStudentFromClass(classId, studentId);
       setClasses(classes.map(c => 
@@ -80,8 +92,9 @@ export default function AdminClassesPage() {
           ? { ...c, students: c.students.filter(s => s.studentId !== studentId) }
           : c
       ));
+      toast.success('Student removed from class!');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -93,13 +106,21 @@ export default function AdminClassesPage() {
           ? { ...c, teachers: [...c.teachers, result] }
           : c
       ));
+      toast.success('Teacher added to class!');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleRemoveTeacher = async (classId, teacherId) => {
-    if (!confirm('Remove this teacher from class?')) return;
+    const confirmed = await confirm({
+      title: 'Remove Teacher',
+      message: 'Remove this teacher from class?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await removeTeacherFromClass(classId, teacherId);
       setClasses(classes.map(c => 
@@ -107,8 +128,9 @@ export default function AdminClassesPage() {
           ? { ...c, teachers: c.teachers.filter(t => t.teacherId !== teacherId) }
           : c
       ));
+      toast.success('Teacher removed from class!');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -120,13 +142,21 @@ export default function AdminClassesPage() {
           ? { ...c, courses: [...c.courses, result] }
           : c
       ));
+      toast.success('Course assigned to class!');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleRemoveCourse = async (classId, courseId) => {
-    if (!confirm('Remove this course from class?')) return;
+    const confirmed = await confirm({
+      title: 'Remove Course',
+      message: 'Remove this course from class?',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await removeCourseFromClass(classId, courseId);
       setClasses(classes.map(c => 
@@ -134,8 +164,9 @@ export default function AdminClassesPage() {
           ? { ...c, courses: c.courses.filter(c => c.courseId !== courseId) }
           : c
       ));
+      toast.success('Course removed from class!');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

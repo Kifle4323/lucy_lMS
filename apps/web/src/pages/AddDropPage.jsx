@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getAddDropEligibility, submitAddRequest, submitDropRequest, cancelAddDropRequest } from '../api';
 import Layout from '../components/Layout';
+import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 import { Plus, Minus, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Calendar } from 'lucide-react';
 
 export default function AddDropPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -73,14 +77,21 @@ export default function AddDropPage() {
   }
 
   async function handleCancelRequest(requestId) {
-    if (!confirm('Cancel this request?')) return;
+    const confirmed = await confirm({
+      title: 'Cancel Request',
+      message: 'Cancel this request?',
+      confirmText: 'Cancel Request',
+      cancelText: 'Keep',
+      type: 'warning',
+    });
+    if (!confirmed) return;
     
     try {
       await cancelAddDropRequest(requestId);
-      setSuccess('Request cancelled');
+      toast.success('Request cancelled');
       loadData();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   }
 

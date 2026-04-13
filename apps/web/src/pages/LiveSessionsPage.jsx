@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 import { getUpcomingLiveSessions, createLiveSession, updateLiveSession, deleteLiveSession, getClasses } from '../api';
 import Layout from '../components/Layout';
 import {
@@ -19,6 +21,8 @@ import {
 export default function LiveSessionsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [sessions, setSessions] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +91,7 @@ export default function LiveSessionsPage() {
       setNewSession({ classId: '', courseId: '', title: '', description: '', scheduledAt: '', duration: 60 });
     } catch (err) {
       console.error('Error creating session:', err);
-      alert('Failed to create session: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to create session: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -106,9 +110,17 @@ export default function LiveSessionsPage() {
   };
 
   const handleDeleteSession = async (sessionId) => {
-    if (!confirm('Delete this session?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Session',
+      message: 'Delete this session?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     await deleteLiveSession(sessionId);
     setSessions(sessions.filter(s => s.id !== sessionId));
+    toast.success('Session deleted!');
   };
 
   const getStatusBadge = (status, session) => {

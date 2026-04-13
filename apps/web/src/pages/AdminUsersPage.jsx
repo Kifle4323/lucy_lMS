@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 import { getUsers, adminCreateUser, getPendingUsers, approveUser, deleteUser } from '../api';
 import Layout from '../components/Layout';
 import { UserCircle, GraduationCap, BookOpen, Shield, Search, Plus, X, AlertCircle, CheckCircle, Clock, Trash2 } from 'lucide-react';
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [users, setUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,17 +72,25 @@ export default function AdminUsersPage() {
       setPendingUsers(pendingUsers.filter(u => u.id !== userId));
       loadData(); // Refresh all users
     } catch (err) {
-      alert('Failed to approve user');
+      toast.error('Failed to approve user');
     }
   };
 
   const handleRejectUser = async (userId) => {
-    if (!confirm('Are you sure you want to reject and delete this user?')) return;
+    const confirmed = await confirm({
+      title: 'Reject User',
+      message: 'Are you sure you want to reject and delete this user?',
+      confirmText: 'Reject',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteUser(userId);
       setPendingUsers(pendingUsers.filter(u => u.id !== userId));
+      toast.success('User rejected and deleted');
     } catch (err) {
-      alert('Failed to reject user');
+      toast.error('Failed to reject user');
     }
   };
 

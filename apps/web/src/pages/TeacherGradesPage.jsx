@@ -6,9 +6,13 @@ import {
   proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam
 } from '../api.js';
 import Layout from '../components/Layout';
+import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 
 export default function TeacherGradesPage() {
   const [searchParams] = useSearchParams();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [sections, setSections] = useState([]);
   const [selectedSection, setSelectedSection] = useState(null);
   const [students, setStudents] = useState([]);
@@ -136,31 +140,43 @@ export default function TeacherGradesPage() {
   }
 
   async function submitAllGrades() {
-    if (!confirm('Submit all grades? This will lock the grades and students will be able to see them once published by admin.')) return;
+    const confirmed = await confirm({
+      title: 'Submit All Grades',
+      message: 'Submit all grades? This will lock the grades and students will be able to see them once published by admin.',
+      confirmText: 'Submit',
+      cancelText: 'Cancel',
+      type: 'success',
+    });
+    if (!confirmed) return;
     try {
       await submitSectionGrades(selectedSection.id);
-      setSuccess('Grades submitted successfully!');
+      toast.success('Grades submitted successfully!');
       // Refresh
       const data = await getSectionStudents(selectedSection.id);
       setStudents(data);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   }
 
   async function syncFromAssessments() {
-    if (!confirm('Sync assessment results to grades? This will overwrite existing quiz, midterm, and final scores with assessment data.')) return;
+    const confirmed = await confirm({
+      title: 'Sync from Assessments',
+      message: 'Sync assessment results to grades? This will overwrite existing quiz, midterm, and final scores with assessment data.',
+      confirmText: 'Sync',
+      cancelText: 'Cancel',
+      type: 'info',
+    });
+    if (!confirmed) return;
     setSaving(true);
-    setError('');
-    setSuccess('');
     try {
       const result = await syncAssessmentsToGrades(selectedSection.id);
-      setSuccess(result.message);
+      toast.success(result.message);
       // Refresh students list
       const data = await getSectionStudents(selectedSection.id);
       setStudents(data);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setSaving(false);
     }
@@ -243,13 +259,20 @@ export default function TeacherGradesPage() {
   }
 
   async function handleDeleteExam(examId) {
-    if (!confirm('Delete this exam schedule?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Exam Schedule',
+      message: 'Delete this exam schedule?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteExamSchedule(examId);
       setExamSchedules(examSchedules.filter(ex => ex.id !== examId));
-      setSuccess('Exam schedule deleted!');
+      toast.success('Exam schedule deleted!');
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   }
 
@@ -280,15 +303,22 @@ export default function TeacherGradesPage() {
   }
 
   async function handleCancelEarlyProposal(examId) {
-    if (!confirm('Cancel early exam proposal?')) return;
+    const confirmed = await confirm({
+      title: 'Cancel Early Exam Proposal',
+      message: 'Cancel early exam proposal?',
+      confirmText: 'Cancel Proposal',
+      cancelText: 'Keep',
+      type: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await cancelEarlyExamProposal(examId);
       const examsData = await getSectionExamSchedules(selectedSection.id);
       setExamSchedules(examsData);
       setEarlyResponses(null);
-      setSuccess('Early exam proposal cancelled.');
+      toast.success('Early exam proposal cancelled.');
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   }
 
@@ -302,15 +332,22 @@ export default function TeacherGradesPage() {
   }
 
   async function handleConfirmEarlyExam(examId) {
-    if (!confirm('Confirm early exam? This will set the exam date to the proposed early date.')) return;
+    const confirmed = await confirm({
+      title: 'Confirm Early Exam',
+      message: 'Confirm early exam? This will set the exam date to the proposed early date.',
+      confirmText: 'Confirm',
+      cancelText: 'Cancel',
+      type: 'success',
+    });
+    if (!confirmed) return;
     try {
       await confirmEarlyExam(examId);
       const examsData = await getSectionExamSchedules(selectedSection.id);
       setExamSchedules(examsData);
       setEarlyResponses(null);
-      setSuccess('Early exam confirmed! Exam will be held on the proposed date.');
+      toast.success('Early exam confirmed! Exam will be held on the proposed date.');
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   }
 

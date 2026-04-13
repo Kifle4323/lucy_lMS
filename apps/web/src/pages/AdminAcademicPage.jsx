@@ -6,8 +6,12 @@ import {
   getClasses
 } from '../api.js';
 import Layout from '../components/Layout';
+import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 
 export default function AdminAcademicPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [academicYears, setAcademicYears] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -83,7 +87,14 @@ export default function AdminAcademicPage() {
   }
 
   async function handleDeleteYear(id) {
-    if (!confirm('Delete this academic year?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Academic Year',
+      message: 'Delete this academic year?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteAcademicYear(id);
       setAcademicYears(academicYears.filter(y => y.id !== id));
@@ -134,7 +145,14 @@ export default function AdminAcademicPage() {
   }
 
   async function handleDeleteSemester(id) {
-    if (!confirm('Delete this semester?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Semester',
+      message: 'Delete this semester?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteSemester(id);
       setSemesters(semesters.filter(s => s.id !== id));
@@ -144,10 +162,17 @@ export default function AdminAcademicPage() {
   }
 
   async function handlePublishGrades(semesterId) {
-    if (!confirm('Publish all submitted grades for this semester?')) return;
+    const confirmed = await confirm({
+      title: 'Publish Grades',
+      message: 'Publish all submitted grades for this semester?',
+      confirmText: 'Publish',
+      cancelText: 'Cancel',
+      type: 'success',
+    });
+    if (!confirmed) return;
     try {
       await publishSemesterGrades(semesterId);
-      alert('Grades published successfully!');
+      toast.success('Grades published successfully!');
       loadData();
     } catch (err) {
       setError(err.message);
@@ -161,9 +186,17 @@ export default function AdminAcademicPage() {
       'GRADING': 'start grading period',
       'COMPLETED': 'complete the semester'
     };
-    if (!confirm(`Are you sure you want to ${statusLabels[newStatus]}?`)) return;
+    const confirmed = await confirm({
+      title: 'Change Semester Status',
+      message: `Are you sure you want to ${statusLabels[newStatus]}?`,
+      confirmText: 'Confirm',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await updateSemester(semesterId, { status: newStatus });
+      toast.success('Semester status updated!');
       loadData();
     } catch (err) {
       setError(err.message);
@@ -259,10 +292,18 @@ export default function AdminAcademicPage() {
   }
 
   async function handleDeleteCourseSection(id) {
-    if (!confirm('Delete this course section?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Course Section',
+      message: 'Delete this course section?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await deleteCourseSection(id);
       setCourseSections(courseSections.filter(s => s.id !== id));
+      toast.success('Course section deleted!');
     } catch (err) {
       setError(err.message);
     }

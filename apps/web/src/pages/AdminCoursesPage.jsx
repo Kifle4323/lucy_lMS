@@ -38,7 +38,7 @@ export default function AdminCoursesPage() {
         ectsCredits: 5
       });
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

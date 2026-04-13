@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getPendingFaceVerifications, getFaceVerifications, reviewFaceVerification } from '../api';
 import Layout from '../components/Layout';
+import { useToast } from '../ToastContext';
 import {
   AlertTriangle,
   CheckCircle,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminFaceVerificationPage() {
+  const toast = useToast();
   const [verifications, setVerifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -43,8 +45,9 @@ export default function AdminFaceVerificationPage() {
       await reviewFaceVerification(id, approved);
       await loadVerifications();
       setSelectedVerification(null);
+      toast.success(approved ? 'Verification approved!' : 'Verification rejected');
     } catch (err) {
-      alert('Failed to review: ' + err.message);
+      toast.error('Failed to review: ' + err.message);
     }
     setProcessing(false);
   };

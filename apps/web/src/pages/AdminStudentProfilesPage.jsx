@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
 import { getAllStudentProfiles, approveStudentProfile, rejectStudentProfile } from '../api';
 import Layout from '../components/Layout';
 import { 
@@ -9,6 +10,7 @@ import {
 
 export default function AdminStudentProfilesPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('PENDING_APPROVAL');
@@ -43,7 +45,7 @@ export default function AdminStudentProfilesPage() {
         setSelectedProfile(null);
       }
     } catch (err) {
-      alert('Failed to approve profile');
+      toast.error('Failed to approve profile');
     } finally {
       setProcessing(false);
     }
@@ -51,7 +53,7 @@ export default function AdminStudentProfilesPage() {
 
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
-      alert('Please provide a rejection reason');
+      toast.warning('Please provide a rejection reason');
       return;
     }
     setProcessing(true);
@@ -62,7 +64,7 @@ export default function AdminStudentProfilesPage() {
       setSelectedProfile(null);
       setRejectionReason('');
     } catch (err) {
-      alert('Failed to reject profile');
+      toast.error('Failed to reject profile');
     } finally {
       setProcessing(false);
     }

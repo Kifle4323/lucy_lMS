@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
 import { getGradeConfig, updateGradeConfig, getGradebook, getAttendance, setAttendance, getMyGrades } from '../api';
 import Layout from '../components/Layout';
 import {
@@ -19,6 +20,7 @@ import {
 export default function GradebookPage() {
   const { courseId } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState(null);
   const [gradebook, setGradebook] = useState(null);
@@ -61,9 +63,9 @@ export default function GradebookPage() {
         attendanceWeight: config.attendanceWeight,
       });
       setConfig(updated);
-      alert('Grade weights saved!');
+      toast.success('Grade weights saved!');
     } catch (err) {
-      alert('Failed to save: ' + err.message);
+      toast.error('Failed to save: ' + err.message);
     }
     setSaving(false);
   };
@@ -75,9 +77,9 @@ export default function GradebookPage() {
   const handleSaveAttendance = async (studentId) => {
     try {
       await setAttendance(courseId, studentId, attendance[studentId]);
-      alert('Attendance saved!');
+      toast.success('Attendance saved!');
     } catch (err) {
-      alert('Failed to save: ' + err.message);
+      toast.error('Failed to save: ' + err.message);
     }
   };
 
@@ -88,9 +90,9 @@ export default function GradebookPage() {
         setAttendance(courseId, studentId, score)
       );
       await Promise.all(promises);
-      alert('All attendance saved!');
+      toast.success('All attendance saved!');
     } catch (err) {
-      alert('Failed to save some: ' + err.message);
+      toast.error('Failed to save some: ' + err.message);
     }
     setSaving(false);
   };

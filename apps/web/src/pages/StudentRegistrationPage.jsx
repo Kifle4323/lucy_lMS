@@ -3,8 +3,12 @@ import { Link } from 'react-router-dom';
 import { getAvailableCourses, registerForSemester, getStudentProfile } from '../api.js';
 import Layout from '../components/Layout';
 import { AlertCircle, FileText } from 'lucide-react';
+import { useToast } from '../ToastContext';
+import { useConfirm } from '../ConfirmContext';
 
 export default function StudentRegistrationPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
@@ -32,7 +36,14 @@ export default function StudentRegistrationPage() {
   }
 
   async function handleRegister() {
-    if (!confirm('Register for all courses assigned to your class?')) return;
+    const confirmed = await confirm({
+      title: 'Register for Courses',
+      message: 'Register for all courses assigned to your class?',
+      confirmText: 'Register',
+      cancelText: 'Cancel',
+      type: 'info',
+    });
+    if (!confirmed) return;
     
     setRegistering(true);
     setError('');
@@ -40,10 +51,10 @@ export default function StudentRegistrationPage() {
     
     try {
       const result = await registerForSemester();
-      setSuccess(result.message);
+      toast.success(result.message);
       loadAvailableCourses();
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setRegistering(false);
     }
