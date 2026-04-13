@@ -23,6 +23,7 @@ export async function apiFetch(path, options) {
     const err = new Error(body.error || body.message || `HTTP ${res.status}`);
     // Pass through additional error properties
     if (body.missingFields) err.missingFields = body.missingFields;
+    if (body.details) err.details = body.details;
     throw err;
   }
 

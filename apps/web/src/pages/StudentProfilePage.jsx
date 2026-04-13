@@ -185,6 +185,10 @@ export default function StudentProfilePage() {
         };
         const missingLabels = err.missingFields.map(f => fieldLabels[f] || f).join(', ');
         setError(`${err.message}: ${missingLabels}`);
+      } else if (err.details) {
+        // Zod validation errors
+        const messages = err.details.map(d => `${d.path.join('.')}: ${d.message}`).join('; ');
+        setError(`Validation error: ${messages}`);
       } else {
         setError(err.message || 'Failed to save profile');
       }
