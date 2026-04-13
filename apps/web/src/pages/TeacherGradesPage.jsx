@@ -610,50 +610,47 @@ export default function TeacherGradesPage() {
                           {/* Early Exam Proposal Section */}
                           {exam.earlyExamStatus === 'NONE' && (
                             <div className="mt-3 pt-3 border-t">
-                              {exam.officialDate ? (
-                                <>
-                                  <button
-                                    onClick={() => setShowEarlyProposal(showEarlyProposal === exam.id ? false : exam.id)}
-                                    className="text-sm text-green-600 hover:underline"
-                                  >
-                                    Propose Early Exam
-                                  </button>
-                                  {showEarlyProposal === exam.id && (
-                                    <form onSubmit={(e) => handleProposeEarlyExam(exam.id, e)} className="mt-3 space-y-3">
-                                      <div>
-                                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Early Date</label>
-                                        <input
-                                          type="date"
-                                          value={earlyProposalForm.proposedDate}
-                                          onChange={e => setEarlyProposalForm({ ...earlyProposalForm, proposedDate: e.target.value })}
-                                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                          required
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline</label>
-                                        <input
-                                          type="date"
-                                          value={earlyProposalForm.proposalDeadline}
-                                          onChange={e => setEarlyProposalForm({ ...earlyProposalForm, proposalDeadline: e.target.value })}
-                                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                          required
-                                        />
-                                      </div>
-                                      <button
-                                        type="submit"
-                                        disabled={saving}
-                                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400 text-sm"
-                                      >
-                                        Submit Proposal
-                                      </button>
-                                    </form>
+                              <button
+                                onClick={() => setShowEarlyProposal(showEarlyProposal === exam.id ? false : exam.id)}
+                                className="text-sm text-green-600 hover:underline"
+                              >
+                                Propose Early Exam
+                              </button>
+                              {showEarlyProposal === exam.id && (
+                                <form onSubmit={(e) => handleProposeEarlyExam(exam.id, e)} className="mt-3 space-y-3">
+                                  {!exam.officialDate && (
+                                    <p className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded">
+                                      Note: Official exam date not set by admin. You can still propose an early date.
+                                    </p>
                                   )}
-                                </>
-                              ) : (
-                                <p className="text-sm text-gray-500 italic">
-                                  Official exam date not set by admin. Cannot propose early exam until the semester has an official exam date.
-                                </p>
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Early Date</label>
+                                    <input
+                                      type="date"
+                                      value={earlyProposalForm.proposedDate}
+                                      onChange={e => setEarlyProposalForm({ ...earlyProposalForm, proposedDate: e.target.value })}
+                                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                      required
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline</label>
+                                    <input
+                                      type="date"
+                                      value={earlyProposalForm.proposalDeadline}
+                                      onChange={e => setEarlyProposalForm({ ...earlyProposalForm, proposalDeadline: e.target.value })}
+                                      className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                      required
+                                    />
+                                  </div>
+                                  <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400 text-sm"
+                                  >
+                                    Submit Proposal
+                                  </button>
+                                </form>
                               )}
                             </div>
                           )}
