@@ -29,7 +29,9 @@ export default function TeacherGradesPage() {
     weight: 30,
     proposeEarly: false,
     proposedDate: '',
+    proposedTime: '09:00',
     proposalDeadline: '',
+    proposalDeadlineTime: '23:59',
   });
   const [editingExam, setEditingExam] = useState(null);
 
@@ -159,8 +161,8 @@ export default function TeacherGradesPage() {
         weight: examForm.weight,
         // Include early exam proposal if checked
         ...(examForm.proposeEarly && {
-          proposedDate: examForm.proposedDate,
-          proposalDeadline: examForm.proposalDeadline,
+          proposedDate: examForm.proposedDate + 'T' + examForm.proposedTime,
+          proposalDeadline: examForm.proposalDeadline + 'T' + examForm.proposalDeadlineTime,
         }),
       };
       const newExam = await createExamSchedule(data);
@@ -173,7 +175,9 @@ export default function TeacherGradesPage() {
         weight: 30,
         proposeEarly: false,
         proposedDate: '',
+        proposedTime: '09:00',
         proposalDeadline: '',
+        proposalDeadlineTime: '23:59',
       });
       setSuccess(examForm.proposeEarly 
         ? 'Exam schedule created with early exam proposal! Students will be notified.' 
@@ -200,7 +204,9 @@ export default function TeacherGradesPage() {
         weight: 30,
         proposeEarly: false,
         proposedDate: '',
+        proposedTime: '09:00',
         proposalDeadline: '',
+        proposalDeadlineTime: '23:59',
       });
       setSuccess('Exam schedule updated!');
     } catch (err) {
@@ -579,11 +585,33 @@ export default function TeacherGradesPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline</label>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Time</label>
+                                  <input
+                                    type="time"
+                                    value={examForm.proposedTime}
+                                    onChange={e => setExamForm({ ...examForm, proposedTime: e.target.value })}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    required
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline Date</label>
                                   <input
                                     type="date"
                                     value={examForm.proposalDeadline}
                                     onChange={e => setExamForm({ ...examForm, proposalDeadline: e.target.value })}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Deadline Time</label>
+                                  <input
+                                    type="time"
+                                    value={examForm.proposalDeadlineTime}
+                                    onChange={e => setExamForm({ ...examForm, proposalDeadlineTime: e.target.value })}
                                     className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                     required
                                   />
