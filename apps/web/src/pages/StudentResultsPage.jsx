@@ -127,7 +127,7 @@ export default function StudentResultsPage() {
       {currentResults && (
         reportView ? (
           <div className="bg-white rounded-lg shadow overflow-hidden print:shadow-none print:border print:border-gray-200">
-            <div className="bg-green-700 text-white px-6 py-4">
+            <div className="bg-blue-700 text-white px-6 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-lg font-bold">{activeSemesterName}</div>
