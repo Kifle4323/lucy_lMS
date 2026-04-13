@@ -127,34 +127,19 @@ export default function StudentResultsPage() {
       {currentResults && (
         reportView ? (
           <div className="bg-white rounded-lg shadow overflow-hidden print:shadow-none print:border print:border-gray-200">
-            <div className="bg-green-700 text-white px-6 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-2xl font-extrabold tracking-wide">HARAMAYA UNIVERSITY</div>
-                  <div className="text-sm opacity-90 font-semibold">OFFICE OF THE REGISTRAR</div>
-                </div>
-                <div className="text-right text-xs opacity-90">
-                  <div>Contact: +251-XXX-XXX-XXX</div>
-                  <div>registrar@haramaya.edu.et</div>
-                  <div>www.haramaya.edu.et</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-b">
+            <div className="bg-green-700 text-white px-6 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-sm text-gray-600">Academic Grade Report</div>
-                  <div className="text-lg font-bold text-gray-900">{activeSemesterName}</div>
+                  <div className="text-lg font-bold">{activeSemesterName}</div>
                   {activeAcademicYear && (
-                    <div className="text-sm text-gray-600">{activeAcademicYear}</div>
+                    <div className="text-sm opacity-90">{activeAcademicYear}</div>
                   )}
                 </div>
                 <div className="text-right">
                   {currentResults.gpa !== null && (
                     <div>
-                      <div className="text-xs text-gray-500">Semester GPA</div>
-                      <div className="text-2xl font-extrabold text-green-700">{currentResults.gpa.toFixed(2)}</div>
+                      <div className="text-xs opacity-80">Semester GPA</div>
+                      <div className="text-2xl font-extrabold">{currentResults.gpa.toFixed(2)}</div>
                     </div>
                   )}
                 </div>
