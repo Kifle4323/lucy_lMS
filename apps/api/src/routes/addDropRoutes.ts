@@ -331,7 +331,7 @@ export function registerAddDropRoutes(router: Router) {
         where,
         include: {
           student: { 
-            select: { id: true, fullName: true, email: true, studentId: true } 
+            select: { id: true, fullName: true, email: true } 
           },
           course: true,
           courseSection: { 
