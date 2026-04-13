@@ -143,7 +143,14 @@ export default function CoursePage() {
   };
 
   const handleDeleteAssessment = async (assessment) => {
-    if (!confirm(`Delete "${assessment.title}"? This will also delete all questions and student attempts. This cannot be undone.`)) return;
+    const confirmed = await confirm({
+      title: 'Delete Assessment',
+      message: `Delete "${assessment.title}"? This will also delete all questions and student attempts. This cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     
     try {
       await deleteAssessment(assessment.id);
@@ -251,7 +258,14 @@ export default function CoursePage() {
   };
 
   const handleDeleteMaterial = async (materialId) => {
-    if (!confirm('Delete this material?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Material',
+      message: 'Delete this material? This cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     await deleteMaterial(materialId);
     setMaterials(materials.filter(m => m.id !== materialId));
     toast.success('Material deleted!');
@@ -330,7 +344,14 @@ export default function CoursePage() {
   };
 
   const handleSubmitAttempt = async () => {
-    if (!confirm('Submit this attempt?')) return;
+    const confirmed = await confirm({
+      title: 'Submit Exam',
+      message: 'Are you sure you want to submit this attempt? You cannot change your answers after submission.',
+      confirmText: 'Submit',
+      cancelText: 'Cancel',
+      type: 'info',
+    });
+    if (!confirmed) return;
     const result = await submitAttempt(activeAttempt.id);
     handleEndExam();
     // Refresh attempts list
@@ -355,7 +376,14 @@ export default function CoursePage() {
   };
 
   const handleGradeSubmit = async () => {
-    if (!confirm('Submit grades?')) return;
+    const confirmed = await confirm({
+      title: 'Submit Grades',
+      message: 'Are you sure you want to submit these grades?',
+      confirmText: 'Submit',
+      cancelText: 'Cancel',
+      type: 'success',
+    });
+    if (!confirmed) return;
     await gradeAttempt(gradingAttempt.id, gradingAnswers);
     toast.success('Grades submitted!');
     setGradingAttempt(null);
