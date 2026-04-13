@@ -300,9 +300,10 @@ export function registerAssessmentRoutes(router: Router) {
       });
 
       res.json({ success: true, message: 'Assessment deleted successfully' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete assessment error:', err);
-      res.status(500).json({ error: 'Failed to delete assessment', message: err.message });
+      const errorMessage = err?.message || String(err) || 'Unknown error';
+      res.status(500).json({ error: 'Failed to delete assessment', message: errorMessage });
     }
   });
 
