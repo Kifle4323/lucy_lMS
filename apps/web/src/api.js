@@ -20,7 +20,10 @@ export async function apiFetch(path, options) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
+    const err = new Error(body.error || body.message || `HTTP ${res.status}`);
+    // Pass through additional error properties
+    if (body.missingFields) err.missingFields = body.missingFields;
+    throw err;
   }
 
   return res.json();
