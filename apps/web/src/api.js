@@ -157,6 +157,14 @@ export async function toggleAssessmentOpen(assessmentId, isOpen) {
   return apiFetch(`/assessments/${assessmentId}/open`, { method: 'PATCH', body: JSON.stringify({ isOpen }) });
 }
 
+export async function updateAssessment(assessmentId, data) {
+  return apiFetch(`/assessments/${assessmentId}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteAssessment(assessmentId) {
+  return apiFetch(`/assessments/${assessmentId}`, { method: 'DELETE' });
+}
+
 export async function getManualGrades(assessmentId) {
   return apiFetch(`/assessments/${assessmentId}/manual-grades`);
 }

@@ -205,6 +205,102 @@ export function registerAssessmentRoutes(router: Router) {
     res.json(updated);
   });
 
+  // Update assessment (Teacher only)
+  router.put('/assessments/:assessmentId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ assessmentId: z.string() }).parse(req.params);
+    const body = z.object({
+      title: z.string().min(2).optional(),
+      examType: z.enum(['QUIZ', 'MIDTERM', 'FINAL']).optional(),
+      timeLimit: z.number().int().positive().nullable().optional(),
+      maxScore: z.number().int().positive().optional(),
+    }).parse(req.body);
+
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: params.assessmentId },
+      include: { course: { include: { courseSections: true } } },
+    });
+
+    if (!assessment) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+
+    // Check if teacher is assigned to this course
+    const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+    if (!courseSection) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+
+    const updated = await prisma.assessment.update({
+      where: { id: params.assessmentId },
+      data: body,
+    });
+
+    res.json(updated);
+  });
+
+  // Delete assessment (Teacher only)
+  router.delete('/assessments/:assessmentId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ assessmentId: z.string() }).parse(req.params);
+
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: params.assessmentId },
+      include: { course: { include: { courseSections: true } } },
+    });
+
+    if (!assessment) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+
+    // Check if teacher is assigned to this course
+    const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+    if (!courseSection) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+
+    // Delete related records first (attempts, answers, manual grades, questions)
+    await prisma.$transaction(async (tx) => {
+      // Get all attempt IDs for this assessment
+      const attempts = await tx.attempt.findMany({
+        where: { assessmentId: params.assessmentId },
+        select: { id: true },
+      });
+      const attemptIds = attempts.map(a => a.id);
+
+      // Delete answers for these attempts
+      if (attemptIds.length > 0) {
+        await tx.answer.deleteMany({
+          where: { attemptId: { in: attemptIds } },
+        });
+      }
+
+      // Delete attempts
+      await tx.attempt.deleteMany({
+        where: { assessmentId: params.assessmentId },
+      });
+
+      // Delete manual grades
+      await tx.manualGrade.deleteMany({
+        where: { assessmentId: params.assessmentId },
+      });
+
+      // Delete questions
+      await tx.question.deleteMany({
+        where: { assessmentId: params.assessmentId },
+      });
+
+      // Delete the assessment
+      await tx.assessment.delete({
+        where: { id: params.assessmentId },
+      });
+    });
+
+    res.json({ success: true, message: 'Assessment deleted successfully' });
+  });
+
   // Get all manual grades for an assessment (Teacher only)
   router.get('/assessments/:assessmentId/manual-grades', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ assessmentId: z.string() }).parse(req.params);

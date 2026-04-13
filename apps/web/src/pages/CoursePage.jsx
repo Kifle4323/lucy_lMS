@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts } from '../api';
+import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
 import {
@@ -116,6 +116,38 @@ export default function CoursePage() {
       setAssessments(assessments.map(a => a.id === assessmentId ? updated : a));
     } catch (err) {
       alert('Failed to update assessment: ' + err.message);
+    }
+  };
+
+  const handleEditAssessment = async (assessment) => {
+    const title = prompt('Enter new title:', assessment.title);
+    if (!title) return;
+    
+    const timeLimit = prompt('Enter time limit in minutes (leave empty for no limit):', assessment.timeLimit || '');
+    const maxScore = prompt('Enter max score:', assessment.maxScore || 100);
+    
+    try {
+      const updated = await updateAssessment(assessment.id, {
+        title,
+        timeLimit: timeLimit ? parseInt(timeLimit) : null,
+        maxScore: parseInt(maxScore) || 100,
+      });
+      setAssessments(assessments.map(a => a.id === assessment.id ? updated : a));
+      alert('Assessment updated!');
+    } catch (err) {
+      alert('Failed to update assessment: ' + err.message);
+    }
+  };
+
+  const handleDeleteAssessment = async (assessment) => {
+    if (!confirm(`Delete "${assessment.title}"? This will also delete all questions and student attempts. This cannot be undone.`)) return;
+    
+    try {
+      await deleteAssessment(assessment.id);
+      setAssessments(assessments.filter(a => a.id !== assessment.id));
+      alert('Assessment deleted!');
+    } catch (err) {
+      alert('Failed to delete assessment: ' + err.message);
     }
   };
 
@@ -1025,6 +1057,22 @@ export default function CoursePage() {
                             <Plus className="w-4 h-4" />
                             {selectedAssessment?.id === a.id ? 'Close' : 'Add Questions'}
                           </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditAssessment(a)}
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-medium rounded-lg transition-colors"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAssessment(a)}
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       )}
                       {user?.role === 'STUDENT' && (
