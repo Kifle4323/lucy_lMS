@@ -286,10 +286,10 @@ export default function TeacherGradesPage() {
               >
                 <div className="font-medium text-gray-900 dark:text-white">{section.course?.title}</div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {section.sectionCode} | {section.semester?.name}
+                  {section.class?.name} | {section.sectionCode}
                 </div>
                 <div className="text-xs text-gray-400 dark:text-gray-500">
-                  {section._count?.enrollments || 0} students
+                  {section.semester?.name} | {section._count?.enrollments || 0} students
                 </div>
               </button>
             ))}
@@ -307,7 +307,7 @@ export default function TeacherGradesPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedSection.course?.title}</h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {selectedSection.sectionCode} | {selectedSection.semester?.name}
+                    {selectedSection.class?.name} | {selectedSection.sectionCode} | {selectedSection.semester?.name}
                   </p>
                 </div>
               </div>
