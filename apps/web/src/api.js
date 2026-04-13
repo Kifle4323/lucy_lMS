@@ -558,9 +558,9 @@ export async function cancelAddDropRequest(requestId) {
 // Add/Drop - Admin
 export async function getAdminAddDropRequests(filters = {}) {
   const params = new URLSearchParams();
-  if (filters.status) params.append('status', filters.status);
-  if (filters.type) params.append('type', filters.type);
-  if (filters.semesterId) params.append('semesterId', filters.semesterId);
+  if (filters.status && filters.status !== '') params.append('status', filters.status);
+  if (filters.type && filters.type !== '') params.append('type', filters.type);
+  if (filters.semesterId && filters.semesterId !== '') params.append('semesterId', filters.semesterId);
   const query = params.toString() ? `?${params.toString()}` : '';
   return apiFetch(`/admin/add-drop-requests${query}`);
 }
