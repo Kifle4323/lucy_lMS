@@ -167,7 +167,27 @@ export default function StudentProfilePage() {
       }));
       setSuccess(submitForApproval ? 'Profile submitted for approval!' : 'Profile saved successfully!');
     } catch (err) {
-      setError(err.message || 'Failed to save profile');
+      // Handle validation errors with missing fields
+      if (err.missingFields && err.missingFields.length > 0) {
+        const fieldLabels = {
+          firstName: 'First Name',
+          fatherName: 'Father Name',
+          grandFatherName: 'Grandfather Name',
+          dateOfBirthGC: 'Date of Birth',
+          gender: 'Gender',
+          placeOfBirth: 'Place of Birth',
+          citizenship: 'Citizenship',
+          country: 'Country',
+          city: 'City',
+          phone: 'Phone Number',
+          stream: 'Stream',
+          entryYear: 'Entry Year'
+        };
+        const missingLabels = err.missingFields.map(f => fieldLabels[f] || f).join(', ');
+        setError(`${err.message}: ${missingLabels}`);
+      } else {
+        setError(err.message || 'Failed to save profile');
+      }
     } finally {
       setSaving(false);
     }

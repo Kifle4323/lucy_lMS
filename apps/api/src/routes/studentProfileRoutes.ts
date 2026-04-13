@@ -101,7 +101,40 @@ export function registerStudentProfileRoutes(router: Router) {
       checkedInDate: body.checkedInDate ? new Date(body.checkedInDate) : undefined,
     };
 
+    // Validate required fields when submitting for approval
     if (body.submitForApproval) {
+      const requiredFields = [
+        'firstName', 'fatherName', 'grandFatherName',
+        'dateOfBirthGC', 'gender', 'placeOfBirth',
+        'citizenship', 'country', 'city', 'phone',
+        'stream', 'entryYear'
+      ];
+      
+      const missingFields = requiredFields.filter(field => {
+        const value = updateData[field] || profile[field];
+        return !value || (typeof value === 'string' && value.trim() === '');
+      });
+      
+      if (missingFields.length > 0) {
+        res.status(400).json({ 
+          error: 'Please fill in all required fields',
+          missingFields 
+        });
+        return;
+      }
+      
+      // Check if at least one document is uploaded
+      const documents = await prisma.studentDocument.findMany({
+        where: { studentProfileId: profile.id }
+      });
+      
+      if (documents.length === 0) {
+        res.status(400).json({ 
+          error: 'Please upload at least one document before submitting' 
+        });
+        return;
+      }
+      
       updateData.status = 'PENDING_APPROVAL';
     }
 
