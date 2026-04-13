@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { getAvailableCourses, registerForSemester } from '../api.js';
+import { Link } from 'react-router-dom';
+import { getAvailableCourses, registerForSemester, getStudentProfile } from '../api.js';
 import Layout from '../components/Layout';
+import { AlertCircle, FileText } from 'lucide-react';
 
 export default function StudentRegistrationPage() {
   const [data, setData] = useState(null);
@@ -8,15 +10,20 @@ export default function StudentRegistrationPage() {
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [profileStatus, setProfileStatus] = useState(null);
 
   useEffect(() => {
-    loadAvailableCourses();
+    loadData();
   }, []);
 
-  async function loadAvailableCourses() {
+  async function loadData() {
     try {
-      const result = await getAvailableCourses();
+      const [result, profile] = await Promise.all([
+        getAvailableCourses(),
+        getStudentProfile().catch(() => null)
+      ]);
       setData(result);
+      setProfileStatus(profile?.status || null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -45,6 +52,86 @@ export default function StudentRegistrationPage() {
   if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
 
   const { semester, class: studentClass, courses, message } = data || {};
+
+  // Profile not submitted - must complete profile first
+  if (!profileStatus || profileStatus === 'DRAFT') {
+    return (
+      <Layout>
+        <div className="p-6 max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="w-8 h-8 text-yellow-600 flex-shrink-0" />
+              <div>
+                <h2 className="text-lg font-semibold text-yellow-800 mb-2">Complete Your Profile First</h2>
+                <p className="text-yellow-700 mb-4">
+                  You must complete and submit your profile information before you can register for a semester.
+                </p>
+                <Link
+                  to="/student-profile"
+                  className="inline-flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  <FileText className="w-5 h-5" />
+                  Complete Profile
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Profile pending approval
+  if (profileStatus === 'PENDING_APPROVAL') {
+    return (
+      <Layout>
+        <div className="p-6 max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="w-8 h-8 text-blue-600 flex-shrink-0" />
+              <div>
+                <h2 className="text-lg font-semibold text-blue-800 mb-2">Profile Pending Approval</h2>
+                <p className="text-blue-700">
+                  Your profile has been submitted and is waiting for admin approval. You will be able to register for semesters once your profile is approved.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Profile rejected
+  if (profileStatus === 'REJECTED') {
+    return (
+      <Layout>
+        <div className="p-6 max-w-4xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Semester Registration</h1>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="w-8 h-8 text-red-600 flex-shrink-0" />
+              <div>
+                <h2 className="text-lg font-semibold text-red-800 mb-2">Profile Rejected</h2>
+                <p className="text-red-700 mb-4">
+                  Your profile was rejected. Please review and update your information.
+                </p>
+                <Link
+                  to="/student-profile"
+                  className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  <FileText className="w-5 h-5" />
+                  Update Profile
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   // No semester open for registration
   if (!semester) {
