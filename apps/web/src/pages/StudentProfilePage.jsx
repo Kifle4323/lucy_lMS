@@ -92,6 +92,12 @@ export default function StudentProfilePage() {
     loadProfile();
   }, []);
 
+  useEffect(() => {
+    if (user?.profileImage) {
+      setProfileImage(user.profileImage);
+    }
+  }, [user]);
+
   const loadProfile = async () => {
     try {
       const data = await getStudentProfile();
