@@ -29,7 +29,8 @@ export function registerStudentProfileRoutes(router: Router) {
 
   // Save profile (draft or submit for approval)
   router.patch('/student/profile', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
-    const body = z.object({
+    try {
+      const body = z.object({
       // Basic Information
       firstName: z.string().optional(),
       fatherName: z.string().optional(),
@@ -145,6 +146,14 @@ export function registerStudentProfileRoutes(router: Router) {
     });
 
     res.json(updatedProfile);
+    } catch (err) {
+      console.error('Error updating student profile:', err);
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: 'Validation error', details: err.errors });
+        return;
+      }
+      res.status(500).json({ error: 'Failed to update profile', message: err instanceof Error ? err.message : 'Unknown error' });
+    }
   });
 
   // Upload document
