@@ -4,7 +4,31 @@ import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
 import { getUsers, adminCreateUser, getPendingUsers, approveUser, deleteUser } from '../api';
 import Layout from '../components/Layout';
-import { UserCircle, GraduationCap, BookOpen, Shield, Search, Plus, X, AlertCircle, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { UserCircle, GraduationCap, BookOpen, Shield, Search, Plus, X, AlertCircle, CheckCircle, Clock, Trash2, Check } from 'lucide-react';
+
+// Password validation helper
+function validatePassword(password) {
+  const checks = {
+    length: password.length >= 6,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+  };
+  return {
+    checks,
+    isValid: Object.values(checks).every(Boolean),
+  };
+}
+
+// Password requirement check component
+function PasswordCheck({ valid, text }) {
+  return (
+    <div className={`flex items-center gap-2 text-xs ${valid ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+      {valid ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+      <span>{text}</span>
+    </div>
+  );
+}
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
@@ -20,12 +44,15 @@ export default function AdminUsersPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
   const [createSuccess, setCreateSuccess] = useState('');
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
     fullName: '',
     role: 'STUDENT',
   });
+
+  const { checks, isValid } = validatePassword(newUser.password);
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') return;
@@ -48,6 +75,12 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setCreateError('');
     setCreateSuccess('');
+    
+    if (!isValid) {
+      setCreateError('Password must include at least one uppercase letter, one lowercase letter, and one number');
+      return;
+    }
+    
     setCreateLoading(true);
 
     try {
@@ -188,11 +221,21 @@ export default function AdminUsersPage() {
                     type="password"
                     value={newUser.password}
                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                     required
-                    minLength={6}
                     className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    placeholder="Minimum 6 characters"
+                    placeholder="Min 6 chars, uppercase, lowercase, number"
                   />
+                  {/* Password requirements */}
+                  {passwordFocused && newUser.password && (
+                    <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-0.5">
+                      <PasswordCheck valid={checks.length} text="At least 6 characters" />
+                      <PasswordCheck valid={checks.uppercase} text="At least one uppercase letter (A-Z)" />
+                      <PasswordCheck valid={checks.lowercase} text="At least one lowercase letter (a-z)" />
+                      <PasswordCheck valid={checks.number} text="At least one number (0-9)" />
+                    </div>
+                  )}
                 </div>
 
                 <div>

@@ -6,13 +6,20 @@ import { prisma } from '../db';
 import { signAccessToken, signRefreshToken } from '../auth';
 import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
+// Password validation: at least 1 uppercase, 1 lowercase, 1 number, min 6 chars
+const passwordSchema = z.string()
+  .min(6, 'Password must be at least 6 characters')
+  .regex(/[A-Z]/, 'Password must include at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must include at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must include at least one number');
+
 export function registerAuthRoutes(router: Router) {
   // Public registration - only STUDENT and TEACHER allowed
   router.post('/auth/register', async (req: Request, res: Response) => {
     const body = z
       .object({
         email: z.string().email(),
-        password: z.string().min(6),
+        password: passwordSchema,
         fullName: z.string().min(2),
         role: z.enum(['STUDENT', 'TEACHER']).optional(),
       })
@@ -46,7 +53,7 @@ export function registerAuthRoutes(router: Router) {
     const body = z
       .object({
         email: z.string().email(),
-        password: z.string().min(6),
+        password: passwordSchema,
         fullName: z.string().min(2),
         role: z.enum(['STUDENT', 'TEACHER', 'ADMIN']),
       })
@@ -156,7 +163,7 @@ export function registerAuthRoutes(router: Router) {
     const body = z
       .object({
         currentPassword: z.string().min(1),
-        newPassword: z.string().min(6),
+        newPassword: passwordSchema,
       })
       .parse(req.body);
 

@@ -2,7 +2,31 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { updateMyProfile, changePassword } from '../api';
 import Layout from '../components/Layout';
-import { Camera, User, Lock, AlertCircle, CheckCircle, Save, Upload } from 'lucide-react';
+import { Camera, User, Lock, AlertCircle, CheckCircle, Save, Upload, Check, X } from 'lucide-react';
+
+// Password validation helper
+function validatePassword(password) {
+  const checks = {
+    length: password.length >= 6,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+  };
+  return {
+    checks,
+    isValid: Object.values(checks).every(Boolean),
+  };
+}
+
+// Password requirement check component
+function PasswordCheck({ valid, text }) {
+  return (
+    <div className={`flex items-center gap-2 text-sm ${valid ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+      {valid ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+      <span>{text}</span>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
@@ -18,6 +42,7 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordFocused, setPasswordFocused] = useState(false);
   
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -26,6 +51,8 @@ export default function SettingsPage() {
   const [profileSuccess, setProfileSuccess] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const fileInputRef = useRef(null);
+
+  const { checks, isValid } = validatePassword(newPassword);
 
   useEffect(() => {
     return () => {
@@ -126,8 +153,8 @@ export default function SettingsPage() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters');
+    if (!isValid) {
+      setPasswordError('Password must include at least one uppercase letter, one lowercase letter, and one number');
       return;
     }
 
@@ -326,10 +353,21 @@ export default function SettingsPage() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
                 required
                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
                 placeholder="Enter new password"
               />
+              {/* Password requirements */}
+              {passwordFocused && newPassword && (
+                <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-1">
+                  <PasswordCheck valid={checks.length} text="At least 6 characters" />
+                  <PasswordCheck valid={checks.uppercase} text="At least one uppercase letter (A-Z)" />
+                  <PasswordCheck valid={checks.lowercase} text="At least one lowercase letter (a-z)" />
+                  <PasswordCheck valid={checks.number} text="At least one number (0-9)" />
+                </div>
+              )}
             </div>
 
             <div>

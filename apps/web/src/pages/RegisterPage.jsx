@@ -2,8 +2,32 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api';
 import { useTheme } from '../ThemeContext';
-import { GraduationCap, Mail, Lock, User, AlertCircle, Users, Sun, Moon, CheckCircle } from 'lucide-react';
+import { GraduationCap, Mail, Lock, User, AlertCircle, Users, Sun, Moon, CheckCircle, Check, X } from 'lucide-react';
 import lucyLogo from '../assets/lucy_logobg.png';
+
+// Password validation helper
+function validatePassword(password) {
+  const checks = {
+    length: password.length >= 6,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+  };
+  return {
+    checks,
+    isValid: Object.values(checks).every(Boolean),
+  };
+}
+
+// Password requirement check component
+function PasswordCheck({ valid, text }) {
+  return (
+    <div className={`flex items-center gap-2 text-sm ${valid ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+      {valid ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+      <span>{text}</span>
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -15,13 +39,22 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
+
+  const { checks, isValid } = validatePassword(form.password);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    
+    if (!isValid) {
+      setError('Password does not meet all requirements');
+      return;
+    }
+    
     setLoading(true);
     try {
       const result = await register(form);
@@ -110,11 +143,22 @@ export default function RegisterPage() {
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
                   required
                   className="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
                   placeholder="Create a password"
                 />
               </div>
+              {/* Password requirements */}
+              {passwordFocused && (
+                <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-1">
+                  <PasswordCheck valid={checks.length} text="At least 6 characters" />
+                  <PasswordCheck valid={checks.uppercase} text="At least one uppercase letter (A-Z)" />
+                  <PasswordCheck valid={checks.lowercase} text="At least one lowercase letter (a-z)" />
+                  <PasswordCheck valid={checks.number} text="At least one number (0-9)" />
+                </div>
+              )}
             </div>
 
             <div>
