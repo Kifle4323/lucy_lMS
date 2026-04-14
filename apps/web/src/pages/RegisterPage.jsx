@@ -123,7 +123,7 @@ export default function RegisterPage() {
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   required
                   className="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                  placeholder="John Doe"
+                  placeholder="abebe bekele"
                 />
               </div>
             </div>
