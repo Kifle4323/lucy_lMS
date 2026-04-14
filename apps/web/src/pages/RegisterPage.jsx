@@ -33,6 +33,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     fullName: '',
     role: 'STUDENT',
   });
@@ -40,10 +41,12 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmFocused, setConfirmFocused] = useState(false);
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
 
   const { checks, isValid } = validatePassword(form.password);
+  const passwordsMatch = form.password === form.confirmPassword && form.confirmPassword.length > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +55,11 @@ export default function RegisterPage() {
     
     if (!isValid) {
       setError('Password does not meet all requirements');
+      return;
+    }
+    
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
     
@@ -158,6 +166,39 @@ export default function RegisterPage() {
                   <PasswordCheck valid={checks.lowercase} text="At least one lowercase letter (a-z)" />
                   <PasswordCheck valid={checks.number} text="At least one number (0-9)" />
                 </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  onFocus={() => setConfirmFocused(true)}
+                  onBlur={() => setConfirmFocused(false)}
+                  required
+                  className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent outline-none transition-all dark:bg-gray-700 dark:text-white ${
+                    form.confirmPassword && (passwordsMatch 
+                      ? 'border-green-500 dark:border-green-400 focus:ring-green-500' 
+                      : 'border-red-500 dark:border-red-400 focus:ring-red-500')
+                    } border-gray-200 dark:border-gray-600 focus:ring-primary-500`
+                  }
+                  placeholder="Confirm your password"
+                />
+                {form.confirmPassword && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {passwordsMatch 
+                      ? <Check className="w-5 h-5 text-green-500" />
+                      : <X className="w-5 h-5 text-red-500" />
+                    }
+                  </div>
+                )}
+              </div>
+              {form.confirmPassword && !passwordsMatch && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">Passwords do not match</p>
               )}
             </div>
 
