@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts } from '../api';
+import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
 import {
@@ -30,7 +30,9 @@ import {
   Award,
   Upload,
   SkipForward,
-  Flag
+  Flag,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 export default function CoursePage() {
@@ -93,6 +95,39 @@ export default function CoursePage() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [skippedQuestions, setSkippedQuestions] = useState(new Set());
   const [timeRemaining, setTimeRemaining] = useState(null); // in seconds
+
+  // Report question state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportingQuestion, setReportingQuestion] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  // Report question handlers
+  async function handleReportQuestion() {
+    if (!reportingQuestion) return;
+    if (reportReason.trim().length < 10) {
+      toast.error('Please provide a reason (at least 10 characters)');
+      return;
+    }
+    setSubmittingReport(true);
+    try {
+      await reportQuestion(reportingQuestion.id, reportReason);
+      toast.success('Question reported successfully');
+      setShowReportModal(false);
+      setReportingQuestion(null);
+      setReportReason('');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSubmittingReport(false);
+    }
+  }
+
+  function openReportModal(question) {
+    setReportingQuestion(question);
+    setReportReason('');
+    setShowReportModal(true);
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -689,7 +724,16 @@ export default function CoursePage() {
                       </span>
                       <p className="mt-3 text-gray-900 font-medium text-lg">{currentQuestion.prompt}</p>
                     </div>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">{currentQuestion.points} pts</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">{currentQuestion.points} pts</span>
+                      <button
+                        onClick={() => openReportModal(currentQuestion)}
+                        className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded"
+                        title="Report this question"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {currentQuestion.type === 'MCQ' && (
@@ -1688,6 +1732,61 @@ export default function CoursePage() {
                   </tbody>
                 </table>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Question Modal */}
+      {showReportModal && reportingQuestion && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Report Question</h2>
+              <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportingQuestion(null);
+                }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-700">{reportingQuestion.prompt}</p>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Why do you think this question is incorrect or has an issue?
+                </label>
+                <textarea
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  placeholder="Please explain the issue with this question (at least 10 characters)..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setReportingQuestion(null);
+                  }}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReportQuestion}
+                  disabled={submittingReport || reportReason.trim().length < 10}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingReport ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

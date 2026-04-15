@@ -123,6 +123,7 @@ export default function Layout({ children }) {
       { path: '/student/add-drop', label: 'Add/Drop Courses', icon: ClipboardList },
       { path: '/student/exams', label: 'Exam Schedule', icon: CalendarClock },
       { path: '/student/results', label: 'My Results', icon: Award },
+      { path: '/student/my-reports', label: 'My Reports', icon: FileText },
       { path: '/live-sessions', label: 'Live Classes', icon: Video },
       { path: '/student-profile', label: 'My Profile', icon: User },
     ] : []),
