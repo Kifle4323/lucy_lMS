@@ -931,7 +931,7 @@ export default function TeacherGradesPage() {
                           </p>
                         )}
                         <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {earlyResponses.students?.map(s => (
+                          {Array.isArray(earlyResponses?.students) && earlyResponses.students.map(s => (
                             <div key={s.student.id} className="flex justify-between items-center text-sm">
                               <span>{s.student.fullName}</span>
                               {!s.hasResponded ? (
