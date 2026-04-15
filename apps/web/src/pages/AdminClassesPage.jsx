@@ -105,7 +105,7 @@ export default function AdminClassesPage() {
       const result = await addStudentToClass(addModal.classId, studentId);
       setClasses(classes.map(c => 
         c.id === addModal.classId 
-          ? { ...c, students: [...c.students, result] }
+          ? { ...c, students: [...(c.students || []), result] }
           : c
       ));
       toast.success('Student added to class!');
@@ -141,7 +141,7 @@ export default function AdminClassesPage() {
       const result = await addTeacherToClass(addModal.classId, teacherId);
       setClasses(classes.map(c => 
         c.id === addModal.classId 
-          ? { ...c, teachers: [...c.teachers, result] }
+          ? { ...c, teachers: [...(c.teachers || []), result] }
           : c
       ));
       toast.success('Teacher added to class!');
