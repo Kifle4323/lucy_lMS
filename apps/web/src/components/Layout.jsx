@@ -38,6 +38,7 @@ export default function Layout({ children }) {
     faceVerifications: 0,
     studentProfiles: 0,
     pendingUsers: 0,
+    pendingAddDropRequests: 0,
     total: 0,
   });
   const [studentNotifications, setStudentNotifications] = useState({
@@ -261,12 +262,86 @@ export default function Layout({ children }) {
             {/* Notification Bell - Admin only */}
             {user?.role === 'ADMIN' && notifications.total > 0 && (
               <div className="relative">
-                <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white relative">
+                <button
+                  onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white relative"
+                >
                   <Bell className="w-5 h-5" />
                   <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full animate-bounce">
                     {notifications.total > 99 ? '99+' : notifications.total}
                   </span>
                 </button>
+
+                {/* Admin Dropdown */}
+                {showNotificationDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                      <h3 className="font-semibold text-sm">Pending Actions</h3>
+                    </div>
+                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {notifications.pendingUsers > 0 && (
+                        <Link
+                          to="/admin/users"
+                          onClick={() => setShowNotificationDropdown(false)}
+                          className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                              <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <span className="text-sm">Pending Users</span>
+                          </div>
+                          <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.pendingUsers}</span>
+                        </Link>
+                      )}
+                      {notifications.faceVerifications > 0 && (
+                        <Link
+                          to="/admin/face-verifications"
+                          onClick={() => setShowNotificationDropdown(false)}
+                          className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
+                              <ScanFace className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <span className="text-sm">Face Verifications</span>
+                          </div>
+                          <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.faceVerifications}</span>
+                        </Link>
+                      )}
+                      {notifications.studentProfiles > 0 && (
+                        <Link
+                          to="/admin/student-profiles"
+                          onClick={() => setShowNotificationDropdown(false)}
+                          className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            </div>
+                            <span className="text-sm">Student Profiles</span>
+                          </div>
+                          <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.studentProfiles}</span>
+                        </Link>
+                      )}
+                      {notifications.pendingAddDropRequests > 0 && (
+                        <Link
+                          to="/admin/add-drop"
+                          onClick={() => setShowNotificationDropdown(false)}
+                          className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
+                              <ClipboardList className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                            </div>
+                            <span className="text-sm">Add/Drop Requests</span>
+                          </div>
+                          <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.pendingAddDropRequests}</span>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

@@ -21,11 +21,17 @@ export function registerNotificationRoutes(router: Router) {
       where: { isApproved: false },
     });
 
+    // Count pending add/drop requests
+    const pendingAddDropRequests = await prisma.addDropRequest.count({
+      where: { status: 'PENDING' },
+    });
+
     res.json({
       faceVerifications: pendingFaceVerifications,
       studentProfiles: pendingStudentProfiles,
       pendingUsers: pendingUsers,
-      total: pendingFaceVerifications + pendingStudentProfiles + pendingUsers,
+      pendingAddDropRequests: pendingAddDropRequests,
+      total: pendingFaceVerifications + pendingStudentProfiles + pendingUsers + pendingAddDropRequests,
     });
   });
 
