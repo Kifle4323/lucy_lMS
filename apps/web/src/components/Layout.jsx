@@ -39,6 +39,7 @@ export default function Layout({ children }) {
     studentProfiles: 0,
     pendingUsers: 0,
     pendingAddDropRequests: 0,
+    pendingQuestionReports: 0,
     total: 0,
   });
   const [studentNotifications, setStudentNotifications] = useState({
@@ -109,6 +110,7 @@ export default function Layout({ children }) {
       { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
       { path: '/admin/student-profiles', label: 'Student Profiles', icon: FileText },
       { path: '/admin/add-drop-requests', label: 'Add/Drop Requests', icon: ClipboardList },
+      { path: '/admin/question-reports', label: 'Question Reports', icon: FileText },
     ] : []),
     ...(user?.role === 'TEACHER' ? [
       { path: '/my-classes', label: 'My Classes', icon: Users },
@@ -238,6 +240,7 @@ export default function Layout({ children }) {
                             notif.type === 'NEW_ASSESSMENT' ? '/my-classes' :
                             notif.type === 'ADD_DROP_APPROVED' ? '/student/my-courses' :
                             notif.type === 'ADD_DROP_REJECTED' ? '/student/add-drop' :
+                            notif.type === 'QUESTION_REPORT_RESOLVED' ? '/student/my-reports' :
                             '/'
                           }
                           onClick={() => setShowNotificationDropdown(false)}
@@ -326,7 +329,7 @@ export default function Layout({ children }) {
                       )}
                       {notifications.pendingAddDropRequests > 0 && (
                         <Link
-                          to="/admin/add-drop"
+                          to="/admin/add-drop-requests"
                           onClick={() => setShowNotificationDropdown(false)}
                           className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
                         >
@@ -337,6 +340,21 @@ export default function Layout({ children }) {
                             <span className="text-sm">Add/Drop Requests</span>
                           </div>
                           <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.pendingAddDropRequests}</span>
+                        </Link>
+                      )}
+                      {notifications.pendingQuestionReports > 0 && (
+                        <Link
+                          to="/admin/question-reports"
+                          onClick={() => setShowNotificationDropdown(false)}
+                          className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                              <FileText className="w-4 h-4 text-red-600 dark:text-red-400" />
+                            </div>
+                            <span className="text-sm">Question Reports</span>
+                          </div>
+                          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.pendingQuestionReports}</span>
                         </Link>
                       )}
                     </div>

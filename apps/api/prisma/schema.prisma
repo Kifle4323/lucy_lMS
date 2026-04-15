@@ -99,6 +99,8 @@ model User {
   addDropRequests AddDropRequest[]  @relation("AddDropStudent")
   reviewedAddDrop AddDropRequest[] @relation("AddDropReviewer")
   notifications   Notification[]
+  questionReports QuestionReport[]  @relation("StudentReports")
+  reviewedReports QuestionReport[]  @relation("ReviewerReports")
 }
 
 model StudentProfile {
@@ -331,6 +333,27 @@ model Question {
 
   assessment Assessment @relation(fields: [assessmentId], references: [id])
   answers    Answer[]
+  reports    QuestionReport[]
+}
+
+// Student reports for mistaken/incorrect questions
+model QuestionReport {
+  id          String           @id @default(cuid())
+  questionId  String
+  studentId   String
+  reason      String           // Why the student thinks the question is wrong
+  status      ReportStatus     @default(PENDING)
+  adminNotes  String?          // Admin response/notes
+  reviewedBy  String?          // Admin who reviewed
+  reviewedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  question    Question         @relation(fields: [questionId], references: [id])
+  student     User             @relation("StudentReports", fields: [studentId], references: [id])
+  reviewer    User?            @relation("ReviewerReports", fields: [reviewedBy], references: [id])
+
+  @@unique([questionId, studentId]) // One report per question per student
+  @@index([status])
 }
 
 model Attempt {
@@ -640,4 +663,12 @@ enum AddDropStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED_CORRECT   // Question was indeed wrong
+  RESOLVED_INCORRECT // Report was invalid
+  DISMISSED
 }

@@ -26,12 +26,18 @@ export function registerNotificationRoutes(router: Router) {
       where: { status: 'PENDING' },
     });
 
+    // Count pending question reports
+    const pendingQuestionReports = await prisma.questionReport.count({
+      where: { status: 'PENDING' },
+    });
+
     res.json({
       faceVerifications: pendingFaceVerifications,
       studentProfiles: pendingStudentProfiles,
       pendingUsers: pendingUsers,
       pendingAddDropRequests: pendingAddDropRequests,
-      total: pendingFaceVerifications + pendingStudentProfiles + pendingUsers + pendingAddDropRequests,
+      pendingQuestionReports: pendingQuestionReports,
+      total: pendingFaceVerifications + pendingStudentProfiles + pendingUsers + pendingAddDropRequests + pendingQuestionReports,
     });
   });
 

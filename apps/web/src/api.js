@@ -549,6 +549,27 @@ export async function getEarlyExamResponses(examScheduleId) {
   return apiFetch(`/teacher/exam-schedules/${examScheduleId}/early-responses`);
 }
 
+// Question Reports
+export async function reportQuestion(questionId, reason) {
+  return apiFetch(`/questions/${questionId}/report`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+export async function getMyQuestionReports() {
+  return apiFetch('/my/question-reports');
+}
+
+export async function deleteMyQuestionReport(reportId) {
+  return apiFetch(`/my/question-reports/${reportId}`, { method: 'DELETE' });
+}
+
+export async function getAdminQuestionReports(status = 'ALL') {
+  return apiFetch(`/admin/question-reports?status=${status}`);
+}
+
+export async function updateQuestionReportStatus(reportId, data) {
+  return apiFetch(`/admin/question-reports/${reportId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 export async function confirmEarlyExam(examScheduleId) {
   return apiFetch(`/teacher/exam-schedules/${examScheduleId}/confirm-early`, { method: 'POST' });
 }
