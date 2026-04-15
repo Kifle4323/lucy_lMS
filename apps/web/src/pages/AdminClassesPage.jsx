@@ -177,7 +177,7 @@ export default function AdminClassesPage() {
       const result = await assignCourseToClass(addModal.classId, courseId, teacherId);
       setClasses(classes.map(c => 
         c.id === addModal.classId 
-          ? { ...c, courses: [...c.courses, result] }
+          ? { ...c, courses: [...(c.courses || []), result] }
           : c
       ));
       toast.success('Course assigned to class!');
@@ -338,19 +338,40 @@ export default function AdminClassesPage() {
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="space-y-1">
-                      {cls.courses?.map((c) => (
-                        <div key={c.id} className="flex items-center justify-between p-2 bg-green-50 rounded text-xs">
-                          <div>
-                            <span className="font-medium text-green-800">{c.course.title}</span>
-                            {c.teacher && <span className="text-green-600 ml-1">({c.teacher.fullName})</span>}
+                    {cls.courses?.length > 0 ? (
+                      <div className="space-y-2">
+                        {cls.courses.map((c) => (
+                          <div key={c.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                <BookOpen className="w-4 h-4 text-green-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-green-800 text-sm">{c.course.title}</p>
+                                <div className="flex items-center gap-2 text-xs text-green-600">
+                                  <span className="px-1.5 py-0.5 bg-green-100 rounded">{c.course.code}</span>
+                                  <span>{c.course.creditHours} cr</span>
+                                  {c.teacher && (
+                                    <span className="flex items-center gap-1">
+                                      <UserCircle className="w-3 h-3" />
+                                      {c.teacher.fullName}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => handleRemoveCourse(cls.id, c.courseId)} 
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
                           </div>
-                          <button onClick={() => handleRemoveCourse(cls.id, c.courseId)} className="text-red-500 hover:text-red-700">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">No courses assigned yet</p>
+                    )}
                   </div>
                 </div>
               </div>
