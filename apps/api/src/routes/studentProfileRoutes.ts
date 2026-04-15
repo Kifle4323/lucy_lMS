@@ -102,6 +102,9 @@ export function registerStudentProfileRoutes(router: Router) {
       checkedInDate: body.checkedInDate ? new Date(body.checkedInDate) : undefined,
     };
 
+    // Remove submitForApproval from updateData (it's not a database field)
+    delete updateData.submitForApproval;
+
     // Validate required fields when submitting for approval
     if (body.submitForApproval) {
       const requiredFields = [
