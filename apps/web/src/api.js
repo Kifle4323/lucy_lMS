@@ -570,12 +570,17 @@ export async function deleteMyQuestionReport(reportId) {
   return apiFetch(`/my/question-reports/${reportId}`, { method: 'DELETE' });
 }
 
-export async function getAdminQuestionReports(status = 'ALL') {
-  return apiFetch(`/admin/question-reports?status=${status}`);
+export async function getTeacherQuestionReports(status = 'ALL') {
+  const query = status !== 'ALL' ? `?status=${status}` : '';
+  return apiFetch(`/teacher/question-reports${query}`);
 }
 
 export async function updateQuestionReportStatus(reportId, data) {
-  return apiFetch(`/admin/question-reports/${reportId}`, { method: 'PATCH', body: JSON.stringify(data) });
+  return apiFetch(`/teacher/question-reports/${reportId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function getTeacherQuestionReportsCount() {
+  return apiFetch('/teacher/question-reports/count');
 }
 
 export async function confirmEarlyExam(examScheduleId) {

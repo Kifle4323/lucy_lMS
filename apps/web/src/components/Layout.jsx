@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import lucyLogo from '../assets/lucy_logobg.png';
-import { getAdminNotifications, getNotifications, markAllNotificationsRead } from '../api';
+import { getAdminNotifications, getNotifications, markAllNotificationsRead, getTeacherQuestionReportsCount } from '../api';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -42,6 +42,9 @@ export default function Layout({ children }) {
     pendingQuestionReports: 0,
     total: 0,
   });
+  const [teacherNotifications, setTeacherNotifications] = useState({
+    pendingQuestionReports: 0,
+  });
   const [studentNotifications, setStudentNotifications] = useState({
     notifications: [],
     unreadCount: 0,
@@ -55,6 +58,13 @@ export default function Layout({ children }) {
         setNotifications(data);
       } catch (err) {
         console.error('Failed to fetch notifications:', err);
+      }
+    } else if (user?.role === 'TEACHER') {
+      try {
+        const data = await getTeacherQuestionReportsCount();
+        setTeacherNotifications({ pendingQuestionReports: data.pendingCount });
+      } catch (err) {
+        console.error('Failed to fetch teacher notifications:', err);
       }
     } else if (user?.role === 'STUDENT') {
       try {
@@ -87,17 +97,27 @@ export default function Layout({ children }) {
 
   // Get notification count for a specific path
   const getNotificationCount = (path) => {
-    if (user?.role !== 'ADMIN') return 0;
-    switch (path) {
-      case '/admin/face-verifications':
-        return notifications.faceVerifications;
-      case '/admin/student-profiles':
-        return notifications.studentProfiles;
-      case '/admin/users':
-        return notifications.pendingUsers;
-      default:
-        return 0;
+    if (user?.role === 'ADMIN') {
+      switch (path) {
+        case '/admin/face-verifications':
+          return notifications.faceVerifications;
+        case '/admin/student-profiles':
+          return notifications.studentProfiles;
+        case '/admin/users':
+          return notifications.pendingUsers;
+        default:
+          return 0;
+      }
     }
+    if (user?.role === 'TEACHER') {
+      switch (path) {
+        case '/teacher/question-reports':
+          return teacherNotifications.pendingQuestionReports;
+        default:
+          return 0;
+      }
+    }
+    return 0;
   };
 
   const navItems = [
@@ -110,11 +130,11 @@ export default function Layout({ children }) {
       { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
       { path: '/admin/student-profiles', label: 'Student Profiles', icon: FileText },
       { path: '/admin/add-drop-requests', label: 'Add/Drop Requests', icon: ClipboardList },
-      { path: '/admin/question-reports', label: 'Question Reports', icon: FileText },
     ] : []),
     ...(user?.role === 'TEACHER' ? [
       { path: '/my-classes', label: 'My Classes', icon: Users },
       { path: '/teacher/grades', label: 'Grade Management', icon: ClipboardList },
+      { path: '/teacher/question-reports', label: 'Question Reports', icon: FileText },
       { path: '/live-sessions', label: 'Live Classes', icon: Video },
     ] : []),
     ...(user?.role === 'STUDENT' ? [

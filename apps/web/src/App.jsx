@@ -24,7 +24,7 @@ import StudentExamsPage from './pages/StudentExamsPage';
 import StudentRegistrationPage from './pages/StudentRegistrationPage';
 import AddDropPage from './pages/AddDropPage';
 import AdminAddDropRequestsPage from './pages/AdminAddDropRequestsPage';
-import AdminQuestionReportsPage from './pages/AdminQuestionReportsPage';
+import TeacherQuestionReportsPage from './pages/TeacherQuestionReportsPage';
 import StudentMyReportsPage from './pages/StudentMyReportsPage';
 
 function PrivateRoute({ children }) {
@@ -222,10 +222,10 @@ export default function App() {
         }
       />
       <Route
-        path="/admin/question-reports"
+        path="/teacher/question-reports"
         element={
           <PrivateRoute>
-            <AdminQuestionReportsPage />
+            <TeacherQuestionReportsPage />
           </PrivateRoute>
         }
       />

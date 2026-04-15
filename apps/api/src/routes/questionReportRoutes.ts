@@ -107,15 +107,34 @@ export function registerQuestionReportRoutes(router: Router) {
     }
   });
 
-  // Admin: Get all question reports
-  router.get('/admin/question-reports', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
+  // Teacher: Get question reports for courses they teach
+  router.get('/teacher/question-reports', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const query = z.object({
       status: z.enum(['PENDING', 'UNDER_REVIEW', 'RESOLVED_CORRECT', 'RESOLVED_INCORRECT', 'DISMISSED', 'ALL']).optional().default('ALL'),
     }).parse(req.query);
+    const user = req.user!;
 
     try {
+      // Get course sections the teacher teaches
+      const courseSections = await prisma.courseSection.findMany({
+        where: { teacherId: user.id },
+        select: { id: true },
+      });
+      const courseSectionIds = courseSections.map(cs => cs.id);
+
+      // Get assessments in those course sections
+      const assessments = await prisma.assessment.findMany({
+        where: { courseSectionId: { in: courseSectionIds } },
+        select: { id: true },
+      });
+      const assessmentIds = assessments.map(a => a.id);
+
+      // Get reports for questions in those assessments
       const reports = await prisma.questionReport.findMany({
-        where: query.status === 'ALL' ? {} : { status: query.status },
+        where: {
+          question: { assessmentId: { in: assessmentIds } },
+          ...(query.status === 'ALL' ? {} : { status: query.status }),
+        },
         include: {
           question: {
             include: {
@@ -135,8 +154,8 @@ export function registerQuestionReportRoutes(router: Router) {
     }
   });
 
-  // Admin: Update report status
-  router.patch('/admin/question-reports/:reportId', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
+  // Teacher: Update report status
+  router.patch('/teacher/question-reports/:reportId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ reportId: z.string() }).parse(req.params);
     const body = z.object({
       status: z.enum(['UNDER_REVIEW', 'RESOLVED_CORRECT', 'RESOLVED_INCORRECT', 'DISMISSED']),
@@ -145,7 +164,36 @@ export function registerQuestionReportRoutes(router: Router) {
     const user = req.user!;
 
     try {
-      const report = await prisma.questionReport.update({
+      // Verify the report is for a question in a course the teacher teaches
+      const report = await prisma.questionReport.findUnique({
+        where: { id: params.reportId },
+        include: {
+          question: {
+            include: {
+              assessment: {
+                include: { courseSection: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!report) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+
+      const courseSection = await prisma.courseSection.findFirst({
+        where: {
+          id: report.question.assessment.courseSectionId,
+          teacherId: user.id,
+        },
+      });
+
+      if (!courseSection) {
+        return res.status(403).json({ error: 'You can only review reports for your own courses' });
+      }
+
+      const updatedReport = await prisma.questionReport.update({
         where: { id: params.reportId },
         data: {
           status: body.status,
@@ -169,19 +217,19 @@ export function registerQuestionReportRoutes(router: Router) {
 
       if (body.status === 'RESOLVED_CORRECT') {
         notificationTitle = 'Question Report Accepted';
-        notificationMessage = `Your report for question in "${report.question.assessment.title}" has been reviewed and accepted. The question has been flagged for correction.`;
+        notificationMessage = `Your report for question in "${updatedReport.question.assessment.title}" has been reviewed and accepted. The question has been flagged for correction.`;
       } else if (body.status === 'RESOLVED_INCORRECT') {
         notificationTitle = 'Question Report Reviewed';
-        notificationMessage = `Your report for question in "${report.question.assessment.title}" has been reviewed. The question was found to be correct.`;
+        notificationMessage = `Your report for question in "${updatedReport.question.assessment.title}" has been reviewed. The question was found to be correct.`;
       } else if (body.status === 'DISMISSED') {
         notificationTitle = 'Question Report Dismissed';
-        notificationMessage = `Your report for question in "${report.question.assessment.title}" has been dismissed.`;
+        notificationMessage = `Your report for question in "${updatedReport.question.assessment.title}" has been dismissed.`;
       }
 
       if (notificationTitle) {
         await prisma.notification.create({
           data: {
-            userId: report.studentId,
+            userId: updatedReport.studentId,
             type: 'QUESTION_REPORT_RESOLVED',
             title: notificationTitle,
             message: notificationMessage,
@@ -190,18 +238,37 @@ export function registerQuestionReportRoutes(router: Router) {
         });
       }
 
-      res.json(report);
+      res.json(updatedReport);
     } catch (err) {
       console.error('Error updating report:', err);
       res.status(500).json({ error: 'Failed to update report' });
     }
   });
 
-  // Admin: Get report counts for notifications
-  router.get('/admin/question-reports/count', authRequired, requireRole(['ADMIN']), async (_req: AuthedRequest, res: Response) => {
+  // Teacher: Get report counts for notifications
+  router.get('/teacher/question-reports/count', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+
     try {
+      // Get course sections the teacher teaches
+      const courseSections = await prisma.courseSection.findMany({
+        where: { teacherId: user.id },
+        select: { id: true },
+      });
+      const courseSectionIds = courseSections.map(cs => cs.id);
+
+      // Get assessments in those course sections
+      const assessments = await prisma.assessment.findMany({
+        where: { courseSectionId: { in: courseSectionIds } },
+        select: { id: true },
+      });
+      const assessmentIds = assessments.map(a => a.id);
+
       const pendingCount = await prisma.questionReport.count({
-        where: { status: 'PENDING' },
+        where: {
+          question: { assessmentId: { in: assessmentIds } },
+          status: 'PENDING',
+        },
       });
 
       res.json({ pendingCount });

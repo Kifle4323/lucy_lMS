@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getAdminQuestionReports, updateQuestionReportStatus } from '../api';
+import { getTeacherQuestionReports, updateQuestionReportStatus } from '../api';
 import Layout from '../components/Layout';
 import { AlertCircle, CheckCircle, XCircle, Clock, Eye, X, FileQuestion } from 'lucide-react';
 
-export default function AdminQuestionReportsPage() {
+export default function TeacherQuestionReportsPage() {
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
@@ -16,13 +16,13 @@ export default function AdminQuestionReportsPage() {
   const [selectedReport, setSelectedReport] = useState(null);
 
   useEffect(() => {
-    if (user?.role !== 'ADMIN') return;
+    if (user?.role !== 'TEACHER') return;
     loadReports();
   }, [user, statusFilter]);
 
   async function loadReports() {
     try {
-      const data = await getAdminQuestionReports(statusFilter);
+      const data = await getTeacherQuestionReports(statusFilter);
       setReports(data);
     } catch (err) {
       toast.error(err.message);
