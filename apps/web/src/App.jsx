@@ -18,7 +18,6 @@ import AdminFaceVerificationPage from './pages/AdminFaceVerificationPage';
 import SettingsPage from './pages/SettingsPage';
 import StudentProfilePage from './pages/StudentProfilePage';
 import AdminStudentProfilesPage from './pages/AdminStudentProfilesPage';
-import AdminStudentFilesPage from './pages/AdminStudentFilesPage';
 import TeacherGradesPage from './pages/TeacherGradesPage';
 import StudentResultsPage from './pages/StudentResultsPage';
 import StudentExamsPage from './pages/StudentExamsPage';
@@ -161,14 +160,6 @@ export default function App() {
         element={
           <PrivateRoute>
             <AdminStudentProfilesPage />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/admin/student-files"
-        element={
-          <PrivateRoute>
-            <AdminStudentFilesPage />
           </PrivateRoute>
         }
       />
