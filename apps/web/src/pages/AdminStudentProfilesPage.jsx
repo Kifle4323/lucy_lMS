@@ -5,7 +5,8 @@ import { getAllStudentProfiles, approveStudentProfile, rejectStudentProfile } fr
 import Layout from '../components/Layout';
 import { 
   User, Clock, CheckCircle, XCircle, Search, Eye, X, 
-  FileText, MapPin, GraduationCap, AlertCircle, ChevronDown, ChevronUp 
+  FileText, MapPin, GraduationCap, AlertCircle, ChevronDown, ChevronUp,
+  ExternalLink, Download
 } from 'lucide-react';
 
 export default function AdminStudentProfilesPage() {
@@ -19,6 +20,7 @@ export default function AdminStudentProfilesPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState(null);
 
   useEffect(() => {
     loadProfiles();
@@ -302,9 +304,18 @@ export default function AdminStudentProfilesPage() {
                               <p className="text-sm text-gray-500 dark:text-gray-400">{doc.fileName}</p>
                             </div>
                           </div>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${doc.status === 'SUBMITTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-                            {doc.status}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setPreviewDocument(doc)}
+                              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-primary-600 dark:text-primary-400"
+                              title="Preview document"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${doc.status === 'SUBMITTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+                              {doc.status}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -343,6 +354,62 @@ export default function AdminStudentProfilesPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Document Preview Modal */}
+        {previewDocument && (
+          <div className="fixed inset-0 bg-black/75 z-[60] flex flex-col">
+            <div className="bg-white dark:bg-gray-800 p-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-white">{previewDocument.documentType}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{previewDocument.fileName}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewDocument.fileUrl}
+                  download={previewDocument.fileName || 'document'}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"
+                  title="Download"
+                >
+                  <Download className="w-5 h-5" />
+                </a>
+                <button
+                  onClick={() => setPreviewDocument(null)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
+              {previewDocument.fileUrl?.startsWith('data:image') ? (
+                <img
+                  src={previewDocument.fileUrl}
+                  alt={previewDocument.documentType}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                />
+              ) : previewDocument.fileUrl?.startsWith('data:application/pdf') ? (
+                <iframe
+                  src={previewDocument.fileUrl}
+                  className="w-full h-full rounded-lg bg-white"
+                  title="Document Preview"
+                />
+              ) : (
+                <div className="text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">Preview not available for this file type</p>
+                  <a
+                    href={previewDocument.fileUrl}
+                    download={previewDocument.fileName || 'document'}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download File
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         )}
