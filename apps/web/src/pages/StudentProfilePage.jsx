@@ -15,7 +15,7 @@ const DOCUMENT_TYPES = [
   'Other Documents',
 ];
 
-const GENDERS = ['Male', 'Female', 'Other'];
+const GENDERS = ['Male', 'Female'];
 const HEALTH_STATUSES = ['Normal', 'Disabled', 'Chronic Illness'];
 const MARITAL_STATUSES = ['Single', 'Married', 'Divorced', 'Widowed'];
 const ECONOMICAL_STATUSES = ['Low', 'Medium', 'High'];
