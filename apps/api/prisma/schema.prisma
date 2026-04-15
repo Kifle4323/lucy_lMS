@@ -480,18 +480,19 @@ model Semester {
 
 // Course offered in a specific semester (Course Section)
 model CourseSection {
-  id          String   @id @default(cuid())
-  courseId    String
-  semesterId  String
-  teacherId   String
-  classId     String?  // Optional: assign to a class (group of students)
-  sectionCode String   // e.g., "CS101-A" (course code + section)
-  schedule    String?  // e.g., "Mon/Wed 9:00-10:30"
-  room        String?  // e.g., "Room 101"
-  maxCapacity Int?
-  isPublished Boolean  @default(false) // Visible to students for registration
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String       @id @default(cuid())
+  courseId     String
+  semesterId   String
+  teacherId    String
+  classId      String?      // Optional: assign to a class (group of students)
+  sectionCode  String       // e.g., "CS101-A" (course code + section)
+  deliveryMode DeliveryMode @default(ONLINE)
+  schedule     String?      // e.g., "Mon/Wed 9:00-10:30"
+  room         String?      // e.g., "Room 101"
+  maxCapacity  Int?
+  isPublished  Boolean      @default(false) // Visible to students for registration
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   course      Course   @relation(fields: [courseId], references: [id])
   semester    Semester @relation(fields: [semesterId], references: [id])

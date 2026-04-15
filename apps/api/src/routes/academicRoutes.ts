@@ -228,6 +228,7 @@ export function registerAcademicRoutes(router: Router) {
         teacherId: z.string(),
         classId: z.string().nullable().optional(), // Optional: assign to a class
         sectionCode: z.string().min(1), // e.g., "CS101-A"
+        deliveryMode: z.enum(['ONLINE', 'PAPER']).optional(),
         schedule: z.string().optional(),
         room: z.string().optional(),
         maxCapacity: z.number().int().optional(),
@@ -242,6 +243,7 @@ export function registerAcademicRoutes(router: Router) {
             semesterId: body.semesterId,
             teacherId: body.teacherId,
             classId: body.classId || null,
+            deliveryMode: body.deliveryMode || 'ONLINE',
             sectionCode: body.sectionCode,
             schedule: body.schedule,
             room: body.room,
@@ -304,6 +306,7 @@ export function registerAcademicRoutes(router: Router) {
         teacherId: z.string().optional(),
         classId: z.string().nullable().optional(),
         sectionCode: z.string().min(1).optional(),
+        deliveryMode: z.enum(['ONLINE', 'PAPER']).optional(),
         schedule: z.string().optional(),
         room: z.string().optional(),
         maxCapacity: z.number().int().optional(),

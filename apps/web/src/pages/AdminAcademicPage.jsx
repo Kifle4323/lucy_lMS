@@ -233,7 +233,7 @@ export default function AdminAcademicPage() {
   }
 
   function addCourseSectionRow() {
-    setCourseSectionRows([...courseSectionRows, { courseId: '', teacherId: '', classId: '', sectionCode: '' }]);
+    setCourseSectionRows([...courseSectionRows, { courseId: '', teacherId: '', classId: '', sectionCode: '', deliveryMode: 'ONLINE', schedule: '', room: '' }]);
   }
 
   function removeCourseSectionRow(index) {
@@ -261,14 +261,17 @@ export default function AdminAcademicPage() {
           semesterId: selectedSemester,
           teacherId: row.teacherId,
           classId: row.classId || null,
-          sectionCode: row.sectionCode
+          sectionCode: row.sectionCode,
+          deliveryMode: row.deliveryMode || 'ONLINE',
+          schedule: row.schedule || null,
+          room: row.room || null
         };
         const newSection = await createCourseSection(data);
         createdSections.push(newSection);
       }
 
       setCourseSections([...courseSections, ...createdSections]);
-      setCourseSectionRows([{ courseId: '', teacherId: '', classId: '', sectionCode: '' }]);
+      setCourseSectionRows([{ courseId: '', teacherId: '', classId: '', sectionCode: '', deliveryMode: 'ONLINE', schedule: '', room: '' }]);
     } catch (err) {
       setError(err.message);
     }
@@ -281,6 +284,7 @@ export default function AdminAcademicPage() {
         teacherId: editingCourseSection.teacherId,
         classId: editingCourseSection.classId || null,
         sectionCode: editingCourseSection.sectionCode,
+        deliveryMode: editingCourseSection.deliveryMode || 'ONLINE',
         schedule: editingCourseSection.schedule,
         room: editingCourseSection.room
       });
@@ -779,7 +783,7 @@ export default function AdminAcademicPage() {
                           </button>
                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-3 gap-3 mb-3">
                         <div>
                           <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Course</label>
                           <select
@@ -821,6 +825,39 @@ export default function AdminAcademicPage() {
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             placeholder="e.g., CS101-A"
                             required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Delivery Mode</label>
+                          <select
+                            value={row.deliveryMode || 'ONLINE'}
+                            onChange={e => updateCourseSectionRow(index, 'deliveryMode', e.target.value)}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          >
+                            <option value="ONLINE">Online</option>
+                            <option value="PAPER">Face to Face</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Schedule</label>
+                          <input
+                            type="text"
+                            value={row.schedule || ''}
+                            onChange={e => updateCourseSectionRow(index, 'schedule', e.target.value)}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            placeholder="e.g., Mon/Wed 9:00-10:30"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Room</label>
+                          <input
+                            type="text"
+                            value={row.room || ''}
+                            onChange={e => updateCourseSectionRow(index, 'room', e.target.value)}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            placeholder="e.g., Room 101"
                           />
                         </div>
                       </div>
@@ -892,6 +929,17 @@ export default function AdminAcademicPage() {
                           {classes.map(c => (
                             <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                           ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Delivery Mode</label>
+                        <select
+                          value={editingCourseSection.deliveryMode || 'ONLINE'}
+                          onChange={e => setEditingCourseSection({ ...editingCourseSection, deliveryMode: e.target.value })}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        >
+                          <option value="ONLINE">Online</option>
+                          <option value="PAPER">Face to Face</option>
                         </select>
                       </div>
                       <div>
