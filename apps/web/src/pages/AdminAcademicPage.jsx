@@ -931,51 +931,115 @@ export default function AdminAcademicPage() {
                 </div>
               )}
 
-              {/* Course Sections List */}
+              {/* Course Sections List - Grouped by Class */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Course Sections</h2>
-                <div className="space-y-3">
-                  {courseSections.map(section => (
-                    <div key={section.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-700">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium text-gray-900 dark:text-white">{section.course?.code} - {section.course?.title}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Teacher: {section.teacher?.fullName}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Section: {section.sectionCode}
-                          </p>
-                          {section.class && (
-                            <p className="text-sm text-blue-600 dark:text-blue-400">
-                              Class: {section.class.name} ({section.class.code})
-                            </p>
-                          )}
-                          <p className="text-xs text-gray-400 mt-1">
-                            {section._count?.enrollments || 0} students enrolled
-                          </p>
+                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Course Sections by Class</h2>
+                
+                {courseSections.length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">No course sections added yet.</p>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Group sections by class */}
+                    {Object.entries(
+                      courseSections.reduce((acc, section) => {
+                        const classKey = section.classId || 'no-class';
+                        const className = section.class?.name || 'Unassigned (Individual Enrollment)';
+                        const classCode = section.class?.code || '';
+                        if (!acc[classKey]) {
+                          acc[classKey] = {
+                            name: className,
+                            code: classCode,
+                            sections: []
+                          };
+                        }
+                        acc[classKey].sections.push(section);
+                        return acc;
+                      }, {})
+                    ).map(([classId, classGroup]) => (
+                      <div key={classId} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        {/* Class Header */}
+                        <div className="bg-gray-100 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-gray-900 dark:text-white">{classGroup.name}</span>
+                              {classGroup.code && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400">({classGroup.code})</span>
+                              )}
+                            </div>
+                            <span className="text-sm bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 px-2 py-1 rounded">
+                              {classGroup.sections.length} course{classGroup.sections.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => startEditCourseSection(section)}
-                            className="text-blue-600 hover:underline text-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCourseSection(section.id)}
-                            className="text-red-600 hover:underline text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        
+                        {/* Courses Table */}
+                        <table className="w-full">
+                          <thead className="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Course</th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Section</th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Teacher</th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Schedule</th>
+                              <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Students</th>
+                              <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {classGroup.sections.map(section => (
+                              <tr key={section.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="px-4 py-3">
+                                  <div>
+                                    <p className="font-medium text-gray-900 dark:text-white">{section.course?.code}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{section.course?.title}</p>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="text-gray-900 dark:text-white">{section.sectionCode}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="text-gray-900 dark:text-white">{section.teacher?.fullName || 'Not assigned'}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="text-sm text-gray-500 dark:text-gray-400">{section.schedule || '-'}</span>
+                                  {section.room && (
+                                    <span className="block text-xs text-gray-400">{section.room}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="text-gray-900 dark:text-white">{section._count?.enrollments || 0}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {section.isPublished ? (
+                                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs rounded">Published</span>
+                                  ) : (
+                                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded">Draft</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={() => startEditCourseSection(section)}
+                                      className="text-blue-600 hover:text-blue-800 text-sm"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteCourseSection(section.id)}
+                                      className="text-red-600 hover:text-red-800 text-sm"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
-                  ))}
-                  {courseSections.length === 0 && (
-                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">No course sections added yet.</p>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
