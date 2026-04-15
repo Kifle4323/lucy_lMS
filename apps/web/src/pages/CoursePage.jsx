@@ -11,6 +11,7 @@ import {
   FileText,
   Clock,
   ChevronLeft,
+  ChevronRight,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -27,7 +28,9 @@ import {
   Unlock,
   Edit3,
   Award,
-  Upload
+  Upload,
+  SkipForward,
+  Flag
 } from 'lucide-react';
 
 export default function CoursePage() {
@@ -85,6 +88,11 @@ export default function CoursePage() {
   const [faceTrackingActive, setFaceTrackingActive] = useState(false);
   const [faceMismatchDetected, setFaceMismatchDetected] = useState(false);
   const [studentAttempts, setStudentAttempts] = useState([]); // Track completed attempts
+  
+  // Quiz navigation state
+  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  const [skippedQuestions, setSkippedQuestions] = useState(new Set());
+  const [timeRemaining, setTimeRemaining] = useState(null); // in seconds
 
   useEffect(() => {
     setLoading(true);
@@ -96,6 +104,34 @@ export default function CoursePage() {
       user?.role === 'STUDENT' ? getStudentAttempts(courseId).then(setStudentAttempts).catch(() => []) : Promise.resolve(),
     ]).finally(() => setLoading(false));
   }, [courseId, user?.role]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (timeRemaining === null || timeRemaining <= 0) return;
+    
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Auto-submit when time runs out
+          if (activeAttempt) {
+            handleSubmitAttempt();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemaining]);
+
+  // Format time for display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleCreateAssessment = async (e) => {
     e.preventDefault();
@@ -305,6 +341,15 @@ export default function CoursePage() {
         initialAnswers[a.questionId] = a.selected || a.textAnswer || '';
       });
       setAnswers(initialAnswers);
+      // Reset quiz navigation state
+      setCurrentQuestionIdx(0);
+      setSkippedQuestions(new Set());
+      // Initialize timer if timeLimit is set
+      if (fullAttempt.assessment?.timeLimit) {
+        setTimeRemaining(fullAttempt.assessment.timeLimit * 60); // convert minutes to seconds
+      } else {
+        setTimeRemaining(null);
+      }
       // Start continuous face tracking
       setFaceTrackingActive(true);
       setFaceMismatchDetected(false);
@@ -333,6 +378,9 @@ export default function CoursePage() {
   const handleEndExam = () => {
     setFaceTrackingActive(false);
     setFaceMismatchDetected(false);
+    setCurrentQuestionIdx(0);
+    setSkippedQuestions(new Set());
+    setTimeRemaining(null);
   };
 
   const handleSelectAnswer = async (questionId, selected) => {
@@ -537,6 +585,11 @@ export default function CoursePage() {
   // Student taking quiz
   if (activeAttempt) {
     const questions = activeAttempt.assessment?.questions || [];
+    const currentQuestion = questions[currentQuestionIdx];
+    const answeredCount = Object.keys(answers).filter(qId => answers[qId] && answers[qId].length > 0).length;
+    const skippedCount = skippedQuestions.size;
+    const unansweredCount = questions.length - answeredCount;
+    
     return (
       <Layout>
         <FaceTracker
@@ -546,7 +599,7 @@ export default function CoursePage() {
           onMismatch={handleFaceMismatch}
           intervalMs={60000}
         />
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {/* Face Mismatch Warning */}
           {faceMismatchDetected && (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
@@ -562,93 +615,196 @@ export default function CoursePage() {
             </div>
           )}
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          {/* Header with Timer */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{activeAttempt.assessment?.title}</h2>
-                <p className="text-gray-500 mt-1">{activeAttempt.assessment?.examType}</p>
+                <p className="text-gray-500 text-sm">{activeAttempt.assessment?.examType}</p>
               </div>
-              {activeAttempt.assessment?.timeLimit && (
-                <div className="flex items-center gap-2 text-gray-600">
+              {timeRemaining !== null && (
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                  timeRemaining < 300 ? 'bg-red-100 text-red-700' : 
+                  timeRemaining < 600 ? 'bg-yellow-100 text-yellow-700' : 
+                  'bg-gray-100 text-gray-700'
+                }`}>
                   <Clock className="w-5 h-5" />
-                  {activeAttempt.assessment.timeLimit} min
+                  <span className="font-mono text-lg font-bold">{formatTime(timeRemaining)}</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-4">
-            {questions.map((q, idx) => (
-              <div key={q.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <span className="px-2 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded">
-                      Q{idx + 1} - {q.type}
-                    </span>
-                    <p className="mt-2 text-gray-900 font-medium">{q.prompt}</p>
-                  </div>
-                  <span className="text-sm text-gray-500">{q.points} pts</span>
-                </div>
-
-                {q.type === 'MCQ' && (
-                  <div className="space-y-2">
-                    {['A', 'B', 'C', 'D'].map((opt) => (
-                      <label
-                        key={opt}
-                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                          answers[q.id] === opt ? 'bg-primary-50 border-2 border-primary-500' : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+          <div className="flex gap-6">
+            {/* Question Navigator - Left Sidebar */}
+            <div className="w-20 flex-shrink-0">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sticky top-4">
+                <p className="text-xs text-gray-500 mb-2 text-center">Questions</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {questions.map((q, idx) => {
+                    const isAnswered = answers[q.id] && answers[q.id].length > 0;
+                    const isSkipped = skippedQuestions.has(q.id);
+                    const isCurrent = idx === currentQuestionIdx;
+                    
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={() => setCurrentQuestionIdx(idx)}
+                        className={`w-8 h-8 rounded text-xs font-medium transition-all ${
+                          isCurrent
+                            ? 'bg-primary-600 text-white ring-2 ring-primary-300'
+                            : isAnswered
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : isSkipped
+                            ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
-                        <input
-                          type="radio"
-                          name={q.id}
-                          checked={answers[q.id] === opt}
-                          onChange={() => handleSelectAnswer(q.id, opt)}
-                          className="w-4 h-4 text-primary-600"
-                        />
-                        <span className="font-medium text-gray-700">{opt}:</span>
-                        <span className="text-gray-900">{q[`option${opt}`]}</span>
-                      </label>
-                    ))}
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                  <div className="flex items-center gap-1 text-xs">
+                    <div className="w-3 h-3 rounded bg-green-100"></div>
+                    <span className="text-gray-500">{answeredCount}</span>
                   </div>
-                )}
-
-                {q.type === 'FITB' && (
-                  <input
-                    type="text"
-                    placeholder="Type your answer..."
-                    value={answers[q.id] || ''}
-                    onChange={(e) => handleTextAnswer(q.id, e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                )}
-
-                {q.type === 'SHORT_ANSWER' && (
-                  <textarea
-                    placeholder="Write your answer..."
-                    value={answers[q.id] || ''}
-                    onChange={(e) => handleTextAnswer(q.id, e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                )}
+                  <div className="flex items-center gap-1 text-xs">
+                    <div className="w-3 h-3 rounded bg-yellow-100"></div>
+                    <span className="text-gray-500">{skippedCount}</span>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
 
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={handleSubmitAttempt}
-              className="px-6 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
-            >
-              Submit Exam
-            </button>
-            <button
-              onClick={() => { setActiveAttempt(null); setAnswers({}); }}
-              className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
-            >
-              Cancel
-            </button>
+            {/* Main Question Area */}
+            <div className="flex-1">
+              {currentQuestion && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <span className="px-2 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded">
+                        Q{currentQuestionIdx + 1} of {questions.length} - {currentQuestion.type}
+                      </span>
+                      <p className="mt-3 text-gray-900 font-medium text-lg">{currentQuestion.prompt}</p>
+                    </div>
+                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">{currentQuestion.points} pts</span>
+                  </div>
+
+                  {currentQuestion.type === 'MCQ' && (
+                    <div className="space-y-2 mt-4">
+                      {['A', 'B', 'C', 'D'].map((opt) => (
+                        <label
+                          key={opt}
+                          className={`flex items-center gap-3 p-4 rounded-lg cursor-pointer transition-all ${
+                            answers[currentQuestion.id] === opt 
+                              ? 'bg-primary-50 border-2 border-primary-500' 
+                              : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={currentQuestion.id}
+                            checked={answers[currentQuestion.id] === opt}
+                            onChange={() => handleSelectAnswer(currentQuestion.id, opt)}
+                            className="w-4 h-4 text-primary-600"
+                          />
+                          <span className="font-medium text-gray-700">{opt}:</span>
+                          <span className="text-gray-900">{currentQuestion[`option${opt}`]}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {currentQuestion.type === 'FITB' && (
+                    <input
+                      type="text"
+                      placeholder="Type your answer..."
+                      value={answers[currentQuestion.id] || ''}
+                      onChange={(e) => handleTextAnswer(currentQuestion.id, e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mt-4"
+                    />
+                  )}
+
+                  {currentQuestion.type === 'SHORT_ANSWER' && (
+                    <textarea
+                      placeholder="Write your answer..."
+                      value={answers[currentQuestion.id] || ''}
+                      onChange={(e) => handleTextAnswer(currentQuestion.id, e.target.value)}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mt-4"
+                    />
+                  )}
+
+                  {/* Navigation Buttons */}
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => setCurrentQuestionIdx(Math.max(0, currentQuestionIdx - 1))}
+                      disabled={currentQuestionIdx === 0}
+                      className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </button>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSkippedQuestions(prev => new Set([...prev, currentQuestion.id]));
+                          if (currentQuestionIdx < questions.length - 1) {
+                            setCurrentQuestionIdx(currentQuestionIdx + 1);
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-medium rounded-lg"
+                      >
+                        <SkipForward className="w-4 h-4" />
+                        Skip
+                      </button>
+
+                      {currentQuestionIdx < questions.length - 1 ? (
+                        <button
+                          onClick={() => setCurrentQuestionIdx(currentQuestionIdx + 1)}
+                          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg"
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleSubmitAttempt}
+                          className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                        >
+                          <Flag className="w-4 h-4" />
+                          Submit Exam
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Section */}
+              <div className="mt-6 bg-gray-50 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">{answeredCount}</span> answered, {' '}
+                    <span className="font-medium">{skippedCount}</span> skipped, {' '}
+                    <span className="font-medium">{unansweredCount}</span> remaining
+                  </div>
+                  <button
+                    onClick={() => { 
+                      setActiveAttempt(null); 
+                      setAnswers({});
+                      handleEndExam();
+                    }}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg text-sm"
+                  >
+                    Exit Exam
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Layout>
