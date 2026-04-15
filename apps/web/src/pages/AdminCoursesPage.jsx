@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
-import { getCourses, createCourse, getSemesters, getCourseSections } from '../api';
+import { getCourses, createCourse, deleteCourse, updateCourse } from '../api';
 import Layout from '../components/Layout';
-import { Plus, BookOpen, X, FileText, Filter, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, BookOpen, X, Edit2, Trash2, Search } from 'lucide-react';
 
 export default function AdminCoursesPage() {
   const { user } = useAuth();
   const toast = useToast();
   const [courses, setCourses] = useState([]);
-  const [semesters, setSemesters] = useState([]);
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [courseSections, setCourseSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [expandedClasses, setExpandedClasses] = useState({});
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [newCourse, setNewCourse] = useState({
     title: '',
     code: '',
@@ -26,49 +24,8 @@ export default function AdminCoursesPage() {
   useEffect(() => {
     if (user?.role !== 'ADMIN') return;
     setLoading(true);
-    Promise.all([
-      getCourses().then(setCourses),
-      getSemesters().then(data => {
-        setSemesters(data);
-        // Auto-select current semester
-        const current = data.find(s => s.isCurrent);
-        if (current) {
-          setSelectedSemester(current.id);
-        } else if (data.length > 0) {
-          setSelectedSemester(data[0].id);
-        }
-      })
-    ]).finally(() => setLoading(false));
+    getCourses().then(setCourses).finally(() => setLoading(false));
   }, [user]);
-
-  useEffect(() => {
-    if (selectedSemester) {
-      getCourseSections(selectedSemester).then(setCourseSections);
-    }
-  }, [selectedSemester]);
-
-  // Group course sections by class
-  const sectionsByClass = courseSections.reduce((acc, section) => {
-    const classKey = section.classId || 'no-class';
-    const className = section.class?.name || 'Unassigned';
-    if (!acc[classKey]) {
-      acc[classKey] = {
-        id: classKey,
-        name: className,
-        code: section.class?.code,
-        sections: []
-      };
-    }
-    acc[classKey].sections.push(section);
-    return acc;
-  }, {});
-
-  const toggleClass = (classId) => {
-    setExpandedClasses(prev => ({
-      ...prev,
-      [classId]: !prev[classId]
-    }));
-  };
 
   const handleCreateCourse = async (e) => {
     e.preventDefault();
@@ -83,26 +40,43 @@ export default function AdminCoursesPage() {
         creditHours: 3,
         ectsCredits: 5
       });
+      toast.success('Course created!');
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  const getStatusBadge = (status) => {
-    const colors = {
-      UPCOMING: 'bg-gray-100 text-gray-700',
-      REGISTRATION_OPEN: 'bg-blue-100 text-blue-700',
-      IN_PROGRESS: 'bg-green-100 text-green-700',
-      GRADING: 'bg-yellow-100 text-yellow-700',
-      COMPLETED: 'bg-purple-100 text-purple-700',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+  const handleUpdateCourse = async (e) => {
+    e.preventDefault();
+    if (!editingCourse) return;
+    try {
+      const updated = await updateCourse(editingCourse.id, editingCourse);
+      setCourses(courses.map(c => c.id === updated.id ? updated : c));
+      setEditingCourse(null);
+      toast.success('Course updated!');
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
+
+  const handleDeleteCourse = async (courseId) => {
+    if (!window.confirm('Are you sure you want to delete this course?')) return;
+    try {
+      await deleteCourse(courseId);
+      setCourses(courses.filter(c => c.id !== courseId));
+      toast.success('Course deleted!');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const filteredCourses = courses.filter(c => 
+    c.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.code?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (user?.role !== 'ADMIN') return <div className="p-8 text-center">Access denied</div>;
   if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
-
-  const selectedSemesterData = semesters.find(s => s.id === selectedSemester);
 
   return (
     <Layout>
@@ -110,8 +84,8 @@ export default function AdminCoursesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courses</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Manage courses by semester and class</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Catalog</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all courses available in the university</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -122,129 +96,108 @@ export default function AdminCoursesPage() {
           </button>
         </div>
 
-        {/* Semester Filter */}
+        {/* Search */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-400" />
-              <span className="font-medium text-gray-700 dark:text-gray-300">Filter by Semester:</span>
-            </div>
-            <select
-              value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
-              className="flex-1 sm:max-w-xs px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">Select Semester</option>
-              {semesters.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.type}) {s.isCurrent ? ' - Current' : ''}
-                </option>
-              ))}
-            </select>
-            {selectedSemesterData && (
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(selectedSemesterData.status)}`}>
-                {selectedSemesterData.status?.replace('_', ' ')}
-              </span>
-            )}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search courses by title or code..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
           </div>
         </div>
 
-        {/* Course Sections by Class */}
-        {selectedSemester ? (
-          Object.keys(sectionsByClass).length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No course sections for this semester</h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">Create course sections in the Academic page first</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {Object.values(sectionsByClass).map(classGroup => (
-                <div key={classGroup.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  {/* Class Header */}
-                  <button
-                    onClick={() => toggleClass(classGroup.id)}
-                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Users className="w-5 h-5 text-primary-600" />
-                      <div className="text-left">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">{classGroup.name}</h3>
-                        {classGroup.code && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{classGroup.code}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="px-2 py-1 bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 text-sm rounded">
-                        {classGroup.sections.length} course{classGroup.sections.length !== 1 ? 's' : ''}
-                      </span>
-                      {expandedClasses[classGroup.id] ? (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
-                      )}
-                    </div>
-                  </button>
-
-                  {/* Course Sections */}
-                  {expandedClasses[classGroup.id] && (
-                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {classGroup.sections.map(section => (
-                        <div key={section.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-4">
-                              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                              </div>
-                              <div>
-                                <h4 className="font-medium text-gray-900 dark:text-white">{section.course?.title}</h4>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{section.sectionCode}</p>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 text-xs rounded">
-                                    {section.course?.creditHours || 0} Credits
-                                  </span>
-                                  <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs rounded">
-                                    {section.course?.ectsCredits || 0} ECTS
-                                  </span>
-                                  {section.schedule && (
-                                    <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded">
-                                      {section.schedule}
-                                    </span>
-                                  )}
-                                  {section.room && (
-                                    <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs rounded">
-                                      {section.room}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">{section.teacher?.fullName || 'No Teacher'}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{section._count?.enrollments || 0} students</p>
-                              {section.isPublished ? (
-                                <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs rounded">Published</span>
-                              ) : (
-                                <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded">Draft</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )
-        ) : (
+        {/* Courses List */}
+        {filteredCourses.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-            <Filter className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Select a semester</h3>
-            <p className="text-gray-500 dark:text-gray-400">Choose a semester to view courses organized by class</p>
+            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              {searchQuery ? 'No courses found' : 'No courses yet'}
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              {searchQuery ? 'Try a different search term' : 'Create courses that can be used when setting up semesters'}
+            </p>
+            {!searchQuery && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg"
+              >
+                <Plus className="w-5 h-5" />
+                Create First Course
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Course</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Code</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Credits</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ECTS</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {filteredCourses.map((course) => (
+                  <tr key={course.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{course.title}</p>
+                          {course.description && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{course.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-mono rounded">
+                        {course.code}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-gray-900 dark:text-white font-medium">{course.creditHours}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-gray-900 dark:text-white font-medium">{course.ectsCredits}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setEditingCourse(course)}
+                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/50 rounded"
+                          title="Edit course"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCourse(course.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded"
+                          title="Delete course"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
+
+        {/* Stats */}
+        <div className="mt-6 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+          <p>{courses.length} course{courses.length !== 1 ? 's' : ''} in catalog</p>
+        </div>
       </div>
 
       {/* Create Course Modal */}
@@ -331,6 +284,90 @@ export default function AdminCoursesPage() {
                   className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                 >
                   Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Course Modal */}
+      {editingCourse && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Course</h2>
+              <button onClick={() => setEditingCourse(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateCourse} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Title</label>
+                <input
+                  type="text"
+                  value={editingCourse.title}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Code</label>
+                <input
+                  type="text"
+                  value={editingCourse.code}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, code: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <textarea
+                  value={editingCourse.description || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Hours</label>
+                  <input
+                    type="number"
+                    value={editingCourse.creditHours}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, creditHours: parseInt(e.target.value) || 0 })}
+                    required
+                    min={1}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ECTS Credits</label>
+                  <input
+                    type="number"
+                    value={editingCourse.ectsCredits}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, ectsCredits: parseInt(e.target.value) || 0 })}
+                    required
+                    min={1}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCourse(null)}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

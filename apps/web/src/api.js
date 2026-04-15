@@ -133,6 +133,14 @@ export async function createCourse(data) {
   return apiFetch('/courses', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function updateCourse(id, data) {
+  return apiFetch(`/courses/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteCourse(id) {
+  return apiFetch(`/courses/${id}`, { method: 'DELETE' });
+}
+
 // Admin: get all users
 export async function getUsers() {
   return apiFetch('/users');

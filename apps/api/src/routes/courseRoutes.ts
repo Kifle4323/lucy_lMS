@@ -230,4 +230,50 @@ export function registerCourseRoutes(router: Router) {
 
     res.json(attempts);
   });
+
+  // Update course (Admin only)
+  router.patch('/courses/:courseId', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ courseId: z.string() }).parse(req.params);
+    const body = z.object({
+      title: z.string().min(2).optional(),
+      code: z.string().min(2).optional(),
+      description: z.string().optional().nullable(),
+      creditHours: z.number().int().min(1).optional(),
+      ectsCredits: z.number().int().min(1).optional(),
+    }).parse(req.body);
+
+    const course = await prisma.course.update({
+      where: { id: params.courseId },
+      data: {
+        title: body.title,
+        code: body.code,
+        description: body.description,
+        creditHours: body.creditHours,
+        ectsCredits: body.ectsCredits,
+      },
+    });
+
+    res.json(course);
+  });
+
+  // Delete course (Admin only)
+  router.delete('/courses/:courseId', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ courseId: z.string() }).parse(req.params);
+
+    // Check if course is used in any course sections
+    const courseSections = await prisma.courseSection.findFirst({
+      where: { courseId: params.courseId },
+    });
+
+    if (courseSections) {
+      res.status(400).json({ error: 'Cannot delete course that is assigned to classes. Remove from classes first.' });
+      return;
+    }
+
+    await prisma.course.delete({
+      where: { id: params.courseId },
+    });
+
+    res.json({ success: true });
+  });
 }
