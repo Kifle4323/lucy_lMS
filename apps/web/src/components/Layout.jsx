@@ -107,6 +107,7 @@ export default function Layout({ children }) {
       { path: '/admin/academic', label: 'Academic', icon: Calendar },
       { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
       { path: '/admin/student-profiles', label: 'Student Profiles', icon: FileText },
+      { path: '/admin/student-files', label: 'Student Files', icon: FolderOpen },
       { path: '/admin/add-drop-requests', label: 'Add/Drop Requests', icon: ClipboardList },
     ] : []),
     ...(user?.role === 'TEACHER' ? [
