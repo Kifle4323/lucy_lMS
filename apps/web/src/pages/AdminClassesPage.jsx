@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getClasses, createClass, getUsers, addStudentToClass, addTeacherToClass, removeStudentFromClass, removeTeacherFromClass, getCourses, assignCourseToClass, removeCourseFromClass } from '../api';
+import { getClasses, createClass, updateClass, deleteClass, getUsers, addStudentToClass, addTeacherToClass, removeStudentFromClass, removeTeacherFromClass, getCourses, assignCourseToClass, removeCourseFromClass } from '../api';
 import Layout from '../components/Layout';
 import { 
   Plus, 
@@ -13,6 +13,7 @@ import {
   MoreVertical,
   X,
   Trash2,
+  Edit,
   GraduationCap,
   UserCircle,
   ChevronRight
@@ -29,6 +30,7 @@ export default function AdminClassesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [newClass, setNewClass] = useState({ name: '', code: '', year: '', section: '' });
+  const [editingClass, setEditingClass] = useState(null);
   const [addModal, setAddModal] = useState({ type: null, classId: null });
 
   useEffect(() => {
@@ -57,6 +59,42 @@ export default function AdminClassesPage() {
       setClasses([created, ...classes]);
       setShowCreateModal(false);
       setNewClass({ name: '', code: '', year: '', section: '' });
+      toast.success('Class created!');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleUpdateClass = async (e) => {
+    e.preventDefault();
+    try {
+      const updated = await updateClass(editingClass.id, {
+        name: editingClass.name,
+        code: editingClass.code,
+        year: editingClass.year ? parseInt(editingClass.year) : null,
+        section: editingClass.section || null,
+      });
+      setClasses(classes.map(c => c.id === updated.id ? { ...c, ...updated } : c));
+      setEditingClass(null);
+      toast.success('Class updated!');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleDeleteClass = async (classId) => {
+    const confirmed = await confirm({
+      title: 'Delete Class',
+      message: 'Are you sure you want to delete this class? This will remove all students, teachers, and course assignments.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await deleteClass(classId);
+      setClasses(classes.filter(c => c.id !== classId));
+      toast.success('Class deleted!');
     } catch (err) {
       toast.error(err.message);
     }
@@ -215,9 +253,25 @@ export default function AdminClassesPage() {
                       <h3 className="font-semibold text-gray-900">{cls.name}</h3>
                       <p className="text-sm text-gray-500">{cls.code}</p>
                     </div>
-                    <span className="px-2 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded">
-                      {cls.year ? `Year ${cls.year}` : 'No Year'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded">
+                        {cls.year ? `Year ${cls.year}` : 'No Year'}
+                      </span>
+                      <button
+                        onClick={() => setEditingClass(cls)}
+                        className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-primary-600"
+                        title="Edit class"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClass(cls.id)}
+                        className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-red-600"
+                        title="Delete class"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -373,6 +427,77 @@ export default function AdminClassesPage() {
                   className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                 >
                   Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Class Modal */}
+      {editingClass && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Edit Class</h2>
+              <button onClick={() => setEditingClass(null)} className="p-1 hover:bg-gray-100 rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateClass} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
+                <input
+                  type="text"
+                  value={editingClass.name}
+                  onChange={(e) => setEditingClass({ ...editingClass, name: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Class Code</label>
+                <input
+                  type="text"
+                  value={editingClass.code}
+                  onChange={(e) => setEditingClass({ ...editingClass, code: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                  <input
+                    type="number"
+                    value={editingClass.year || ''}
+                    onChange={(e) => setEditingClass({ ...editingClass, year: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                  <input
+                    type="text"
+                    value={editingClass.section || ''}
+                    onChange={(e) => setEditingClass({ ...editingClass, section: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingClass(null)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
+                >
+                  Update
                 </button>
               </div>
             </form>

@@ -242,4 +242,38 @@ export function registerClassRoutes(router: Router) {
 
     res.json({ success: true });
   });
+
+  // Update class (Admin only)
+  router.patch('/classes/:classId', authRequired, requireRole(['ADMIN']), async (req: Request, res: Response) => {
+    const params = z.object({ classId: z.string() }).parse(req.params);
+    const body = z.object({
+      name: z.string().min(2).optional(),
+      code: z.string().min(2).optional(),
+      year: z.number().int().nullable().optional(),
+      section: z.string().nullable().optional(),
+    }).parse(req.body);
+
+    const updated = await prisma.class.update({
+      where: { id: params.classId },
+      data: {
+        name: body.name,
+        code: body.code,
+        year: body.year,
+        section: body.section,
+      },
+    });
+
+    res.json(updated);
+  });
+
+  // Delete class (Admin only)
+  router.delete('/classes/:classId', authRequired, requireRole(['ADMIN']), async (req: Request, res: Response) => {
+    const params = z.object({ classId: z.string() }).parse(req.params);
+
+    await prisma.class.delete({
+      where: { id: params.classId },
+    });
+
+    res.json({ success: true });
+  });
 }

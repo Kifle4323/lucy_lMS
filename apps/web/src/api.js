@@ -92,6 +92,14 @@ export async function createClass(data) {
   return apiFetch('/classes', { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function updateClass(classId, data) {
+  return apiFetch(`/classes/${classId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteClass(classId) {
+  return apiFetch(`/classes/${classId}`, { method: 'DELETE' });
+}
+
 export async function addStudentToClass(classId, studentId) {
   return apiFetch(`/classes/${classId}/students`, { method: 'POST', body: JSON.stringify({ studentId }) });
 }
