@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   FileText,
+  FolderOpen,
   User,
   Bell,
   Calendar,
