@@ -25,6 +25,11 @@ enum ExamType {
   FINAL
 }
 
+enum DeliveryMode {
+  ONLINE
+  PAPER
+}
+
 enum QuestionType {
   MCQ
   FITB
@@ -289,15 +294,16 @@ model LiveSession {
 }
 
 model Assessment {
-  id        String   @id @default(cuid())
-  courseId  String
-  title     String
-  examType  ExamType @default(QUIZ)
-  timeLimit Int?
-  maxScore  Int      @default(100) // Maximum score for this assessment
-  isOpen   Boolean  @default(false) // Teacher must open for students to take
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String       @id @default(cuid())
+  courseId     String
+  title        String
+  examType     ExamType     @default(QUIZ)
+  deliveryMode DeliveryMode @default(ONLINE)
+  timeLimit    Int?
+  maxScore     Int          @default(100) // Maximum score for this assessment
+  isOpen       Boolean      @default(false) // Teacher must open for students to take
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   course       Course        @relation(fields: [courseId], references: [id])
   questions    Question[]

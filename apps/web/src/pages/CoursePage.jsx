@@ -46,7 +46,7 @@ export default function CoursePage() {
 
   // Teacher: create assessment form
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
-  const [newAssessment, setNewAssessment] = useState({ title: '', examType: 'QUIZ', timeLimit: '', maxScore: '100' });
+  const [newAssessment, setNewAssessment] = useState({ title: '', examType: 'QUIZ', deliveryMode: 'ONLINE', timeLimit: '', maxScore: '100' });
 
   // Teacher: manual grade entry
   const [showGradeModal, setShowGradeModal] = useState(null); // assessment being graded
@@ -1125,6 +1125,19 @@ export default function CoursePage() {
                       </select>
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Mode</label>
+                      <select
+                        value={newAssessment.deliveryMode}
+                        onChange={(e) => setNewAssessment({ ...newAssessment, deliveryMode: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                      >
+                        <option value="ONLINE">Online</option>
+                        <option value="PAPER">Paper</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Time Limit (min)</label>
                       <input
                         type="number"
@@ -1135,17 +1148,17 @@ export default function CoursePage() {
                         placeholder="Optional"
                       />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Score</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={newAssessment.maxScore}
-                      onChange={(e) => setNewAssessment({ ...newAssessment, maxScore: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="e.g., 100"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Max Score</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={newAssessment.maxScore}
+                        onChange={(e) => setNewAssessment({ ...newAssessment, maxScore: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="e.g., 100"
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-3">
                     <button
@@ -1191,6 +1204,12 @@ export default function CoursePage() {
                               'bg-red-50 text-red-700'
                             }`}>
                               {a.examType}
+                            </span>
+                            <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                              a.deliveryMode === 'ONLINE' ? 'bg-purple-50 text-purple-700' :
+                              'bg-orange-50 text-orange-700'
+                            }`}>
+                              {a.deliveryMode || 'ONLINE'}
                             </span>
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${
                               a.isOpen ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'

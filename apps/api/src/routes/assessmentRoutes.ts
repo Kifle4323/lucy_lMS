@@ -14,6 +14,7 @@ export function registerAssessmentRoutes(router: Router) {
       const body = z.object({
         title: z.string().min(2),
         examType: z.enum(['QUIZ', 'MIDTERM', 'FINAL']).optional(),
+        deliveryMode: z.enum(['ONLINE', 'PAPER']).optional(),
         timeLimit: z.number().int().positive().optional(),
         maxScore: z.number().int().positive().optional(),
       }).parse(req.body);
@@ -34,6 +35,7 @@ export function registerAssessmentRoutes(router: Router) {
           courseId: params.courseId,
           title: body.title,
           examType: body.examType ?? 'QUIZ',
+          deliveryMode: body.deliveryMode ?? 'ONLINE',
           timeLimit: body.timeLimit,
           maxScore: body.maxScore ?? 100,
         },
