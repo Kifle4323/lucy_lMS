@@ -435,6 +435,17 @@ export function registerAddDropRoutes(router: Router) {
         },
       });
       
+      // Create notification for student
+      await prisma.notification.create({
+        data: {
+          userId: request.studentId,
+          type: 'ADD_DROP_APPROVED',
+          title: `${request.type === 'ADD' ? 'Add' : 'Drop'} Request Approved`,
+          message: `Your request to ${request.type.toLowerCase()} ${updatedRequest?.course?.title || 'the course'} has been approved.`,
+          data: { requestId: params.requestId, type: request.type },
+        },
+      });
+      
       res.json(updatedRequest);
     } catch (err) {
       console.error('Error approving request:', err);
@@ -472,6 +483,19 @@ export function registerAddDropRoutes(router: Router) {
           courseSection: { include: { teacher: { select: { fullName: true } } } },
         },
       });
+      
+      // Create notification for student
+      if (request) {
+        await prisma.notification.create({
+          data: {
+            userId: request.studentId,
+            type: 'ADD_DROP_REJECTED',
+            title: `${request.type === 'ADD' ? 'Add' : 'Drop'} Request Rejected`,
+            message: `Your request to ${request.type.toLowerCase()} ${updatedRequest?.course?.title || 'the course'} has been rejected.${body.adminNotes ? ` Reason: ${body.adminNotes}` : ''}`,
+            data: { requestId: params.requestId, type: request.type },
+          },
+        });
+      }
       
       res.json(updatedRequest);
     } catch (err) {

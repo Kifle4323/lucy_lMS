@@ -231,7 +231,14 @@ export default function Layout({ children }) {
                       {studentNotifications.notifications.slice(0, 5).map(notif => (
                         <Link
                           key={notif.id}
-                          to={notif.type === 'REGISTRATION_OPEN' ? '/student/registration' : notif.type === 'GRADE_PUBLISHED' ? '/student/results' : notif.type === 'NEW_ASSESSMENT' ? '/my-classes' : '/'}
+                          to={
+                            notif.type === 'REGISTRATION_OPEN' ? '/student/registration' :
+                            notif.type === 'GRADE_PUBLISHED' ? '/student/results' :
+                            notif.type === 'NEW_ASSESSMENT' ? '/my-classes' :
+                            notif.type === 'ADD_DROP_APPROVED' ? '/student/my-courses' :
+                            notif.type === 'ADD_DROP_REJECTED' ? '/student/add-drop' :
+                            '/'
+                          }
                           onClick={() => setShowNotificationDropdown(false)}
                           className={`block p-3 hover:bg-gray-50 dark:hover:bg-gray-700 ${!notif.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                         >
