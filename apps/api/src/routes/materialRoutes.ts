@@ -22,11 +22,14 @@ export function registerMaterialRoutes(router: Router) {
     }
 
     if (user.role === 'TEACHER') {
-      // Teacher must be assigned to teach this course in some class
+      // Teacher must be assigned to teach this course via courseSection or courseClass
+      const courseSection = await prisma.courseSection.findFirst({
+        where: { courseId: params.courseId, teacherId: user.id },
+      });
       const courseClass = await prisma.courseClass.findFirst({
         where: { courseId: params.courseId, teacherId: user.id },
       });
-      if (!courseClass) {
+      if (!courseSection && !courseClass) {
         res.status(403).json({ error: 'forbidden' });
         return;
       }
@@ -71,10 +74,13 @@ export function registerMaterialRoutes(router: Router) {
     const user = req.user!;
 
     // Verify teacher is assigned to teach this course
+    const courseSection = await prisma.courseSection.findFirst({
+      where: { courseId: params.courseId, teacherId: user.id },
+    });
     const courseClass = await prisma.courseClass.findFirst({
       where: { courseId: params.courseId, teacherId: user.id },
     });
-    if (!courseClass) {
+    if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
