@@ -414,7 +414,7 @@ export function registerGradebookRoutes(router: Router) {
     });
   });
 
-  // Get attendance stats from live sessions for a course section
+  // Get attendance stats (live + manual) for a course section
   router.get('/course-sections/:sectionId/live-attendance', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ sectionId: z.string() }).parse(req.params);
     const user = req.user!;
@@ -436,14 +436,27 @@ export function registerGradebookRoutes(router: Router) {
         orderBy: { scheduledAt: 'asc' },
       });
 
-      const totalSessions = liveSessions.length;
-      const endedSessions = liveSessions.filter(s => s.status === 'ENDED').length;
+      // Get all manual attendance sessions
+      const manualSessions = await prisma.manualAttendanceSession.findMany({
+        where: { courseId: section.courseId, classId: section.classId },
+        include: { records: true },
+        orderBy: { date: 'desc' },
+      });
+
+      const totalLiveSessions = liveSessions.length;
+      const endedLiveSessions = liveSessions.filter(s => s.status === 'ENDED').length;
+      const totalManualSessions = manualSessions.length;
+      const totalSessions = totalLiveSessions + totalManualSessions;
+      const endedSessions = endedLiveSessions + totalManualSessions;
 
       if (totalSessions === 0) {
         return res.json({
           totalSessions: 0,
           endedSessions: 0,
+          liveSessions: 0,
+          manualSessions: 0,
           students: [],
+          manualAttendanceHistory: [],
         });
       }
 
@@ -453,33 +466,56 @@ export function registerGradebookRoutes(router: Router) {
         include: { student: { select: { id: true, fullName: true, email: true } } },
       });
 
-      // Get attendance records for all sessions of this course
+      // Get attendance records for all live sessions
       const sessionIds = liveSessions.map(s => s.id);
       const attendanceRecords = await prisma.liveSessionAttendance.findMany({
         where: { sessionId: { in: sessionIds } },
       });
 
-      // Calculate per-student attendance stats
+      // Calculate per-student attendance stats (cumulative)
       const studentStats = classStudents.map(cs => {
+        // Live session stats
         const studentRecords = attendanceRecords.filter(a => a.studentId === cs.studentId);
-        const attended = studentRecords.filter(a => a.status === 'ATTENDED').length;
-        const partial = studentRecords.filter(a => a.status === 'PARTIAL').length;
-        const absent = studentRecords.filter(a => a.status === 'ABSENT').length;
+        const liveAttended = studentRecords.filter(a => a.status === 'ATTENDED').length;
+        const livePartial = studentRecords.filter(a => a.status === 'PARTIAL').length;
+        const liveAbsent = studentRecords.filter(a => a.status === 'ABSENT').length;
 
-        // Attendance score: ATTENDED = 100%, PARTIAL = 50%, ABSENT = 0%
-        // Weighted average across all ended sessions
+        // Manual session stats
+        let manualPresent = 0;
+        let manualLate = 0;
+        let manualExcused = 0;
+        let manualAbsent = 0;
+        for (const ms of manualSessions) {
+          const record = ms.records.find(r => r.studentId === cs.studentId);
+          if (record) {
+            if (record.status === 'PRESENT') manualPresent++;
+            else if (record.status === 'LATE') manualLate++;
+            else if (record.status === 'EXCUSED') manualExcused++;
+            else manualAbsent++;
+          } else {
+            manualAbsent++;
+          }
+        }
+
+        // Cumulative score
         let score = 0;
         if (endedSessions > 0) {
-          const totalPoints = (attended * 100) + (partial * 50) + (absent * 0);
+          const livePoints = (liveAttended * 100) + (livePartial * 50);
+          const manualPoints = (manualPresent * 100) + (manualLate * 75) + (manualExcused * 50);
+          const totalPoints = livePoints + manualPoints;
           score = Math.round(totalPoints / endedSessions);
         }
 
         return {
           student: cs.student,
-          attended,
-          partial,
-          absent,
-          totalJoined: studentRecords.filter(a => a.status !== 'ABSENT').length,
+          liveAttended,
+          livePartial,
+          liveAbsent,
+          manualPresent,
+          manualLate,
+          manualExcused,
+          manualAbsent,
+          totalJoined: studentRecords.filter(a => a.status !== 'ABSENT').length + manualPresent + manualLate + manualExcused,
           score,
         };
       });
@@ -487,7 +523,11 @@ export function registerGradebookRoutes(router: Router) {
       res.json({
         totalSessions,
         endedSessions,
+        liveSessions: totalLiveSessions,
+        endedLiveSessions,
+        manualSessions: totalManualSessions,
         students: studentStats,
+        manualAttendanceHistory: manualSessions,
       });
     } catch (err) {
       console.error('Error fetching live attendance:', err);
@@ -495,7 +535,7 @@ export function registerGradebookRoutes(router: Router) {
     }
   });
 
-  // Sync live session attendance to grade attendance scores
+  // Sync attendance (live + manual) to grade attendance scores
   router.post('/course-sections/:sectionId/sync-attendance', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ sectionId: z.string() }).parse(req.params);
     const user = req.user!;
@@ -511,14 +551,23 @@ export function registerGradebookRoutes(router: Router) {
         return res.status(403).json({ error: 'forbidden' });
       }
 
-      // Get all live sessions for this course
+      // Get all ended live sessions for this course
       const liveSessions = await prisma.liveSession.findMany({
         where: { courseId: section.courseId, classId: section.classId, status: 'ENDED' },
       });
 
-      const endedSessions = liveSessions.length;
-      if (endedSessions === 0) {
-        return res.status(400).json({ error: 'No ended sessions to sync attendance from' });
+      // Get all manual attendance sessions
+      const manualSessions = await prisma.manualAttendanceSession.findMany({
+        where: { courseId: section.courseId, classId: section.classId },
+        include: { records: true },
+      });
+
+      const endedLiveSessions = liveSessions.length;
+      const totalManualSessions = manualSessions.length;
+      const totalSessions = endedLiveSessions + totalManualSessions;
+
+      if (totalSessions === 0) {
+        return res.status(400).json({ error: 'No attendance data to sync' });
       }
 
       // Get all students in the class
@@ -526,21 +575,35 @@ export function registerGradebookRoutes(router: Router) {
         where: { classId: section.classId },
       });
 
-      // Get attendance records
-      const sessionIds = liveSessions.map(s => s.id);
-      const attendanceRecords = await prisma.liveSessionAttendance.findMany({
-        where: { sessionId: { in: sessionIds } },
+      // Get live attendance records
+      const liveSessionIds = liveSessions.map(s => s.id);
+      const liveAttendanceRecords = await prisma.liveSessionAttendance.findMany({
+        where: { sessionId: { in: liveSessionIds } },
       });
 
-      // Calculate and upsert attendance scores
+      // Calculate and upsert attendance scores (cumulative: live + manual)
       const results = [];
       for (const cs of classStudents) {
-        const studentRecords = attendanceRecords.filter(a => a.studentId === cs.studentId);
-        const attended = studentRecords.filter(a => a.status === 'ATTENDED').length;
-        const partial = studentRecords.filter(a => a.status === 'PARTIAL').length;
+        // Live session points
+        const studentLiveRecords = liveAttendanceRecords.filter(a => a.studentId === cs.studentId);
+        const liveAttended = studentLiveRecords.filter(a => a.status === 'ATTENDED').length;
+        const livePartial = studentLiveRecords.filter(a => a.status === 'PARTIAL').length;
+        const livePoints = (liveAttended * 100) + (livePartial * 50);
 
-        const totalPoints = (attended * 100) + (partial * 50);
-        const score = Math.round(totalPoints / endedSessions);
+        // Manual session points
+        let manualPoints = 0;
+        for (const ms of manualSessions) {
+          const record = ms.records.find(r => r.studentId === cs.studentId);
+          if (record) {
+            if (record.status === 'PRESENT') manualPoints += 100;
+            else if (record.status === 'LATE') manualPoints += 75;
+            else if (record.status === 'EXCUSED') manualPoints += 50;
+            // ABSENT = 0
+          }
+        }
+
+        const totalPoints = livePoints + manualPoints;
+        const score = Math.round(totalPoints / totalSessions);
 
         const record = await prisma.attendance.upsert({
           where: {
@@ -551,13 +614,13 @@ export function registerGradebookRoutes(router: Router) {
           },
           update: {
             score,
-            feedback: `Auto-calculated from ${endedSessions} live sessions (${attended} attended, ${partial} partial)`,
+            feedback: `Auto-calculated from ${endedLiveSessions} live + ${totalManualSessions} in-person sessions (live: ${liveAttended} attended, ${livePartial} partial)`,
           },
           create: {
             courseId: section.courseId,
             studentId: cs.studentId,
             score,
-            feedback: `Auto-calculated from ${endedSessions} live sessions (${attended} attended, ${partial} partial)`,
+            feedback: `Auto-calculated from ${endedLiveSessions} live + ${totalManualSessions} in-person sessions (live: ${liveAttended} attended, ${livePartial} partial)`,
           },
           include: {
             student: { select: { id: true, fullName: true, email: true } },
@@ -575,6 +638,153 @@ export function registerGradebookRoutes(router: Router) {
     } catch (err) {
       console.error('Error syncing attendance:', err);
       res.status(500).json({ error: 'Failed to sync attendance' });
+    }
+  });
+
+  // === Manual (Face-to-Face) Attendance ===
+
+  // Create a manual attendance session
+  router.post('/course-sections/:sectionId/manual-attendance', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ sectionId: z.string() }).parse(req.params);
+    const body = z.object({
+      title: z.string().optional(),
+      date: z.string(),
+      records: z.array(z.object({
+        studentId: z.string(),
+        status: z.enum(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']),
+      })).optional(),
+    }).parse(req.body);
+    const user = req.user!;
+
+    try {
+      const section = await prisma.courseSection.findFirst({
+        where: { id: params.sectionId, teacherId: user.id },
+        include: { course: true, class: true },
+      });
+
+      if (!section) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+
+      const date = new Date(body.date);
+
+      // Create or find session for this date
+      const session = await prisma.manualAttendanceSession.upsert({
+        where: {
+          courseId_classId_date: {
+            courseId: section.courseId,
+            classId: section.classId,
+            date,
+          },
+        },
+        update: {
+          title: body.title || 'Face-to-Face Class',
+          teacherId: user.id,
+        },
+        create: {
+          courseId: section.courseId,
+          classId: section.classId,
+          teacherId: user.id,
+          title: body.title || 'Face-to-Face Class',
+          date,
+        },
+      });
+
+      // If records provided, save them
+      if (body.records && body.records.length > 0) {
+        for (const record of body.records) {
+          await prisma.manualAttendanceRecord.upsert({
+            where: {
+              sessionId_studentId: {
+                sessionId: session.id,
+                studentId: record.studentId,
+              },
+            },
+            update: { status: record.status },
+            create: {
+              sessionId: session.id,
+              studentId: record.studentId,
+              status: record.status,
+            },
+          });
+        }
+      }
+
+      // Return session with records
+      const result = await prisma.manualAttendanceSession.findUnique({
+        where: { id: session.id },
+        include: {
+          records: {
+            include: {
+              student: { select: { id: true, fullName: true, email: true } },
+            },
+          },
+        },
+      });
+
+      res.json(result);
+    } catch (err) {
+      console.error('Error creating manual attendance:', err);
+      res.status(500).json({ error: 'Failed to create manual attendance' });
+    }
+  });
+
+  // Get manual attendance sessions for a section
+  router.get('/course-sections/:sectionId/manual-attendance', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ sectionId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    try {
+      const section = await prisma.courseSection.findFirst({
+        where: { id: params.sectionId, teacherId: user.id },
+        include: { course: true, class: true },
+      });
+
+      if (!section) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+
+      const sessions = await prisma.manualAttendanceSession.findMany({
+        where: { courseId: section.courseId, classId: section.classId },
+        include: {
+          records: {
+            include: {
+              student: { select: { id: true, fullName: true, email: true } },
+            },
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+
+      res.json(sessions);
+    } catch (err) {
+      console.error('Error fetching manual attendance:', err);
+      res.status(500).json({ error: 'Failed to fetch manual attendance' });
+    }
+  });
+
+  // Delete a manual attendance session
+  router.delete('/manual-attendance/:sessionId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ sessionId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    try {
+      const session = await prisma.manualAttendanceSession.findUnique({
+        where: { id: params.sessionId },
+      });
+
+      if (!session || session.teacherId !== user.id) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+
+      await prisma.manualAttendanceSession.delete({
+        where: { id: params.sessionId },
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Error deleting manual attendance:', err);
+      res.status(500).json({ error: 'Failed to delete manual attendance' });
     }
   });
 }

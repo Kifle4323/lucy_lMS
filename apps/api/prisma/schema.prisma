@@ -102,6 +102,8 @@ model User {
   questionReports QuestionReport[]  @relation("StudentReports")
   reviewedReports QuestionReport[]  @relation("ReviewerReports")
   liveSessionAttendance LiveSessionAttendance[]
+  manualAttendanceRecords ManualAttendanceRecord[]
+  manualAttendanceSessions ManualAttendanceSession[]
 }
 
 model StudentProfile {
@@ -201,6 +203,7 @@ model Class {
   courses        CourseClass[]
   courseSections CourseSection[]
   liveSessions   LiveSession[]
+  manualAttendanceSessions ManualAttendanceSession[]
 }
 
 model ClassStudent {
@@ -259,6 +262,7 @@ model Course {
   gradeConfig   CourseGradeConfig?
   addDropRequests AddDropRequest[]
   attendance    Attendance[]
+  manualAttendanceSessions ManualAttendanceSession[]
 }
 
 model Material {
@@ -310,6 +314,38 @@ model LiveSessionAttendance {
 
   session LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+}
+
+model ManualAttendanceSession {
+  id          String   @id @default(cuid())
+  courseId    String
+  classId     String
+  teacherId   String
+  title       String   @default("Face-to-Face Class")
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course   Course                     @relation(fields: [courseId], references: [id])
+  class    Class                      @relation(fields: [classId], references: [id])
+  teacher  User                       @relation(fields: [teacherId], references: [id])
+  records  ManualAttendanceRecord[]
+
+  @@unique([courseId, classId, date])
+}
+
+model ManualAttendanceRecord {
+  id          String   @id @default(cuid())
+  sessionId   String
+  studentId   String
+  status      String   @default("PRESENT") // PRESENT, ABSENT, LATE, EXCUSED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  session ManualAttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
 }

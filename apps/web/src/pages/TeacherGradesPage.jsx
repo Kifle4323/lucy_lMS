@@ -4,7 +4,8 @@ import {
   getTeacherSections, getSectionStudents, enterGrade, submitSectionGrades, syncAssessmentsToGrades,
   createExamSchedule, getSectionExamSchedules, updateExamSchedule, deleteExamSchedule,
   proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam,
-  getLiveAttendanceStats, syncAttendanceToGrades
+  getLiveAttendanceStats, syncAttendanceToGrades,
+  createManualAttendance, getManualAttendanceSessions, deleteManualAttendanceSession
 } from '../api.js';
 import Layout from '../components/Layout';
 import { useToast } from '../ToastContext';
@@ -21,6 +22,10 @@ export default function TeacherGradesPage() {
   const [earlyResponses, setEarlyResponses] = useState(null);
   const [activeTab, setActiveTab] = useState('grades');
   const [liveAttendance, setLiveAttendance] = useState(null);
+  const [manualSessions, setManualSessions] = useState([]);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualForm, setManualForm] = useState({ title: '', date: '' });
+  const [manualRecords, setManualRecords] = useState({}); // { studentId: status }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -356,8 +361,12 @@ export default function TeacherGradesPage() {
   async function loadLiveAttendance() {
     if (!selectedSection) return;
     try {
-      const data = await getLiveAttendanceStats(selectedSection.id);
-      setLiveAttendance(data);
+      const [statsData, manualData] = await Promise.all([
+        getLiveAttendanceStats(selectedSection.id),
+        getManualAttendanceSessions(selectedSection.id),
+      ]);
+      setLiveAttendance(statsData);
+      setManualSessions(manualData);
     } catch (err) {
       setError(err.message);
     }
@@ -385,6 +394,64 @@ export default function TeacherGradesPage() {
       toast.error(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openManualAttendanceForm() {
+    // Initialize all students as PRESENT by default
+    const defaultRecords = {};
+    students.forEach(s => {
+      defaultRecords[s.student?.id || s.id] = 'PRESENT';
+    });
+    setManualRecords(defaultRecords);
+    setManualForm({ title: 'Face-to-Face Class', date: new Date().toISOString().split('T')[0] });
+    setShowManualForm(true);
+  }
+
+  async function handleSaveManualAttendance() {
+    if (!manualForm.date) {
+      toast.error('Please select a date');
+      return;
+    }
+    setSaving(true);
+    try {
+      const records = Object.entries(manualRecords).map(([studentId, status]) => ({
+        studentId,
+        status,
+      }));
+      await createManualAttendance(selectedSection.id, {
+        title: manualForm.title || 'Face-to-Face Class',
+        date: manualForm.date + 'T09:00:00.000Z',
+        records,
+      });
+      toast.success('Manual attendance saved!');
+      setShowManualForm(false);
+      setManualForm({ title: '', date: '' });
+      setManualRecords({});
+      // Refresh attendance data
+      await loadLiveAttendance();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteManualSession(sessionId) {
+    const confirmed = await confirm({
+      title: 'Delete Attendance Session',
+      message: 'Delete this attendance session and all its records?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await deleteManualAttendanceSession(sessionId);
+      toast.success('Attendance session deleted');
+      await loadLiveAttendance();
+    } catch (err) {
+      toast.error(err.message);
     }
   }
 
@@ -599,43 +666,135 @@ export default function TeacherGradesPage() {
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Live Session Attendance</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Attendance Tracking</h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Attendance is automatically tracked when students join and leave live sessions
+                        Combined attendance from live sessions (auto) and face-to-face classes (manual)
                       </p>
                     </div>
-                    <button
-                      onClick={handleSyncAttendance}
-                      disabled={saving || !liveAttendance?.endedSessions}
-                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {saving ? 'Syncing...' : 'Sync to Grades'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={openManualAttendanceForm}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+                      >
+                        + Take Attendance
+                      </button>
+                      <button
+                        onClick={handleSyncAttendance}
+                        disabled={saving || !liveAttendance?.endedSessions}
+                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {saving ? 'Syncing...' : 'Sync to Grades'}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Manual Attendance Entry Form */}
+                  {showManualForm && (
+                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-semibold text-gray-900 dark:text-white">Take Face-to-Face Attendance</h4>
+                        <button onClick={() => setShowManualForm(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Session Title</label>
+                          <input
+                            type="text"
+                            value={manualForm.title}
+                            onChange={e => setManualForm({ ...manualForm, title: e.target.value })}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            placeholder="Face-to-Face Class"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                          <input
+                            type="date"
+                            value={manualForm.date}
+                            onChange={e => setManualForm({ ...manualForm, date: e.target.value })}
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="overflow-x-auto mb-4">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                              <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {students.map(s => {
+                              const studentId = s.student?.id || s.id;
+                              return (
+                                <tr key={studentId} className="border-b border-gray-200 dark:border-gray-700">
+                                  <td className="p-3">
+                                    <div className="font-medium text-gray-900 dark:text-white">{s.student?.fullName}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">{s.student?.email}</div>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="flex gap-1 justify-center">
+                                      {['PRESENT', 'LATE', 'EXCUSED', 'ABSENT'].map(status => (
+                                        <button
+                                          key={status}
+                                          onClick={() => setManualRecords({ ...manualRecords, [studentId]: status })}
+                                          className={`px-3 py-1 rounded text-xs font-medium ${
+                                            manualRecords[studentId] === status
+                                              ? status === 'PRESENT' ? 'bg-green-600 text-white'
+                                                : status === 'LATE' ? 'bg-yellow-500 text-white'
+                                                : status === 'EXCUSED' ? 'bg-blue-500 text-white'
+                                                : 'bg-red-600 text-white'
+                                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                          }`}
+                                        >
+                                          {status}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setShowManualForm(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
+                        <button onClick={handleSaveManualAttendance} disabled={saving || !manualForm.date} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                          {saving ? 'Saving...' : 'Save Attendance'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {!liveAttendance ? (
                     <div className="text-center py-8">
                       <p className="text-gray-500">Loading attendance data...</p>
                     </div>
-                  ) : liveAttendance.totalSessions === 0 ? (
+                  ) : liveAttendance.totalSessions === 0 && manualSessions.length === 0 ? (
                     <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <p className="text-gray-500 dark:text-gray-400 text-lg">No live sessions held yet</p>
-                      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Attendance will be tracked automatically when you conduct live classes</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-lg">No attendance records yet</p>
+                      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Click "Take Attendance" to record face-to-face class attendance, or conduct a live session for automatic tracking</p>
                     </div>
                   ) : (
                     <>
                       {/* Summary Cards */}
-                      <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="grid grid-cols-4 gap-4 mb-6">
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
-                          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{liveAttendance.totalSessions}</p>
+                          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{liveAttendance.totalSessions || 0}</p>
                           <p className="text-sm text-blue-600 dark:text-blue-300">Total Sessions</p>
                         </div>
                         <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
-                          <p className="text-3xl font-bold text-green-600 dark:text-green-400">{liveAttendance.endedSessions}</p>
-                          <p className="text-sm text-green-600 dark:text-green-300">Ended Sessions</p>
+                          <p className="text-3xl font-bold text-green-600 dark:text-green-400">{liveAttendance.endedLiveSessions || 0}</p>
+                          <p className="text-sm text-green-600 dark:text-green-300">Live Sessions</p>
+                        </div>
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4 text-center">
+                          <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{liveAttendance.manualSessions || 0}</p>
+                          <p className="text-sm text-indigo-600 dark:text-indigo-300">In-Person</p>
                         </div>
                         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-center">
-                          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{liveAttendance.students.length}</p>
+                          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{liveAttendance.students?.length || 0}</p>
                           <p className="text-sm text-purple-600 dark:text-purple-300">Students</p>
                         </div>
                       </div>
@@ -643,21 +802,23 @@ export default function TeacherGradesPage() {
                       {/* Info Banner */}
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
                         <p className="text-blue-700 dark:text-blue-300 text-sm">
-                          <strong>Scoring:</strong> Attended full session = 100%, Partial attendance (≥50%) = 50%, Absent = 0%. 
-                          Final score is the average across all ended sessions. Click "Sync to Grades" to apply these scores to the grade attendance column.
+                          <strong>Scoring (cumulative):</strong> Live: Attended=100%, Partial=50%, Absent=0% | In-Person: Present=100%, Late=75%, Excused=50%, Absent=0%. 
+                          Final score = average across all sessions. Click "Sync to Grades" to apply.
                         </p>
                       </div>
 
-                      {/* Student Attendance Table */}
-                      <div className="overflow-x-auto">
+                      {/* Student Cumulative Attendance Table */}
+                      <div className="overflow-x-auto mb-6">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Cumulative Attendance</h4>
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                               <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Sessions Attended</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Partial</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Absent</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Attendance %</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Live Attended</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Live Partial</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">In-Person Present</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">In-Person Late</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Total Absent</th>
                               <th className="text-center p-3 text-gray-700 dark:text-gray-300">Score /100</th>
                             </tr>
                           </thead>
@@ -669,43 +830,29 @@ export default function TeacherGradesPage() {
                                   <div className="text-xs text-gray-500 dark:text-gray-400">{stat.student.email}</div>
                                 </td>
                                 <td className="p-3 text-center">
-                                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
-                                    {stat.attended}
+                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+                                    {stat.liveAttended || 0}
                                   </span>
                                 </td>
                                 <td className="p-3 text-center">
-                                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-medium">
-                                    {stat.partial}
+                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium">
+                                    {stat.livePartial || 0}
                                   </span>
                                 </td>
                                 <td className="p-3 text-center">
-                                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium">
-                                    {stat.absent}
+                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+                                    {stat.manualPresent || 0}
                                   </span>
                                 </td>
                                 <td className="p-3 text-center">
-                                  {liveAttendance.endedSessions > 0 ? (
-                                    <div className="relative w-16 h-16 mx-auto">
-                                      <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
-                                        <path
-                                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none"
-                                          stroke="#e5e7eb"
-                                          strokeWidth="3"
-                                        />
-                                        <path
-                                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                          fill="none"
-                                          stroke={stat.score >= 80 ? '#22c55e' : stat.score >= 50 ? '#eab308' : '#ef4444'}
-                                          strokeWidth="3"
-                                          strokeDasharray={`${stat.score}, 100`}
-                                        />
-                                      </svg>
-                                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-900 dark:text-white">
-                                        {Math.round(stat.attended / liveAttendance.endedSessions * 100)}%
-                                      </span>
-                                    </div>
-                                  ) : '-'}
+                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium">
+                                    {stat.manualLate || 0}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium">
+                                    {(stat.liveAbsent || 0) + (stat.manualAbsent || 0)}
+                                  </span>
                                 </td>
                                 <td className="p-3 text-center">
                                   <span className={`px-3 py-1 rounded-full text-sm font-bold ${
@@ -721,6 +868,52 @@ export default function TeacherGradesPage() {
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Manual Attendance History */}
+                      {manualSessions.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">In-Person Attendance History</h4>
+                          <div className="space-y-3">
+                            {manualSessions.map(session => (
+                              <div key={session.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                <div className="flex justify-between items-center mb-2">
+                                  <div>
+                                    <span className="font-medium text-gray-900 dark:text-white">{session.title}</span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                                      {new Date(session.date).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">
+                                      {session.records.filter(r => r.status === 'PRESENT').length} present, {' '}
+                                      {session.records.filter(r => r.status === 'LATE').length} late, {' '}
+                                      {session.records.filter(r => r.status === 'ABSENT').length} absent
+                                    </span>
+                                    <button
+                                      onClick={() => handleDeleteManualSession(session.id)}
+                                      className="text-red-500 hover:text-red-700 text-xs"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {session.records.map(r => (
+                                    <span key={r.id} className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                                      r.status === 'PRESENT' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                      r.status === 'LATE' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                                      r.status === 'EXCUSED' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                                      'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                    }`}>
+                                      {r.student?.fullName} ({r.status})
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

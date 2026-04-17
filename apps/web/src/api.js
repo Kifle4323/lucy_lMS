@@ -553,6 +553,18 @@ export async function syncAttendanceToGrades(sectionId) {
   return apiFetch(`/course-sections/${sectionId}/sync-attendance`, { method: 'POST' });
 }
 
+export async function createManualAttendance(sectionId, data) {
+  return apiFetch(`/course-sections/${sectionId}/manual-attendance`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function getManualAttendanceSessions(sectionId) {
+  return apiFetch(`/course-sections/${sectionId}/manual-attendance`);
+}
+
+export async function deleteManualAttendanceSession(sessionId) {
+  return apiFetch(`/manual-attendance/${sessionId}`, { method: 'DELETE' });
+}
+
 // Teacher - Exam Schedules
 export async function createExamSchedule(data) {
   return apiFetch('/teacher/exam-schedules', { method: 'POST', body: JSON.stringify(data) });
