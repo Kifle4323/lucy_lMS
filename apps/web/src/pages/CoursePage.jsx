@@ -32,7 +32,8 @@ import {
   SkipForward,
   Flag,
   AlertTriangle,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 
 export default function CoursePage() {
@@ -58,6 +59,7 @@ export default function CoursePage() {
   const [showCreateMaterial, setShowCreateMaterial] = useState(false);
   const [newMaterial, setNewMaterial] = useState({ title: '', content: '', fileUrl: '', fileType: 'text', fileName: '' });
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [previewMaterial, setPreviewMaterial] = useState(null);
 
   // Teacher: add question form
   const [selectedAssessment, setSelectedAssessment] = useState(null);
@@ -1083,17 +1085,28 @@ export default function CoursePage() {
                       {m.content && (
                         <p className="text-sm text-gray-600 line-clamp-3">{m.content}</p>
                       )}
-                      {m.fileUrl && (
-                        <a
-                          href={m.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          Open Resource
-                        </a>
-                      )}
+                      <div className="flex items-center gap-3 mt-2">
+                        {(m.fileUrl || m.content) && (
+                          <button
+                            onClick={() => setPreviewMaterial(m)}
+                            className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Preview
+                          </button>
+                        )}
+                        {m.fileUrl && m.fileType === 'link' && (
+                          <a
+                            href={m.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Open Link
+                          </a>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400 mt-3">
                         Added by {m.author?.fullName || 'Unknown'} on {new Date(m.createdAt).toLocaleDateString()}
                       </p>
@@ -1785,6 +1798,229 @@ export default function CoursePage() {
                   className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submittingReport ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Material Preview Modal */}
+      {previewMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                {previewMaterial.fileType === 'video' ? (
+                  <ExternalLink className="w-5 h-5 text-purple-500" />
+                ) : previewMaterial.fileType === 'pdf' ? (
+                  <FileText className="w-5 h-5 text-red-500" />
+                ) : previewMaterial.fileType === 'ppt' ? (
+                  <FileText className="w-5 h-5 text-orange-500" />
+                ) : previewMaterial.fileType === 'doc' ? (
+                  <FileText className="w-5 h-5 text-blue-500" />
+                ) : previewMaterial.fileType === 'link' ? (
+                  <LinkIcon className="w-5 h-5 text-blue-500" />
+                ) : (
+                  <FileText className="w-5 h-5 text-gray-500" />
+                )}
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{previewMaterial.title}</h2>
+                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
+                  {previewMaterial.fileType}
+                </span>
+              </div>
+              <button
+                onClick={() => setPreviewMaterial(null)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Preview Content */}
+            <div className="flex-1 overflow-auto p-4">
+              {/* Text Content */}
+              {previewMaterial.fileType === 'text' && previewMaterial.content && (
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 leading-relaxed">
+                    {previewMaterial.content}
+                  </div>
+                </div>
+              )}
+
+              {/* Video - YouTube/Vimeo embed */}
+              {previewMaterial.fileType === 'video' && previewMaterial.fileUrl && (
+                <div className="w-full">
+                  {(() => {
+                    const url = previewMaterial.fileUrl;
+                    // YouTube
+                    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/);
+                    if (ytMatch) {
+                      return (
+                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                          <iframe
+                            className="absolute inset-0 w-full h-full rounded-lg"
+                            src={`https://www.youtube.com/embed/${ytMatch[1]}`}
+                            title={previewMaterial.title}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      );
+                    }
+                    // Vimeo
+                    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                    if (vimeoMatch) {
+                      return (
+                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                          <iframe
+                            className="absolute inset-0 w-full h-full rounded-lg"
+                            src={`https://player.vimeo.com/video/${vimeoMatch[1]}`}
+                            title={previewMaterial.title}
+                            frameBorder="0"
+                            allow="autoplay; fullscreen"
+                            allowFullScreen
+                          />
+                        </div>
+                      );
+                    }
+                    // Direct video URL (mp4, webm, etc.)
+                    if (url.match(/\.(mp4|webm|ogg)$/i)) {
+                      return (
+                        <video controls className="w-full rounded-lg max-h-[70vh]">
+                          <source src={url} />
+                          Your browser does not support the video tag.
+                        </video>
+                      );
+                    }
+                    // Fallback: open in iframe
+                    return (
+                      <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                        <iframe
+                          className="absolute inset-0 w-full h-full rounded-lg"
+                          src={url}
+                          title={previewMaterial.title}
+                          frameBorder="0"
+                          allowFullScreen
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* PDF - embedded iframe or base64 */}
+              {previewMaterial.fileType === 'pdf' && previewMaterial.fileUrl && (
+                <div className="w-full" style={{ height: '75vh' }}>
+                  {previewMaterial.fileUrl.startsWith('data:') ? (
+                    <iframe
+                      src={previewMaterial.fileUrl}
+                      className="w-full h-full rounded-lg border-0"
+                      title={previewMaterial.title}
+                    />
+                  ) : (
+                    <iframe
+                      src={previewMaterial.fileUrl}
+                      className="w-full h-full rounded-lg border-0"
+                      title={previewMaterial.title}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* PPT / DOC / XLS - Google Docs Viewer or Office Online */}
+              {(previewMaterial.fileType === 'ppt' || previewMaterial.fileType === 'doc' || previewMaterial.fileType === 'xls') && previewMaterial.fileUrl && (
+                <div className="w-full" style={{ height: '75vh' }}>
+                  {previewMaterial.fileUrl.startsWith('data:') ? (
+                    // Base64 file - use Google Docs Viewer via a hosted URL won't work,
+                    // so offer download instead
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <FileText className="w-16 h-16 text-gray-400" />
+                      <p className="text-gray-600 dark:text-gray-400">
+                        This {previewMaterial.fileType.toUpperCase()} file cannot be previewed inline.
+                      </p>
+                      <a
+                        href={previewMaterial.fileUrl}
+                        download={previewMaterial.fileName || `material.${previewMaterial.fileType}`}
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg"
+                      >
+                        Download {previewMaterial.fileName || 'File'}
+                      </a>
+                    </div>
+                  ) : (
+                    // Public URL - use Google Docs Viewer
+                    <iframe
+                      src={`https://docs.google.com/gview?url=${encodeURIComponent(previewMaterial.fileUrl)}&embedded=true`}
+                      className="w-full h-full rounded-lg border-0"
+                      title={previewMaterial.title}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* External Link - embed in iframe */}
+              {previewMaterial.fileType === 'link' && previewMaterial.fileUrl && (
+                <div className="w-full" style={{ height: '75vh' }}>
+                  <iframe
+                    src={previewMaterial.fileUrl}
+                    className="w-full h-full rounded-lg border-0"
+                    title={previewMaterial.title}
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  />
+                </div>
+              )}
+
+              {/* Fallback for content-only materials */}
+              {!previewMaterial.fileUrl && previewMaterial.content && previewMaterial.fileType !== 'text' && (
+                <div className="prose dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 leading-relaxed">
+                    {previewMaterial.content}
+                  </div>
+                </div>
+              )}
+
+              {/* No preview available */}
+              {!previewMaterial.fileUrl && !previewMaterial.content && (
+                <div className="flex flex-col items-center justify-center py-16 gap-4">
+                  <FileText className="w-16 h-16 text-gray-300" />
+                  <p className="text-gray-500">No preview available for this material</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-400">
+                Added by {previewMaterial.author?.fullName || 'Unknown'} on {new Date(previewMaterial.createdAt).toLocaleDateString()}
+              </p>
+              <div className="flex gap-2">
+                {previewMaterial.fileUrl && !previewMaterial.fileUrl.startsWith('data:') && (
+                  <a
+                    href={previewMaterial.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm inline-flex items-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open in New Tab
+                  </a>
+                )}
+                {previewMaterial.fileUrl && previewMaterial.fileUrl.startsWith('data:') && (
+                  <a
+                    href={previewMaterial.fileUrl}
+                    download={previewMaterial.fileName || 'file'}
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg text-sm inline-flex items-center gap-2"
+                  >
+                    Download
+                  </a>
+                )}
+                <button
+                  onClick={() => setPreviewMaterial(null)}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm"
+                >
+                  Close
                 </button>
               </div>
             </div>
