@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import {
   getTeacherSections, getSectionStudents, enterGrade, submitSectionGrades, syncAssessmentsToGrades,
   createExamSchedule, getSectionExamSchedules, updateExamSchedule, deleteExamSchedule,
-  proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam
+  proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam,
+  getLiveAttendanceStats, syncAttendanceToGrades
 } from '../api.js';
 import Layout from '../components/Layout';
 import { useToast } from '../ToastContext';
@@ -19,6 +20,7 @@ export default function TeacherGradesPage() {
   const [examSchedules, setExamSchedules] = useState([]);
   const [earlyResponses, setEarlyResponses] = useState(null);
   const [activeTab, setActiveTab] = useState('grades');
+  const [liveAttendance, setLiveAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -351,6 +353,41 @@ export default function TeacherGradesPage() {
     }
   }
 
+  async function loadLiveAttendance() {
+    if (!selectedSection) return;
+    try {
+      const data = await getLiveAttendanceStats(selectedSection.id);
+      setLiveAttendance(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleSyncAttendance() {
+    const confirmed = await confirm({
+      title: 'Sync Attendance to Grades',
+      message: 'This will auto-calculate attendance scores from live session data and update the attendance grade for each student. Existing attendance scores will be overwritten.',
+      confirmText: 'Sync',
+      cancelText: 'Cancel',
+      type: 'info',
+    });
+    if (!confirmed) return;
+    setSaving(true);
+    try {
+      const result = await syncAttendanceToGrades(selectedSection.id);
+      toast.success(`Attendance synced for ${result.synced} students!`);
+      // Refresh students to show updated attendance scores
+      const data = await getSectionStudents(selectedSection.id);
+      setStudents(data);
+      // Refresh attendance stats
+      await loadLiveAttendance();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
 
   return (
@@ -411,6 +448,12 @@ export default function TeacherGradesPage() {
                   className={`pb-2 px-4 ${activeTab === 'grades' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
                 >
                   Grades
+                </button>
+                <button
+                  onClick={() => { setActiveTab('attendance'); loadLiveAttendance(); }}
+                  className={`pb-2 px-4 ${activeTab === 'attendance' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
+                >
+                  Attendance
                 </button>
                 <button
                   onClick={() => setActiveTab('exams')}
@@ -549,6 +592,138 @@ export default function TeacherGradesPage() {
                     <p className="text-gray-500 text-center py-8">No students enrolled in this section.</p>
                   )}
                 </>
+              )}
+
+              {/* Attendance Tab */}
+              {activeTab === 'attendance' && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Live Session Attendance</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Attendance is automatically tracked when students join and leave live sessions
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleSyncAttendance}
+                      disabled={saving || !liveAttendance?.endedSessions}
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {saving ? 'Syncing...' : 'Sync to Grades'}
+                    </button>
+                  </div>
+
+                  {!liveAttendance ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Loading attendance data...</p>
+                    </div>
+                  ) : liveAttendance.totalSessions === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <p className="text-gray-500 dark:text-gray-400 text-lg">No live sessions held yet</p>
+                      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Attendance will be tracked automatically when you conduct live classes</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Summary Cards */}
+                      <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
+                          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{liveAttendance.totalSessions}</p>
+                          <p className="text-sm text-blue-600 dark:text-blue-300">Total Sessions</p>
+                        </div>
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
+                          <p className="text-3xl font-bold text-green-600 dark:text-green-400">{liveAttendance.endedSessions}</p>
+                          <p className="text-sm text-green-600 dark:text-green-300">Ended Sessions</p>
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-center">
+                          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{liveAttendance.students.length}</p>
+                          <p className="text-sm text-purple-600 dark:text-purple-300">Students</p>
+                        </div>
+                      </div>
+
+                      {/* Info Banner */}
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                        <p className="text-blue-700 dark:text-blue-300 text-sm">
+                          <strong>Scoring:</strong> Attended full session = 100%, Partial attendance (≥50%) = 50%, Absent = 0%. 
+                          Final score is the average across all ended sessions. Click "Sync to Grades" to apply these scores to the grade attendance column.
+                        </p>
+                      </div>
+
+                      {/* Student Attendance Table */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                              <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Sessions Attended</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Partial</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Absent</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Attendance %</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Score /100</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {liveAttendance.students.map(stat => (
+                              <tr key={stat.student.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td className="p-3">
+                                  <div className="font-medium text-gray-900 dark:text-white">{stat.student.fullName}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">{stat.student.email}</div>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
+                                    {stat.attended}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-medium">
+                                    {stat.partial}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium">
+                                    {stat.absent}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  {liveAttendance.endedSessions > 0 ? (
+                                    <div className="relative w-16 h-16 mx-auto">
+                                      <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
+                                        <path
+                                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                          fill="none"
+                                          stroke="#e5e7eb"
+                                          strokeWidth="3"
+                                        />
+                                        <path
+                                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                          fill="none"
+                                          stroke={stat.score >= 80 ? '#22c55e' : stat.score >= 50 ? '#eab308' : '#ef4444'}
+                                          strokeWidth="3"
+                                          strokeDasharray={`${stat.score}, 100`}
+                                        />
+                                      </svg>
+                                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-900 dark:text-white">
+                                        {Math.round(stat.attended / liveAttendance.endedSessions * 100)}%
+                                      </span>
+                                    </div>
+                                  ) : '-'}
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                                    stat.score >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                    stat.score >= 50 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                                    'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                  }`}>
+                                    {stat.score}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
 
               {/* Exams Tab */}

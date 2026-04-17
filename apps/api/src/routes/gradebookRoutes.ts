@@ -413,4 +413,168 @@ export function registerGradebookRoutes(router: Router) {
       totalGrade: Math.round(totalGrade * 10) / 10,
     });
   });
+
+  // Get attendance stats from live sessions for a course section
+  router.get('/course-sections/:sectionId/live-attendance', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ sectionId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    try {
+      // Verify teacher teaches this section
+      const section = await prisma.courseSection.findFirst({
+        where: { id: params.sectionId, teacherId: user.id },
+        include: { course: true, class: true },
+      });
+
+      if (!section) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+
+      // Get all live sessions for this course
+      const liveSessions = await prisma.liveSession.findMany({
+        where: { courseId: section.courseId, classId: section.classId },
+        orderBy: { scheduledAt: 'asc' },
+      });
+
+      const totalSessions = liveSessions.length;
+      const endedSessions = liveSessions.filter(s => s.status === 'ENDED').length;
+
+      if (totalSessions === 0) {
+        return res.json({
+          totalSessions: 0,
+          endedSessions: 0,
+          students: [],
+        });
+      }
+
+      // Get all students in the class
+      const classStudents = await prisma.classStudent.findMany({
+        where: { classId: section.classId },
+        include: { student: { select: { id: true, fullName: true, email: true } } },
+      });
+
+      // Get attendance records for all sessions of this course
+      const sessionIds = liveSessions.map(s => s.id);
+      const attendanceRecords = await prisma.liveSessionAttendance.findMany({
+        where: { sessionId: { in: sessionIds } },
+      });
+
+      // Calculate per-student attendance stats
+      const studentStats = classStudents.map(cs => {
+        const studentRecords = attendanceRecords.filter(a => a.studentId === cs.studentId);
+        const attended = studentRecords.filter(a => a.status === 'ATTENDED').length;
+        const partial = studentRecords.filter(a => a.status === 'PARTIAL').length;
+        const absent = studentRecords.filter(a => a.status === 'ABSENT').length;
+
+        // Attendance score: ATTENDED = 100%, PARTIAL = 50%, ABSENT = 0%
+        // Weighted average across all ended sessions
+        let score = 0;
+        if (endedSessions > 0) {
+          const totalPoints = (attended * 100) + (partial * 50) + (absent * 0);
+          score = Math.round(totalPoints / endedSessions);
+        }
+
+        return {
+          student: cs.student,
+          attended,
+          partial,
+          absent,
+          totalJoined: studentRecords.filter(a => a.status !== 'ABSENT').length,
+          score,
+        };
+      });
+
+      res.json({
+        totalSessions,
+        endedSessions,
+        students: studentStats,
+      });
+    } catch (err) {
+      console.error('Error fetching live attendance:', err);
+      res.status(500).json({ error: 'Failed to fetch attendance stats' });
+    }
+  });
+
+  // Sync live session attendance to grade attendance scores
+  router.post('/course-sections/:sectionId/sync-attendance', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ sectionId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    try {
+      // Verify teacher teaches this section
+      const section = await prisma.courseSection.findFirst({
+        where: { id: params.sectionId, teacherId: user.id },
+        include: { course: true, class: true },
+      });
+
+      if (!section) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+
+      // Get all live sessions for this course
+      const liveSessions = await prisma.liveSession.findMany({
+        where: { courseId: section.courseId, classId: section.classId, status: 'ENDED' },
+      });
+
+      const endedSessions = liveSessions.length;
+      if (endedSessions === 0) {
+        return res.status(400).json({ error: 'No ended sessions to sync attendance from' });
+      }
+
+      // Get all students in the class
+      const classStudents = await prisma.classStudent.findMany({
+        where: { classId: section.classId },
+      });
+
+      // Get attendance records
+      const sessionIds = liveSessions.map(s => s.id);
+      const attendanceRecords = await prisma.liveSessionAttendance.findMany({
+        where: { sessionId: { in: sessionIds } },
+      });
+
+      // Calculate and upsert attendance scores
+      const results = [];
+      for (const cs of classStudents) {
+        const studentRecords = attendanceRecords.filter(a => a.studentId === cs.studentId);
+        const attended = studentRecords.filter(a => a.status === 'ATTENDED').length;
+        const partial = studentRecords.filter(a => a.status === 'PARTIAL').length;
+
+        const totalPoints = (attended * 100) + (partial * 50);
+        const score = Math.round(totalPoints / endedSessions);
+
+        const record = await prisma.attendance.upsert({
+          where: {
+            courseId_studentId: {
+              courseId: section.courseId,
+              studentId: cs.studentId,
+            },
+          },
+          update: {
+            score,
+            feedback: `Auto-calculated from ${endedSessions} live sessions (${attended} attended, ${partial} partial)`,
+          },
+          create: {
+            courseId: section.courseId,
+            studentId: cs.studentId,
+            score,
+            feedback: `Auto-calculated from ${endedSessions} live sessions (${attended} attended, ${partial} partial)`,
+          },
+          include: {
+            student: { select: { id: true, fullName: true, email: true } },
+          },
+        });
+
+        results.push(record);
+      }
+
+      res.json({
+        success: true,
+        synced: results.length,
+        attendance: results,
+      });
+    } catch (err) {
+      console.error('Error syncing attendance:', err);
+      res.status(500).json({ error: 'Failed to sync attendance' });
+    }
+  });
 }

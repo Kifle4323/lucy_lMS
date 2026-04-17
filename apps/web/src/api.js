@@ -545,6 +545,14 @@ export async function syncAssessmentsToGrades(sectionId) {
   return apiFetch(`/teacher/sections/${sectionId}/sync-assessments`, { method: 'POST' });
 }
 
+export async function getLiveAttendanceStats(sectionId) {
+  return apiFetch(`/course-sections/${sectionId}/live-attendance`);
+}
+
+export async function syncAttendanceToGrades(sectionId) {
+  return apiFetch(`/course-sections/${sectionId}/sync-attendance`, { method: 'POST' });
+}
+
 // Teacher - Exam Schedules
 export async function createExamSchedule(data) {
   return apiFetch('/teacher/exam-schedules', { method: 'POST', body: JSON.stringify(data) });
