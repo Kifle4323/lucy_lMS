@@ -330,6 +330,23 @@ export async function getLiveSession(sessionId) {
   return apiFetch(`/live-sessions/${sessionId}`);
 }
 
+// Live Session Attendance
+export async function joinLiveSession(sessionId) {
+  return apiFetch(`/live-sessions/${sessionId}/join`, { method: 'POST' });
+}
+
+export async function leaveLiveSession(sessionId) {
+  return apiFetch(`/live-sessions/${sessionId}/leave`, { method: 'POST' });
+}
+
+export async function endLiveSession(sessionId) {
+  return apiFetch(`/live-sessions/${sessionId}/end`, { method: 'POST' });
+}
+
+export async function getLiveSessionAttendance(sessionId) {
+  return apiFetch(`/live-sessions/${sessionId}/attendance`);
+}
+
 // Student Profile
 export async function getStudentProfile() {
   return apiFetch('/student/profile');

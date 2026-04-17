@@ -1,32 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { getLiveSession, updateLiveSession } from '../api';
+import { useToast } from '../ToastContext';
+import { getLiveSession, updateLiveSession, joinLiveSession, leaveLiveSession, endLiveSession, getLiveSessionAttendance } from '../api';
 import Layout from '../components/Layout';
 import {
   Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  Phone,
   Users,
-  MessageSquare,
-  Hand,
-  Monitor,
   ChevronLeft,
   AlertCircle,
-  Loader2
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Clock,
+  UserCheck,
+  UserX,
+  Minus
 } from 'lucide-react';
 
 export default function LiveMeetingPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [joined, setJoined] = useState(false);
   const [displayName, setDisplayName] = useState(user?.fullName || '');
+  const [attendanceData, setAttendanceData] = useState(null);
+  const [showAttendance, setShowAttendance] = useState(false);
+  const [endingSession, setEndingSession] = useState(false);
+  const jitsiRef = useRef(null);
+  const jitsiContainerRef = useRef(null);
+  const attendanceRecordedRef = useRef(false);
 
   useEffect(() => {
     getLiveSession(sessionId)
@@ -41,22 +48,157 @@ export default function LiveMeetingPage() {
       .finally(() => setLoading(false));
   }, [sessionId, user]);
 
-  const handleLeave = () => {
-    // Just leave the meeting, don't end it
-    navigate('/live-sessions');
-  };
+  // Initialize Jitsi External API when joined
+  useEffect(() => {
+    if (!joined || !session) return;
 
-  const handleEndCall = async () => {
-    // Only teacher can end the session
-    if (user?.role === 'TEACHER' && session?.teacherId === user.id) {
-      await updateLiveSession(session.id, { status: 'ENDED' });
+    const roomName = session.meetingUrl?.split('/').pop() || 'edulms-default';
+
+    // Load Jitsi External API script
+    const script = document.createElement('script');
+    script.src = 'https://meet.jit.si/external_api.js';
+    script.async = true;
+    script.onload = () => {
+      if (!window.JitsiMeetExternalAPI) return;
+
+      const domain = 'meet.jit.si';
+      const options = {
+        roomName,
+        width: '100%',
+        height: '100%',
+        parentNode: jitsiContainerRef.current,
+        configOverwrite: {
+          prejoinPageEnabled: false,
+          startWithAudioMuted: false,
+          startWithVideoMuted: false,
+          subject: session.title || 'Live Class',
+        },
+        interfaceConfigOverwrite: {
+          SHOW_JITSI_WATERMARK: false,
+          SHOW_WATERMARK_FOR_GUESTS: false,
+        },
+        userInfo: {
+          displayName: displayName,
+        },
+      };
+
+      const jitsi = new window.JitsiMeetExternalAPI(domain, options);
+      jitsiRef.current = jitsi;
+
+      // Student: record attendance on join
+      if (user?.role === 'STUDENT' && !attendanceRecordedRef.current) {
+        attendanceRecordedRef.current = true;
+        joinLiveSession(sessionId).catch(err => {
+          console.error('Failed to record attendance:', err);
+        });
+      }
+
+      // Listen for participant events
+      jitsi.addEventListener('participantJoined', (e) => {
+        console.log('Participant joined:', e);
+      });
+
+      jitsi.addEventListener('participantLeft', (e) => {
+        console.log('Participant left:', e);
+      });
+
+      // Handle video-conference left (user closes meeting from within Jitsi)
+      jitsi.addEventListener('videoConferenceLeft', () => {
+        handleLeave();
+      });
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup
+      if (jitsiRef.current) {
+        jitsiRef.current.dispose();
+        jitsiRef.current = null;
+      }
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, [joined, session]);
+
+  const handleLeave = useCallback(async () => {
+    // Student: record leave
+    if (user?.role === 'STUDENT' && attendanceRecordedRef.current) {
+      try {
+        await leaveLiveSession(sessionId);
+      } catch (err) {
+        console.error('Failed to record leave:', err);
+      }
     }
     navigate('/live-sessions');
+  }, [user, sessionId, navigate]);
+
+  const handleEndCall = async () => {
+    if (user?.role !== 'TEACHER' || session?.teacherId !== user.id) return;
+    setEndingSession(true);
+    try {
+      const result = await endLiveSession(sessionId);
+      toast.success(`Class ended! ${result.attended} attended, ${result.partial} partial, ${result.absent} absent`);
+      navigate('/live-sessions');
+    } catch (err) {
+      toast.error('Failed to end session: ' + err.message);
+      setEndingSession(false);
+    }
   };
 
-  const handleJoin = () => {
-    if (displayName.trim()) {
-      setJoined(true);
+  const handleJoin = async () => {
+    if (!displayName.trim()) return;
+    setJoined(true);
+  };
+
+  const fetchAttendance = async () => {
+    try {
+      const data = await getLiveSessionAttendance(sessionId);
+      setAttendanceData(data);
+      setShowAttendance(true);
+    } catch (err) {
+      toast.error('Failed to fetch attendance');
+    }
+  };
+
+  // Handle browser/tab close for students
+  useEffect(() => {
+    if (user?.role !== 'STUDENT' || !attendanceRecordedRef.current) return;
+
+    const handleBeforeUnload = (e) => {
+      // Try to record leave (best effort, may not complete)
+      leaveLiveSession(sessionId).catch(() => {});
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user, sessionId]);
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'ATTENDED':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'PARTIAL':
+        return <Minus className="w-4 h-4 text-yellow-500" />;
+      case 'ABSENT':
+        return <XCircle className="w-4 h-4 text-red-500" />;
+      case 'JOINED':
+        return <Clock className="w-4 h-4 text-blue-500" />;
+      case 'LEFT':
+        return <Clock className="w-4 h-4 text-gray-400" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-300" />;
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'ATTENDED': return 'Attended';
+      case 'PARTIAL': return 'Partial';
+      case 'ABSENT': return 'Absent';
+      case 'JOINED': return 'In Session';
+      case 'LEFT': return 'Left Early';
+      default: return 'Not Joined';
     }
   };
 
@@ -100,6 +242,7 @@ export default function LiveMeetingPage() {
               </div>
               <h2 className="text-xl font-semibold text-white">{session?.title}</h2>
               <p className="text-gray-400 mt-1">{session?.course?.title}</p>
+              <p className="text-gray-500 text-sm mt-1">{session?.class?.name}</p>
             </div>
 
             <div className="space-y-4">
@@ -113,6 +256,12 @@ export default function LiveMeetingPage() {
                   placeholder="Enter your display name"
                 />
               </div>
+
+              {user?.role === 'STUDENT' && (
+                <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-3">
+                  <p className="text-blue-300 text-sm">Your attendance will be automatically recorded when you join and leave the session.</p>
+                </div>
+              )}
 
               <button
                 onClick={handleJoin}
@@ -134,9 +283,6 @@ export default function LiveMeetingPage() {
       </Layout>
     );
   }
-
-  // Extract room name from Jitsi URL
-  const roomName = session?.meetingUrl?.split('/').pop() || 'edulms-default';
 
   return (
     <div className="h-screen flex flex-col bg-gray-900">
@@ -160,25 +306,139 @@ export default function LiveMeetingPage() {
             LIVE
           </span>
           {user?.role === 'TEACHER' && session?.teacherId === user.id && (
-            <button
-              onClick={handleEndCall}
-              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg"
-            >
-              End Class
-            </button>
+            <>
+              <button
+                onClick={fetchAttendance}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-1"
+              >
+                <Users className="w-4 h-4" />
+                Attendance
+              </button>
+              <button
+                onClick={handleEndCall}
+                disabled={endingSession}
+                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm font-medium rounded-lg"
+              >
+                {endingSession ? 'Ending...' : 'End Class'}
+              </button>
+            </>
+          )}
+          {user?.role === 'STUDENT' && (
+            <span className="flex items-center gap-1 px-2 py-1 bg-green-600/20 text-green-400 text-xs font-medium rounded">
+              <UserCheck className="w-3 h-3" />
+              Attendance tracked
+            </span>
           )}
         </div>
       </header>
 
       {/* Jitsi Meeting Container */}
       <div className="flex-1 relative">
-        <iframe
-          allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
-          src={`https://meet.jit.si/${roomName}?config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&config.displayName=${encodeURIComponent(displayName)}&config.subject=${encodeURIComponent(session?.title || 'Live Class')}`}
-          style={{ height: '100%', width: '100%', border: 'none' }}
-          title="Live Class Meeting"
-        />
+        <div ref={jitsiContainerRef} style={{ height: '100%', width: '100%' }} />
       </div>
+
+      {/* Attendance Sidebar for Teachers */}
+      {showAttendance && attendanceData && (
+        <div className="fixed inset-y-0 right-0 w-96 bg-gray-800 border-l border-gray-700 shadow-xl z-50 flex flex-col">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <h3 className="text-white font-semibold">Live Attendance</h3>
+            <button
+              onClick={() => setShowAttendance(false)}
+              className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-3 gap-2 p-4">
+            <div className="bg-green-900/30 rounded-lg p-3 text-center">
+              <CheckCircle className="w-5 h-5 text-green-400 mx-auto mb-1" />
+              <p className="text-green-400 font-bold text-lg">{attendanceData.attended + attendanceData.joined}</p>
+              <p className="text-green-300 text-xs">Present</p>
+            </div>
+            <div className="bg-yellow-900/30 rounded-lg p-3 text-center">
+              <Minus className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
+              <p className="text-yellow-400 font-bold text-lg">{attendanceData.partial}</p>
+              <p className="text-yellow-300 text-xs">Partial</p>
+            </div>
+            <div className="bg-red-900/30 rounded-lg p-3 text-center">
+              <XCircle className="w-5 h-5 text-red-400 mx-auto mb-1" />
+              <p className="text-red-400 font-bold text-lg">{attendanceData.absent}</p>
+              <p className="text-red-300 text-xs">Absent</p>
+            </div>
+          </div>
+
+          <div className="px-4 pb-2">
+            <p className="text-gray-400 text-sm">{attendanceData.totalStudents} students in class</p>
+          </div>
+
+          {/* Student List */}
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            {/* Show students with attendance records */}
+            {attendanceData.attendance.map((att) => (
+              <div key={att.id} className="flex items-center justify-between py-2 border-b border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                    <span className="text-gray-300 text-sm font-medium">
+                      {att.student?.fullName?.charAt(0) || '?'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-medium">{att.student?.fullName}</p>
+                    <p className="text-gray-500 text-xs">
+                      {att.duration ? `${att.duration} min` : 'In session'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(att.status)}
+                  <span className={`text-xs ${
+                    att.status === 'ATTENDED' || att.status === 'JOINED' ? 'text-green-400' :
+                    att.status === 'PARTIAL' ? 'text-yellow-400' :
+                    'text-red-400'
+                  }`}>
+                    {getStatusLabel(att.status)}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* Show students without attendance (not joined yet) */}
+            {attendanceData.classStudents
+              .filter(cs => !attendanceData.attendance.some(a => a.studentId === cs.id))
+              .map(cs => (
+                <div key={cs.id} className="flex items-center justify-between py-2 border-b border-gray-700/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                      <span className="text-gray-300 text-sm font-medium">
+                        {cs.fullName?.charAt(0) || '?'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-medium">{cs.fullName}</p>
+                      <p className="text-gray-500 text-xs">{cs.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <UserX className="w-4 h-4 text-gray-500" />
+                    <span className="text-xs text-gray-500">Not joined</span>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+
+          <div className="p-4 border-t border-gray-700">
+            <button
+              onClick={() => setShowAttendance(false)}
+              className="w-full py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium rounded-lg"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

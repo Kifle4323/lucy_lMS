@@ -101,6 +101,7 @@ model User {
   notifications   Notification[]
   questionReports QuestionReport[]  @relation("StudentReports")
   reviewedReports QuestionReport[]  @relation("ReviewerReports")
+  liveSessionAttendance LiveSessionAttendance[]
 }
 
 model StudentProfile {
@@ -290,9 +291,27 @@ model LiveSession {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  course   Course @relation(fields: [courseId], references: [id])
-  class    Class  @relation(fields: [classId], references: [id])
-  teacher  User   @relation(fields: [teacherId], references: [id])
+  course     Course                 @relation(fields: [courseId], references: [id])
+  class      Class                  @relation(fields: [classId], references: [id])
+  teacher    User                   @relation(fields: [teacherId], references: [id])
+  attendance LiveSessionAttendance[]
+}
+
+model LiveSessionAttendance {
+  id          String   @id @default(cuid())
+  sessionId   String
+  studentId   String
+  joinedAt    DateTime
+  leftAt      DateTime?
+  duration    Int?     // minutes attended
+  status      String   @default("JOINED") // JOINED, LEFT, ATTENDED, PARTIAL, ABSENT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  session LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
 }
 
 model Assessment {
