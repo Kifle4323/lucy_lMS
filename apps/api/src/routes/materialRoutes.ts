@@ -26,10 +26,8 @@ async function convertToPdf(fileUrl: string, fileType: string): Promise<string |
         fs.writeFileSync(tmpPath, buffer);
 
         const outputDir = path.dirname(tmpPath);
-        const outputName = path.basename(tmpPath, `.${fileType}`) + '.pdf';
-        const outputPath = path.join(outputDir, outputName);
 
-        libreConvert(tmpPath, outputDir, 'pdf', undefined, (err: any) => {
+        libreConvert(tmpPath, '.pdf', outputDir, (err: any) => {
           cleanup();
           if (err) {
             console.error('LibreOffice conversion error:', err.message || err);
@@ -37,6 +35,7 @@ async function convertToPdf(fileUrl: string, fileType: string): Promise<string |
             return;
           }
           try {
+            const outputPath = tmpPath + '.pdf';
             const pdfBuffer = fs.readFileSync(outputPath);
             const pdfBase64 = `data:application/pdf;base64,${pdfBuffer.toString('base64')}`;
             try { fs.unlinkSync(outputPath); } catch (_) {}
