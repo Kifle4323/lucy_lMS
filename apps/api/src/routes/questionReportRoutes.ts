@@ -118,13 +118,13 @@ export function registerQuestionReportRoutes(router: Router) {
       // Get course sections the teacher teaches
       const courseSections = await prisma.courseSection.findMany({
         where: { teacherId: user.id },
-        select: { id: true },
+        select: { courseId: true },
       });
-      const courseSectionIds = courseSections.map(cs => cs.id);
+      const courseIds = [...new Set(courseSections.map(cs => cs.courseId))];
 
-      // Get assessments in those course sections
+      // Get assessments in those courses
       const assessments = await prisma.assessment.findMany({
-        where: { courseSectionId: { in: courseSectionIds } },
+        where: { courseId: { in: courseIds } },
         select: { id: true },
       });
       const assessmentIds = assessments.map(a => a.id);
@@ -171,7 +171,7 @@ export function registerQuestionReportRoutes(router: Router) {
           question: {
             include: {
               assessment: {
-                include: { courseSection: true },
+                include: { course: true },
               },
             },
           },
@@ -182,9 +182,10 @@ export function registerQuestionReportRoutes(router: Router) {
         return res.status(404).json({ error: 'Report not found' });
       }
 
+      // Verify the teacher teaches this course
       const courseSection = await prisma.courseSection.findFirst({
         where: {
-          id: report.question.assessment.courseSectionId,
+          courseId: report.question.assessment.courseId,
           teacherId: user.id,
         },
       });
@@ -253,13 +254,13 @@ export function registerQuestionReportRoutes(router: Router) {
       // Get course sections the teacher teaches
       const courseSections = await prisma.courseSection.findMany({
         where: { teacherId: user.id },
-        select: { id: true },
+        select: { courseId: true },
       });
-      const courseSectionIds = courseSections.map(cs => cs.id);
+      const courseIds = [...new Set(courseSections.map(cs => cs.courseId))];
 
-      // Get assessments in those course sections
+      // Get assessments in those courses
       const assessments = await prisma.assessment.findMany({
-        where: { courseSectionId: { in: courseSectionIds } },
+        where: { courseId: { in: courseIds } },
         select: { id: true },
       });
       const assessmentIds = assessments.map(a => a.id);

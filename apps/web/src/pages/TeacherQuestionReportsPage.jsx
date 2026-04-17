@@ -81,7 +81,7 @@ export default function TeacherQuestionReportsPage() {
     );
   }
 
-  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">Access denied</div>;
+  if (user?.role !== 'TEACHER') return <div className="p-8 text-center">Access denied</div>;
   if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
 
   return (
