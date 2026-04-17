@@ -111,18 +111,21 @@ export function registerCourseRoutes(router: Router) {
     const user = req.user!;
 
     // Verify teacher teaches this course
+    const courseSection = await prisma.courseSection.findFirst({
+      where: { courseId: params.courseId, teacherId: user.id },
+    });
     const courseClass = await prisma.courseClass.findFirst({
       where: { courseId: params.courseId, teacherId: user.id },
     });
 
-    if (!courseClass) {
+    if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
 
     // Get all students in the class(es) where this course is taught by this teacher
     const courseClasses = await prisma.courseClass.findMany({
-      where: { courseId: params.courseId, teacherId: user.id },
+      where: { courseId: params.courseId },
       include: {
         class: {
           include: {
