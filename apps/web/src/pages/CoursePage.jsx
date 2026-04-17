@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion, recordMaterialView, closeMaterialView, getCourseMaterialStats } from '../api';
+import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion, recordMaterialView, closeMaterialView, getCourseMaterialStats, API_BASE } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
 import {
@@ -1950,35 +1950,25 @@ export default function CoursePage() {
                 </div>
               )}
 
-              {/* PDF - embedded iframe via backend endpoint or direct URL */}
+              {/* PDF - displayed inline via /preview endpoint */}
               {previewMaterial.fileType === 'pdf' && previewMaterial.fileUrl && (
                 <div className="w-full" style={{ height: '75vh' }}>
                   <iframe
-                    src={previewMaterial.fileUrl.startsWith('data:')
-                      ? `${window.location.origin}/api/materials/${previewMaterial.id}/file`
-                      : previewMaterial.fileUrl}
+                    src={`${API_BASE}/materials/${previewMaterial.id}/preview`}
                     className="w-full h-full rounded-lg border-0"
                     title={previewMaterial.title}
                   />
                 </div>
               )}
 
-              {/* PPT / DOC / XLS - Google Docs Viewer via backend file-serving endpoint */}
-              {(previewMaterial.fileType === 'ppt' || previewMaterial.fileType === 'doc' || previewMaterial.fileType === 'xls') && previewMaterial.fileUrl && (
+              {/* PPT / DOC / XLS - Converted to PDF and displayed inline via /preview endpoint */}
+              {(previewMaterial.fileType === 'ppt' || previewMaterial.fileType === 'doc' || previewMaterial.fileType === 'xls' || previewMaterial.fileType === 'pptx' || previewMaterial.fileType === 'docx' || previewMaterial.fileType === 'xlsx') && previewMaterial.fileUrl && (
                 <div className="w-full" style={{ height: '75vh' }}>
-                  {(() => {
-                    // Build the file URL: for base64, use backend endpoint; for public URLs, use directly
-                    const fileUrl = previewMaterial.fileUrl.startsWith('data:')
-                      ? `${window.location.origin}/api/materials/${previewMaterial.id}/file`
-                      : previewMaterial.fileUrl;
-                    return (
-                      <iframe
-                        src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
-                        className="w-full h-full rounded-lg border-0"
-                        title={previewMaterial.title}
-                      />
-                    );
-                  })()}
+                  <iframe
+                    src={`${API_BASE}/materials/${previewMaterial.id}/preview`}
+                    className="w-full h-full rounded-lg border-0"
+                    title={previewMaterial.title}
+                  />
                 </div>
               )}
 
@@ -2021,7 +2011,7 @@ export default function CoursePage() {
                 {previewMaterial.fileUrl && (
                   <a
                     href={previewMaterial.fileUrl.startsWith('data:')
-                      ? `${window.location.origin}/api/materials/${previewMaterial.id}/file`
+                      ? `${API_BASE}/materials/${previewMaterial.id}/file`
                       : previewMaterial.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"

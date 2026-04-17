@@ -1,5 +1,5 @@
 // API base URL - uses Render backend in production, localhost:4000 in dev
-const API_BASE = window.location.hostname === 'localhost'
+export const API_BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:4000/api'
   : 'https://lucy-lms-back.onrender.com/api';
 

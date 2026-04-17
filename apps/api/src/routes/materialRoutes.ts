@@ -3,6 +3,57 @@ import type { Request, Response, Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { authRequired, requireRole, type AuthedRequest } from '../middleware';
+import { convert as libreConvert } from 'libreoffice-convert';
+import tmp from 'tmp';
+import fs from 'fs';
+import path from 'path';
+
+const OFFICE_TYPES = ['ppt', 'doc', 'xls', 'pptx', 'docx', 'xlsx'];
+
+async function convertToPdf(fileUrl: string, fileType: string): Promise<string | null> {
+  if (!OFFICE_TYPES.includes(fileType)) return null;
+  if (!fileUrl.startsWith('data:')) return null; // Only convert base64 uploads
+
+  return new Promise((resolve) => {
+    tmp.file({ postfix: `.${fileType}` }, (err, tmpPath, fd, cleanup) => {
+      if (err) { console.error('tmp file error:', err); resolve(null); return; }
+
+      try {
+        const matches = fileUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) { cleanup(); resolve(null); return; }
+
+        const buffer = Buffer.from(matches[2], 'base64');
+        fs.writeFileSync(tmpPath, buffer);
+
+        const outputDir = path.dirname(tmpPath);
+        const outputName = path.basename(tmpPath, `.${fileType}`) + '.pdf';
+        const outputPath = path.join(outputDir, outputName);
+
+        libreConvert(tmpPath, outputDir, 'pdf', undefined, (err: any) => {
+          cleanup();
+          if (err) {
+            console.error('LibreOffice conversion error:', err.message || err);
+            resolve(null);
+            return;
+          }
+          try {
+            const pdfBuffer = fs.readFileSync(outputPath);
+            const pdfBase64 = `data:application/pdf;base64,${pdfBuffer.toString('base64')}`;
+            try { fs.unlinkSync(outputPath); } catch (_) {}
+            resolve(pdfBase64);
+          } catch (readErr) {
+            console.error('Error reading converted PDF:', readErr);
+            resolve(null);
+          }
+        });
+      } catch (writeErr) {
+        console.error('Error writing temp file:', writeErr);
+        cleanup();
+        resolve(null);
+      }
+    });
+  });
+}
 
 export function registerMaterialRoutes(router: Router) {
   // Get materials for a course
@@ -42,14 +93,21 @@ export function registerMaterialRoutes(router: Router) {
       return;
     }
 
-    // Student must be in a class that has this course
+    // Student must be enrolled in this course via courseSection or courseClass
+    const enrollment = await prisma.studentEnrollment.findFirst({
+      where: {
+        studentId: user.id,
+        status: 'ENROLLED',
+        courseSection: { courseId: params.courseId },
+      },
+    });
     const courseClass = await prisma.courseClass.findFirst({
       where: {
         courseId: params.courseId,
         class: { students: { some: { studentId: user.id } } },
       },
     });
-    if (!courseClass) {
+    if (!enrollment && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -85,6 +143,16 @@ export function registerMaterialRoutes(router: Router) {
       return;
     }
 
+    // Convert office files to PDF for inline preview
+    let previewFileUrl = null;
+    if (body.fileUrl && body.fileType && OFFICE_TYPES.includes(body.fileType)) {
+      try {
+        previewFileUrl = await convertToPdf(body.fileUrl, body.fileType);
+      } catch (err) {
+        console.error('Conversion failed, material will be created without preview:', err);
+      }
+    }
+
     const material = await prisma.material.create({
       data: {
         courseId: params.courseId,
@@ -93,6 +161,7 @@ export function registerMaterialRoutes(router: Router) {
         fileUrl: body.fileUrl,
         fileType: body.fileType,
         fileName: body.fileName,
+        previewFileUrl,
         createdBy: user.id,
       },
       include: { author: { select: { id: true, fullName: true, email: true } } },
@@ -149,7 +218,94 @@ export function registerMaterialRoutes(router: Router) {
     res.json({ success: true });
   });
 
-  // Serve material file (publicly accessible for preview viewers like Google Docs Viewer)
+  // Serve material preview PDF (converted from PPT/DOC/XLS or original PDF)
+  router.get('/materials/:materialId/preview', async (req: Request, res: Response) => {
+    const params = z.object({ materialId: z.string() }).parse(req.params);
+
+    try {
+      const material = await prisma.material.findUnique({
+        where: { id: params.materialId },
+        select: { fileUrl: true, fileType: true, fileName: true, title: true, previewFileUrl: true },
+      });
+
+      if (!material || !material.fileUrl) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      // For PDFs, serve directly
+      if (material.fileType === 'pdf') {
+        if (material.fileUrl.startsWith('data:')) {
+          const matches = material.fileUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches) return res.status(400).json({ error: 'Invalid data URL' });
+          const buffer = Buffer.from(matches[2], 'base64');
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `inline; filename="${material.fileName || material.title}.pdf"`);
+          res.setHeader('Content-Length', buffer.length);
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          return res.send(buffer);
+        }
+        return res.redirect(material.fileUrl);
+      }
+
+      // For office files, serve the converted preview PDF
+      if (OFFICE_TYPES.includes(material.fileType)) {
+        // Lazy conversion: if previewFileUrl is null, convert now
+        if (!material.previewFileUrl && material.fileUrl.startsWith('data:')) {
+          const pdfBase64 = await convertToPdf(material.fileUrl, material.fileType);
+          if (pdfBase64) {
+            await prisma.material.update({
+              where: { id: params.materialId },
+              data: { previewFileUrl: pdfBase64 },
+            });
+            material.previewFileUrl = pdfBase64;
+          }
+        }
+
+        if (material.previewFileUrl && material.previewFileUrl.startsWith('data:')) {
+          const matches = material.previewFileUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches) return res.status(400).json({ error: 'Invalid preview data URL' });
+          const buffer = Buffer.from(matches[2], 'base64');
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `inline; filename="${material.fileName || material.title}.pdf"`);
+          res.setHeader('Content-Length', buffer.length);
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          return res.send(buffer);
+        }
+
+        // If conversion failed, serve original file for download
+        if (material.fileUrl.startsWith('data:')) {
+          const matches = material.fileUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (!matches) return res.status(400).json({ error: 'Invalid data URL' });
+          const buffer = Buffer.from(matches[2], 'base64');
+          const ext = material.fileType || 'bin';
+          res.setHeader('Content-Type', 'application/octet-stream');
+          res.setHeader('Content-Disposition', `attachment; filename="${material.fileName || material.title}.${ext}"`);
+          res.setHeader('Content-Length', buffer.length);
+          return res.send(buffer);
+        }
+
+        return res.redirect(material.fileUrl);
+      }
+
+      // For other types, serve the original file
+      if (material.fileUrl.startsWith('data:')) {
+        const matches = material.fileUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) return res.status(400).json({ error: 'Invalid data URL' });
+        const buffer = Buffer.from(matches[2], 'base64');
+        res.setHeader('Content-Type', matches[1]);
+        res.setHeader('Content-Length', buffer.length);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.send(buffer);
+      }
+
+      return res.redirect(material.fileUrl);
+    } catch (err) {
+      console.error('Error serving material preview:', err);
+      res.status(500).json({ error: 'Failed to serve preview' });
+    }
+  });
+
+  // Serve material file (original, for download)
   router.get('/materials/:materialId/file', async (req: Request, res: Response) => {
     const params = z.object({ materialId: z.string() }).parse(req.params);
 
