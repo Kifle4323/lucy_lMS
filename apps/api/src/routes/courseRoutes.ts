@@ -123,7 +123,19 @@ export function registerCourseRoutes(router: Router) {
       return;
     }
 
-    // Get all students in the class(es) where this course is taught by this teacher
+    // Get students from course sections (via StudentEnrollment)
+    const courseSections = await prisma.courseSection.findMany({
+      where: { courseId: params.courseId },
+      include: {
+        enrollments: {
+          where: { status: 'ENROLLED' },
+          include: { student: { select: { id: true, fullName: true, email: true } } },
+        },
+        class: { select: { id: true, name: true } },
+      },
+    });
+
+    // Get students from course classes (via Class → students)
     const courseClasses = await prisma.courseClass.findMany({
       where: { courseId: params.courseId },
       include: {
@@ -137,7 +149,18 @@ export function registerCourseRoutes(router: Router) {
       },
     });
 
-    // Flatten students from all classes
+    type StudentWithClass = { id: string; fullName: string; email: string; classId: string | null; className: string | null };
+
+    // Students from course sections
+    const sectionStudents: StudentWithClass[] = courseSections.flatMap(cs =>
+      cs.enrollments.map(e => ({
+        ...e.student,
+        classId: cs.classId,
+        className: cs.class?.name || cs.sectionCode,
+      }))
+    );
+
+    // Students from course classes
     type CourseClassWithStudents = {
       classId: string;
       class: {
@@ -146,10 +169,8 @@ export function registerCourseRoutes(router: Router) {
         students: { student: { id: string; fullName: string; email: string } }[];
       };
     };
-    
     const typedCourseClasses = courseClasses as CourseClassWithStudents[];
-    
-    const students = typedCourseClasses.flatMap(cc =>
+    const classStudents: StudentWithClass[] = typedCourseClasses.flatMap(cc =>
       cc.class.students.map(s => ({
         ...s.student,
         classId: cc.classId,
@@ -157,9 +178,9 @@ export function registerCourseRoutes(router: Router) {
       }))
     );
 
-    // Remove duplicates (student might be in multiple classes)
-    type StudentWithClass = { id: string; fullName: string; email: string; classId: string; className: string };
-    const uniqueStudents = students.reduce<StudentWithClass[]>((acc, student) => {
+    // Merge and deduplicate
+    const allStudents = [...sectionStudents, ...classStudents];
+    const uniqueStudents = allStudents.reduce<StudentWithClass[]>((acc, student) => {
       if (!acc.find(s => s.id === student.id)) {
         acc.push(student);
       }

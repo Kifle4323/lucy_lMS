@@ -138,7 +138,7 @@ export default function CoursePage() {
     Promise.all([
       getCourseAssessments(courseId).then(setAssessments),
       getCourseMaterials(courseId).then(setMaterials),
-      user?.role === 'TEACHER' ? getCourseStudents(courseId).then(setStudents).catch(() => {}) : Promise.resolve(),
+      user?.role === 'TEACHER' ? getCourseStudents(courseId).then(setStudents).catch((err) => console.error('Failed to load students:', err)) : Promise.resolve(),
       user?.role === 'TEACHER' ? getCourseMaterialStats(courseId).then(setMaterialStats).catch(() => {}) : Promise.resolve(),
       user?.role === 'STUDENT' ? getProfileStatus().then(status => setProfileImage(status.profileImage)).catch(() => {}) : Promise.resolve(),
       user?.role === 'STUDENT' ? getStudentAttempts(courseId).then(setStudentAttempts).catch(() => []) : Promise.resolve(),
