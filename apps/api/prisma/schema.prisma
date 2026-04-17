@@ -104,6 +104,7 @@ model User {
   liveSessionAttendance LiveSessionAttendance[]
   manualAttendanceRecords ManualAttendanceRecord[]
   manualAttendanceSessions ManualAttendanceSession[]
+  materialViews MaterialView[]
 }
 
 model StudentProfile {
@@ -279,6 +280,23 @@ model Material {
 
   course Course @relation(fields: [courseId], references: [id])
   author User   @relation(fields: [createdBy], references: [id])
+  views   MaterialView[]
+}
+
+model MaterialView {
+  id          String   @id @default(cuid())
+  materialId  String
+  studentId   String
+  openedAt    DateTime @default(now())
+  closedAt    DateTime?
+  durationSec Int?     // seconds viewed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  student  User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, studentId, openedAt])
 }
 
 model LiveSession {

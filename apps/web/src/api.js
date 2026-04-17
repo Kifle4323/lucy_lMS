@@ -301,6 +301,18 @@ export async function deleteMaterial(materialId) {
   return apiFetch(`/materials/${materialId}`, { method: 'DELETE' });
 }
 
+export async function recordMaterialView(materialId) {
+  return apiFetch(`/materials/${materialId}/view`, { method: 'POST' });
+}
+
+export async function closeMaterialView(viewId) {
+  return apiFetch(`/material-views/${viewId}/close`, { method: 'PATCH' });
+}
+
+export async function getCourseMaterialStats(courseId) {
+  return apiFetch(`/courses/${courseId}/material-stats`);
+}
+
 // Live Sessions
 export async function getCourseLiveSessions(courseId) {
   return apiFetch(`/courses/${courseId}/live-sessions`);

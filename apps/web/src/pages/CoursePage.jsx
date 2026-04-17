@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion } from '../api';
+import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion, recordMaterialView, closeMaterialView, getCourseMaterialStats } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
 import {
@@ -60,6 +60,8 @@ export default function CoursePage() {
   const [newMaterial, setNewMaterial] = useState({ title: '', content: '', fileUrl: '', fileType: 'text', fileName: '' });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [previewMaterial, setPreviewMaterial] = useState(null);
+  const [currentViewId, setCurrentViewId] = useState(null);
+  const [materialStats, setMaterialStats] = useState(null);
 
   // Teacher: add question form
   const [selectedAssessment, setSelectedAssessment] = useState(null);
@@ -137,6 +139,7 @@ export default function CoursePage() {
       getCourseAssessments(courseId).then(setAssessments),
       getCourseMaterials(courseId).then(setMaterials),
       user?.role === 'TEACHER' ? getCourseStudents(courseId).then(setStudents).catch(() => {}) : Promise.resolve(),
+      user?.role === 'TEACHER' ? getCourseMaterialStats(courseId).then(setMaterialStats).catch(() => {}) : Promise.resolve(),
       user?.role === 'STUDENT' ? getProfileStatus().then(status => setProfileImage(status.profileImage)).catch(() => {}) : Promise.resolve(),
       user?.role === 'STUDENT' ? getStudentAttempts(courseId).then(setStudentAttempts).catch(() => []) : Promise.resolve(),
     ]).finally(() => setLoading(false));
@@ -344,6 +347,32 @@ export default function CoursePage() {
     await deleteMaterial(materialId);
     setMaterials(materials.filter(m => m.id !== materialId));
     toast.success('Material deleted!');
+  };
+
+  const handleOpenPreview = async (material) => {
+    setPreviewMaterial(material);
+    // Track student view
+    if (user?.role === 'STUDENT') {
+      try {
+        const result = await recordMaterialView(material.id);
+        setCurrentViewId(result.viewId);
+      } catch (err) {
+        console.error('Failed to record view:', err);
+      }
+    }
+  };
+
+  const handleClosePreview = async () => {
+    // Close view tracking for student
+    if (user?.role === 'STUDENT' && currentViewId) {
+      try {
+        await closeMaterialView(currentViewId);
+      } catch (err) {
+        console.error('Failed to close view:', err);
+      }
+      setCurrentViewId(null);
+    }
+    setPreviewMaterial(null);
   };
 
   const handleAddQuestion = async (e) => {
@@ -1080,6 +1109,16 @@ export default function CoursePage() {
                       <span className="inline-block mt-2 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
                         {m.fileType}
                       </span>
+                      {user?.role === 'TEACHER' && materialStats && (() => {
+                        const stat = materialStats.find(s => s.materialId === m.id);
+                        if (!stat) return null;
+                        return (
+                          <span className="inline-block mt-2 ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
+                            <Eye className="w-3 h-3 inline mr-1" />
+                            {stat.uniqueViewers}/{stat.totalStudents} viewed
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="p-5">
                       {m.content && (
@@ -1088,7 +1127,7 @@ export default function CoursePage() {
                       <div className="flex items-center gap-3 mt-2">
                         {(m.fileUrl || m.content) && (
                           <button
-                            onClick={() => setPreviewMaterial(m)}
+                            onClick={() => handleOpenPreview(m)}
                             className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
                           >
                             <Eye className="w-4 h-4" />
@@ -1831,7 +1870,7 @@ export default function CoursePage() {
                 </span>
               </div>
               <button
-                onClick={() => setPreviewMaterial(null)}
+                onClick={() => handleClosePreview()}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
               >
                 <X className="w-5 h-5" />
@@ -1911,52 +1950,35 @@ export default function CoursePage() {
                 </div>
               )}
 
-              {/* PDF - embedded iframe or base64 */}
+              {/* PDF - embedded iframe via backend endpoint or direct URL */}
               {previewMaterial.fileType === 'pdf' && previewMaterial.fileUrl && (
                 <div className="w-full" style={{ height: '75vh' }}>
-                  {previewMaterial.fileUrl.startsWith('data:') ? (
-                    <iframe
-                      src={previewMaterial.fileUrl}
-                      className="w-full h-full rounded-lg border-0"
-                      title={previewMaterial.title}
-                    />
-                  ) : (
-                    <iframe
-                      src={previewMaterial.fileUrl}
-                      className="w-full h-full rounded-lg border-0"
-                      title={previewMaterial.title}
-                    />
-                  )}
+                  <iframe
+                    src={previewMaterial.fileUrl.startsWith('data:')
+                      ? `${window.location.origin}/api/materials/${previewMaterial.id}/file`
+                      : previewMaterial.fileUrl}
+                    className="w-full h-full rounded-lg border-0"
+                    title={previewMaterial.title}
+                  />
                 </div>
               )}
 
-              {/* PPT / DOC / XLS - Google Docs Viewer or Office Online */}
+              {/* PPT / DOC / XLS - Google Docs Viewer via backend file-serving endpoint */}
               {(previewMaterial.fileType === 'ppt' || previewMaterial.fileType === 'doc' || previewMaterial.fileType === 'xls') && previewMaterial.fileUrl && (
                 <div className="w-full" style={{ height: '75vh' }}>
-                  {previewMaterial.fileUrl.startsWith('data:') ? (
-                    // Base64 file - use Google Docs Viewer via a hosted URL won't work,
-                    // so offer download instead
-                    <div className="flex flex-col items-center justify-center h-full gap-4">
-                      <FileText className="w-16 h-16 text-gray-400" />
-                      <p className="text-gray-600 dark:text-gray-400">
-                        This {previewMaterial.fileType.toUpperCase()} file cannot be previewed inline.
-                      </p>
-                      <a
-                        href={previewMaterial.fileUrl}
-                        download={previewMaterial.fileName || `material.${previewMaterial.fileType}`}
-                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg"
-                      >
-                        Download {previewMaterial.fileName || 'File'}
-                      </a>
-                    </div>
-                  ) : (
-                    // Public URL - use Google Docs Viewer
-                    <iframe
-                      src={`https://docs.google.com/gview?url=${encodeURIComponent(previewMaterial.fileUrl)}&embedded=true`}
-                      className="w-full h-full rounded-lg border-0"
-                      title={previewMaterial.title}
-                    />
-                  )}
+                  {(() => {
+                    // Build the file URL: for base64, use backend endpoint; for public URLs, use directly
+                    const fileUrl = previewMaterial.fileUrl.startsWith('data:')
+                      ? `${window.location.origin}/api/materials/${previewMaterial.id}/file`
+                      : previewMaterial.fileUrl;
+                    return (
+                      <iframe
+                        src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+                        className="w-full h-full rounded-lg border-0"
+                        title={previewMaterial.title}
+                      />
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1996,9 +2018,11 @@ export default function CoursePage() {
                 Added by {previewMaterial.author?.fullName || 'Unknown'} on {new Date(previewMaterial.createdAt).toLocaleDateString()}
               </p>
               <div className="flex gap-2">
-                {previewMaterial.fileUrl && !previewMaterial.fileUrl.startsWith('data:') && (
+                {previewMaterial.fileUrl && (
                   <a
-                    href={previewMaterial.fileUrl}
+                    href={previewMaterial.fileUrl.startsWith('data:')
+                      ? `${window.location.origin}/api/materials/${previewMaterial.id}/file`
+                      : previewMaterial.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm inline-flex items-center gap-2"
@@ -2007,17 +2031,8 @@ export default function CoursePage() {
                     Open in New Tab
                   </a>
                 )}
-                {previewMaterial.fileUrl && previewMaterial.fileUrl.startsWith('data:') && (
-                  <a
-                    href={previewMaterial.fileUrl}
-                    download={previewMaterial.fileName || 'file'}
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg text-sm inline-flex items-center gap-2"
-                  >
-                    Download
-                  </a>
-                )}
                 <button
-                  onClick={() => setPreviewMaterial(null)}
+                  onClick={() => handleClosePreview()}
                   className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm"
                 >
                   Close
