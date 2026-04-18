@@ -340,76 +340,113 @@ export default function GradebookPage() {
           </div>
         )}
 
-        {/* Attendance Entry */}
-        {activeView === 'attendance' && gradebook && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Attendance Scores</h2>
-              <p className="text-sm text-gray-500">Enter attendance score (0-100) for each student</p>
-            </div>
-            
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {gradebook.gradebook.map((g) => (
-                  <tr key={g.student.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+        {/* Attendance Entry - Grouped by Class */}
+        {activeView === 'attendance' && gradebook && (() => {
+          // Group students by class
+          const classGroups = {};
+          gradebook.gradebook.forEach(g => {
+            const cls = g.student.className || 'Unassigned';
+            if (!classGroups[cls]) classGroups[cls] = [];
+            classGroups[cls].push(g);
+          });
+          const classNames = Object.keys(classGroups).sort();
+
+          return (
+            <div className="space-y-6">
+              {classNames.map(cls => (
+                <div key={cls} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b border-gray-200 bg-gray-50">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                          <span className="text-primary-700 font-medium text-sm">
-                            {g.student.fullName?.charAt(0) || '?'}
-                          </span>
+                        <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+                          <Users className="w-4 h-4 text-primary-700" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{g.student.fullName}</p>
-                          <p className="text-xs text-gray-500">{g.student.email}</p>
+                          <h3 className="font-semibold text-gray-900">{cls}</h3>
+                          <p className="text-xs text-gray-500">{classGroups[cls].length} student{classGroups[cls].length !== 1 ? 's' : ''}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={attendance[g.student.id] || 0}
-                          onChange={(e) => handleAttendanceChange(g.student.id, e.target.value)}
-                          className="w-20 px-2 py-1 border border-gray-200 rounded text-center"
-                        />
-                        <span className="text-gray-500">%</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
                       <button
-                        onClick={() => handleSaveAttendance(g.student.id)}
-                        className="px-3 py-1 bg-primary-900 hover:bg-primary-800 text-white text-sm font-medium rounded"
+                        onClick={() => {
+                          const promises = classGroups[cls].map(g =>
+                            setAttendance(courseId, g.student.id, attendance[g.student.id] || 0)
+                          );
+                          Promise.all(promises).then(() => toast.success(`Attendance saved for ${cls}`)).catch(() => toast.error('Failed to save'));
+                        }}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg inline-flex items-center gap-1"
                       >
-                        Save
+                        <Save className="w-3.5 h-3.5" />
+                        Save Class
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
 
-            <div className="p-4 border-t border-gray-200">
-              <button
-                onClick={handleSaveAllAttendance}
-                disabled={saving}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium rounded-lg"
-              >
-                <Save className="w-4 h-4 inline mr-2" />
-                Save All Attendance
-              </button>
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Score</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {classGroups[cls].map((g) => (
+                        <tr key={g.student.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                                <span className="text-primary-700 font-medium text-sm">
+                                  {g.student.fullName?.charAt(0) || '?'}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{g.student.fullName}</p>
+                                <p className="text-xs text-gray-500">{g.student.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={attendance[g.student.id] || 0}
+                                onChange={(e) => handleAttendanceChange(g.student.id, e.target.value)}
+                                className="w-20 px-2 py-1 border border-gray-200 rounded text-center"
+                              />
+                              <span className="text-gray-500">%</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={() => handleSaveAttendance(g.student.id)}
+                              className="px-3 py-1 bg-primary-900 hover:bg-primary-800 text-white text-sm font-medium rounded"
+                            >
+                              Save
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveAllAttendance}
+                  disabled={saving}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium rounded-lg inline-flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save All Attendance
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Gradebook View */}
         {activeView === 'gradebook' && gradebook && (
