@@ -6,7 +6,7 @@ import {
   proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam,
   getLiveAttendanceStats, syncAttendanceToGrades,
   createManualAttendance, getManualAttendanceSessions, deleteManualAttendanceSession,
-  getGradeConfig
+  getGradeComponents
 } from '../api.js';
 import Layout from '../components/Layout';
 import { useToast } from '../ToastContext';
@@ -97,14 +97,14 @@ export default function TeacherGradesPage() {
     setEarlyResponses(null);
     setShowEarlyProposal(false);
     try {
-      const [studentsData, examsData, configData] = await Promise.all([
+      const [studentsData, examsData, componentsData] = await Promise.all([
         getSectionStudents(section.id),
         getSectionExamSchedules(section.id),
-        getGradeConfig(section.courseId).catch(() => null)
+        getGradeComponents(section.courseId).catch(() => [])
       ]);
       setStudents(studentsData);
       setExamSchedules(examsData);
-      setGradeConfig(configData || { quizWeight: 25, midtermWeight: 25, finalWeight: 40, attendanceWeight: 10 });
+      setGradeConfig(componentsData || []);
     } catch (err) {
       setError(err.message);
     }
@@ -558,10 +558,11 @@ export default function TeacherGradesPage() {
                       <thead>
                         <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                           <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Quiz<br/><span className="text-xs text-gray-400">/{gradeConfig?.quizWeight || 25}</span></th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Midterm<br/><span className="text-xs text-gray-400">/{gradeConfig?.midtermWeight || 25}</span></th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Final<br/><span className="text-xs text-gray-400">/{gradeConfig?.finalWeight || 40}</span></th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Attendance<br/><span className="text-xs text-gray-400">/{gradeConfig?.attendanceWeight || 10}</span></th>
+                          {(Array.isArray(gradeConfig) ? gradeConfig : []).map(comp => (
+                            <th key={comp.id} className="text-center p-3 text-gray-700 dark:text-gray-300">
+                              {comp.name}<br/><span className="text-xs text-gray-400">/{comp.weight}</span>
+                            </th>
+                          ))}
                           <th className="text-center p-3 text-gray-700 dark:text-gray-300">Total</th>
                           <th className="text-center p-3 text-gray-700 dark:text-gray-300">Grade</th>
                           <th className="text-center p-3 text-gray-700 dark:text-gray-300">Status</th>
@@ -569,60 +570,35 @@ export default function TeacherGradesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {students.map(student => (
+                        {students.map(student => {
+                          const comps = Array.isArray(gradeConfig) ? gradeConfig : [];
+                          const getCompField = (name) => {
+                            if (name === 'Quiz') return 'quizScore';
+                            if (name === 'Midterm') return 'midtermScore';
+                            if (name === 'Final') return 'finalScore';
+                            if (name === 'Attendance') return 'attendanceScore';
+                            return name.toLowerCase() + 'Score';
+                          };
+                          return (
                           <tr key={student.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td className="p-3">
                               <div className="font-medium text-gray-900 dark:text-white">{student.student?.fullName}</div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">{student.student?.email}</div>
                             </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                min="0"
-                                max={gradeConfig?.quizWeight || 25}
-                                step="0.1"
-                                value={student.grade?.quizScore ?? ''}
-                                onChange={e => updateStudentGrade(student.id, 'quizScore', e.target.value)}
-                                disabled={student.grade?.isSubmitted}
-                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                min="0"
-                                max={gradeConfig?.midtermWeight || 25}
-                                step="0.1"
-                                value={student.grade?.midtermScore ?? ''}
-                                onChange={e => updateStudentGrade(student.id, 'midtermScore', e.target.value)}
-                                disabled={student.grade?.isSubmitted}
-                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                min="0"
-                                max={gradeConfig?.finalWeight || 40}
-                                step="0.1"
-                                value={student.grade?.finalScore ?? ''}
-                                onChange={e => updateStudentGrade(student.id, 'finalScore', e.target.value)}
-                                disabled={student.grade?.isSubmitted}
-                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
-                              />
-                            </td>
-                            <td className="p-3">
-                              <input
-                                type="number"
-                                min="0"
-                                max={gradeConfig?.attendanceWeight || 10}
-                                step="0.1"
-                                value={student.grade?.attendanceScore ?? ''}
-                                onChange={e => updateStudentGrade(student.id, 'attendanceScore', e.target.value)}
-                                disabled={student.grade?.isSubmitted}
-                                className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
-                              />
-                            </td>
+                            {comps.map(comp => (
+                              <td key={comp.id} className="p-3">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={comp.weight}
+                                  step="0.1"
+                                  value={student.grade?.[getCompField(comp.name)] ?? ''}
+                                  onChange={e => updateStudentGrade(student.id, getCompField(comp.name), e.target.value)}
+                                  disabled={student.grade?.isSubmitted}
+                                  className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600"
+                                />
+                              </td>
+                            ))}
                             <td className="p-3 text-center font-medium">
                               {student.grade?.totalScore ?? '-'}
                             </td>
@@ -658,7 +634,8 @@ export default function TeacherGradesPage() {
                               </button>
                             </td>
                           </tr>
-                        ))}
+                        );
+                        })}
                       </tbody>
                     </table>
                   </div>

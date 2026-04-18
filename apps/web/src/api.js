@@ -197,12 +197,24 @@ export async function deleteManualGrade(assessmentId, studentId) {
 }
 
 // Gradebook
-export async function getGradeConfig(courseId) {
-  return apiFetch(`/courses/${courseId}/grade-config`);
+export async function getGradeComponents(courseId) {
+  return apiFetch(`/courses/${courseId}/grade-components`);
 }
 
-export async function updateGradeConfig(courseId, weights) {
-  return apiFetch(`/courses/${courseId}/grade-config`, { method: 'PATCH', body: JSON.stringify(weights) });
+export async function addGradeComponent(courseId, name, weight) {
+  return apiFetch(`/courses/${courseId}/grade-components`, { method: 'POST', body: JSON.stringify({ name, weight }) });
+}
+
+export async function updateGradeComponent(courseId, componentId, data) {
+  return apiFetch(`/courses/${courseId}/grade-components/${componentId}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteGradeComponent(courseId, componentId) {
+  return apiFetch(`/courses/${courseId}/grade-components/${componentId}`, { method: 'DELETE' });
+}
+
+export async function getGradeConfig(courseId) {
+  return apiFetch(`/courses/${courseId}/grade-components`);
 }
 
 export async function getAttendance(courseId) {

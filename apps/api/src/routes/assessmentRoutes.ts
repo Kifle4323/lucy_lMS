@@ -13,21 +13,36 @@ export function registerAssessmentRoutes(router: Router) {
       const params = z.object({ courseId: z.string() }).parse(req.params);
       const body = z.object({
         title: z.string().min(2),
-        examType: z.enum(['QUIZ', 'MIDTERM', 'FINAL']).optional(),
+        examType: z.enum(['QUIZ', 'MIDTERM', 'FINAL', 'ASSIGNMENT']).optional(),
         deliveryMode: z.enum(['ONLINE', 'PAPER']).optional(),
         timeLimit: z.number().int().positive().optional(),
         maxScore: z.number().int().positive().optional(),
+        componentId: z.string().optional(),
       }).parse(req.body);
 
-      // Check if teacher is assigned to this course through CourseSection
+      // Check if teacher is assigned to this course through CourseSection or CourseClass
       const courseSection = await prisma.courseSection.findFirst({
         where: { courseId: params.courseId, teacherId: req.user!.id },
         include: { course: true },
       });
+      const courseClass = await prisma.courseClass.findFirst({
+        where: { courseId: params.courseId, teacherId: req.user!.id },
+      });
 
-      if (!courseSection) {
+      if (!courseSection && !courseClass) {
         res.status(403).json({ error: 'forbidden' });
         return;
+      }
+
+      // If componentId provided, auto-set maxScore from component weight
+      let maxScore = body.maxScore ?? 100;
+      if (body.componentId) {
+        const component = await prisma.gradeComponent.findUnique({
+          where: { id: body.componentId },
+        });
+        if (component) {
+          maxScore = body.maxScore ?? component.weight;
+        }
       }
 
       const assessment = await prisma.assessment.create({
@@ -37,7 +52,8 @@ export function registerAssessmentRoutes(router: Router) {
           examType: body.examType ?? 'QUIZ',
           deliveryMode: body.deliveryMode ?? 'ONLINE',
           timeLimit: body.timeLimit,
-          maxScore: body.maxScore ?? 100,
+          maxScore,
+          componentId: body.componentId || null,
         },
       });
 

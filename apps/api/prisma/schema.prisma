@@ -262,6 +262,7 @@ model Course {
   materials     Material[]
   liveSessions  LiveSession[]
   gradeConfig   CourseGradeConfig?
+  gradeComponents GradeComponent[]
   addDropRequests AddDropRequest[]
   attendance    Attendance[]
   manualAttendanceSessions ManualAttendanceSession[]
@@ -378,14 +379,32 @@ model Assessment {
   deliveryMode DeliveryMode @default(ONLINE)
   timeLimit    Int?
   maxScore     Int          @default(100) // Maximum score for this assessment
+  componentId  String?      // Link to grade component (auto-sets maxScore from weight)
   isOpen       Boolean      @default(false) // Teacher must open for students to take
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   course       Course        @relation(fields: [courseId], references: [id])
+  component    GradeComponent? @relation(fields: [componentId], references: [id])
   questions    Question[]
   attempts     Attempt[]
   manualGrades ManualGrade[]
+}
+
+// Grade components - dynamic categories with weights (quiz, assignment, class activity, etc.)
+model GradeComponent {
+  id        String   @id @default(cuid())
+  courseId  String
+  name      String   // e.g., "Quiz", "Assignment", "Class Activity", "Midterm", "Final"
+  weight    Int      // percentage weight (e.g., 15 means 15%)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course      Course       @relation(fields: [courseId], references: [id])
+  assessments Assessment[]
+
+  @@unique([courseId, name])
 }
 
 model Question {

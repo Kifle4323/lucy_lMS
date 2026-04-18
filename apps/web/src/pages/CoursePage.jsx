@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion, recordMaterialView, closeMaterialView, getCourseMaterialStats, API_BASE } from '../api';
+import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion, recordMaterialView, closeMaterialView, getCourseMaterialStats, getGradeComponents, API_BASE } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
 import {
@@ -49,7 +49,8 @@ export default function CoursePage() {
 
   // Teacher: create assessment form
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
-  const [newAssessment, setNewAssessment] = useState({ title: '', examType: 'QUIZ', deliveryMode: 'ONLINE', timeLimit: '', maxScore: '100' });
+  const [newAssessment, setNewAssessment] = useState({ title: '', examType: 'QUIZ', deliveryMode: 'ONLINE', timeLimit: '', maxScore: '100', componentId: '' });
+  const [gradeComponents, setGradeComponents] = useState([]);
 
   // Teacher: manual grade entry
   const [showGradeModal, setShowGradeModal] = useState(null); // assessment being graded
@@ -140,6 +141,7 @@ export default function CoursePage() {
       getCourseMaterials(courseId).then(setMaterials),
       user?.role === 'TEACHER' ? getCourseStudents(courseId).then(setStudents).catch((err) => console.error('Failed to load students:', err)) : Promise.resolve(),
       user?.role === 'TEACHER' ? getCourseMaterialStats(courseId).then(setMaterialStats).catch(() => {}) : Promise.resolve(),
+      user?.role === 'TEACHER' ? getGradeComponents(courseId).then(setGradeComponents).catch(() => {}) : Promise.resolve(),
       user?.role === 'STUDENT' ? getProfileStatus().then(status => setProfileImage(status.profileImage)).catch(() => {}) : Promise.resolve(),
       user?.role === 'STUDENT' ? getStudentAttempts(courseId).then(setStudentAttempts).catch(() => []) : Promise.resolve(),
     ]).finally(() => setLoading(false));
@@ -181,9 +183,10 @@ export default function CoursePage() {
         examType: newAssessment.examType,
         timeLimit: newAssessment.timeLimit ? parseInt(newAssessment.timeLimit) : undefined,
         maxScore: newAssessment.maxScore ? parseInt(newAssessment.maxScore) : 100,
+        componentId: newAssessment.componentId || undefined,
       });
       setAssessments([...assessments, assessment]);
-      setNewAssessment({ title: '', examType: 'QUIZ', timeLimit: '', maxScore: '100' });
+      setNewAssessment({ title: '', examType: 'QUIZ', timeLimit: '', maxScore: '100', componentId: '' });
       setShowCreateAssessment(false);
       toast.success('Assessment created!');
     } catch (err) {
@@ -1222,6 +1225,29 @@ export default function CoursePage() {
                       </select>
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Grade Component</label>
+                      <select
+                        value={newAssessment.componentId}
+                        onChange={(e) => {
+                          const compId = e.target.value;
+                          const comp = gradeComponents.find(c => c.id === compId);
+                          setNewAssessment({
+                            ...newAssessment,
+                            componentId: compId,
+                            maxScore: comp ? String(comp.weight) : newAssessment.maxScore,
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">None</option>
+                        {gradeComponents.filter(c => c.name !== 'Attendance').map(comp => (
+                          <option key={comp.id} value={comp.id}>{comp.name} ({comp.weight}%)</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Mode</label>
                       <select
                         value={newAssessment.deliveryMode}
@@ -1232,8 +1258,6 @@ export default function CoursePage() {
                         <option value="PAPER">Paper</option>
                       </select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Time Limit (min)</label>
                       <input
@@ -1245,17 +1269,17 @@ export default function CoursePage() {
                         placeholder="Optional"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Max Score</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={newAssessment.maxScore}
-                        onChange={(e) => setNewAssessment({ ...newAssessment, maxScore: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="e.g., 100"
-                      />
-                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Score {newAssessment.componentId && <span className="text-gray-400">(auto-set from component weight)</span>}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newAssessment.maxScore}
+                      onChange={(e) => setNewAssessment({ ...newAssessment, maxScore: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="e.g., 100"
+                    />
                   </div>
                   <div className="flex gap-3">
                     <button
