@@ -1800,16 +1800,23 @@ export default function CoursePage() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => {
-                              setSubmissionsAssessment(null);
-                              setSubmissions([]);
-                              handleOpenGrading(attempt);
-                            }}
-                            className="px-3 py-1 bg-primary-900 hover:bg-primary-800 text-white text-sm font-medium rounded"
-                          >
-                            Grade
-                          </button>
+                          {attempt.faceVerification && !attempt.faceVerification.matchResult && !attempt.faceVerification.adminReviewed ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
+                              <AlertCircle className="w-3 h-3" />
+                              Face mismatch - grading blocked
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSubmissionsAssessment(null);
+                                setSubmissions([]);
+                                handleOpenGrading(attempt);
+                              }}
+                              className="px-3 py-1 bg-primary-900 hover:bg-primary-800 text-white text-sm font-medium rounded"
+                            >
+                              Grade
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

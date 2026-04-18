@@ -668,6 +668,15 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
+    // Check if attempt has an unreviewed face mismatch
+    const faceVerification = await prisma.faceVerification.findUnique({
+      where: { attemptId: params.attemptId },
+    });
+    if (faceVerification && !faceVerification.matchResult && !faceVerification.adminReviewed) {
+      res.status(403).json({ error: 'face_mismatch_pending', message: 'This attempt has a pending face verification review. Grading is blocked until an admin confirms the student identity.' });
+      return;
+    }
+
     // Check if teacher is assigned to this course
     const isTeacher = attempt.assessment.course.courseSections.some(
       (cc: { teacherId: string | null }) => cc.teacherId === req.user!.id
