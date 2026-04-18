@@ -652,10 +652,10 @@ export function registerAcademicRoutes(router: Router) {
   router.post('/teacher/grades', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const body = z.object({
       enrollmentId: z.string(),
-      quizScore: z.number().min(0).max(100).optional(),
-      midtermScore: z.number().min(0).max(100).optional(),
-      finalScore: z.number().min(0).max(100).optional(),
-      attendanceScore: z.number().min(0).max(100).optional(),
+      quizScore: z.number().min(0).optional(),
+      midtermScore: z.number().min(0).optional(),
+      finalScore: z.number().min(0).optional(),
+      attendanceScore: z.number().min(0).optional(),
       feedback: z.string().optional(),
     }).parse(req.body);
 
@@ -683,18 +683,27 @@ export function registerAcademicRoutes(router: Router) {
       attendanceWeight: 10,
     };
 
-    // Calculate total score
+    // Validate scores don't exceed weights
+    if (body.quizScore !== undefined && body.quizScore > config.quizWeight) {
+      return res.status(400).json({ error: `Quiz score cannot exceed ${config.quizWeight}` });
+    }
+    if (body.midtermScore !== undefined && body.midtermScore > config.midtermWeight) {
+      return res.status(400).json({ error: `Midterm score cannot exceed ${config.midtermWeight}` });
+    }
+    if (body.finalScore !== undefined && body.finalScore > config.finalWeight) {
+      return res.status(400).json({ error: `Final score cannot exceed ${config.finalWeight}` });
+    }
+    if (body.attendanceScore !== undefined && body.attendanceScore > config.attendanceWeight) {
+      return res.status(400).json({ error: `Attendance score cannot exceed ${config.attendanceWeight}` });
+    }
+
+    // Calculate total score (sum of raw marks, out of 100)
     const quiz = body.quizScore ?? 0;
     const midterm = body.midtermScore ?? 0;
     const final = body.finalScore ?? 0;
     const attendance = body.attendanceScore ?? 0;
 
-    const totalScore = Math.round(
-      (quiz * config.quizWeight / 100) +
-      (midterm * config.midtermWeight / 100) +
-      (final * config.finalWeight / 100) +
-      (attendance * config.attendanceWeight / 100)
-    );
+    const totalScore = Math.round((quiz + midterm + final + attendance) * 10) / 10;
 
     const { letter, point } = getGradeFromScore(totalScore);
 
@@ -838,37 +847,37 @@ export function registerAcademicRoutes(router: Router) {
         }
       }
 
-      // Get attendance score
+      // Get attendance score (already stored as weighted mark)
       const attendance = attendanceRecords.find(a => a.studentId === studentId);
       const attendanceScore = attendance?.score || 0;
 
-      // Calculate total
-      const totalScore = Math.round(
-        (quizAverage * config.quizWeight / 100) +
-        (midtermScore * config.midtermWeight / 100) +
-        (finalScore * config.finalWeight / 100) +
-        (attendanceScore * config.attendanceWeight / 100)
-      );
+      // Calculate weighted marks (each out of its weight)
+      const quizMark = Math.round(quizAverage * config.quizWeight / 100 * 10) / 10;
+      const midtermMark = Math.round(midtermScore * config.midtermWeight / 100 * 10) / 10;
+      const finalMark = Math.round(finalScore * config.finalWeight / 100 * 10) / 10;
+
+      // Total = sum of weighted marks (out of 100)
+      const totalScore = Math.round((quizMark + midtermMark + finalMark + attendanceScore) * 10) / 10;
 
       const { letter, point } = getGradeFromScore(totalScore);
 
-      // Upsert grade
+      // Upsert grade - store weighted marks (out of weight)
       const grade = await prisma.studentGrade.upsert({
         where: { enrollmentId: enrollment.id },
         create: {
           enrollmentId: enrollment.id,
-          quizScore: quizAverage,
-          midtermScore,
-          finalScore,
+          quizScore: quizMark,
+          midtermScore: midtermMark,
+          finalScore: finalMark,
           attendanceScore,
           totalScore,
           gradeLetter: letter as any,
           gradePoint: point,
         },
         update: {
-          quizScore: quizAverage,
-          midtermScore,
-          finalScore,
+          quizScore: quizMark,
+          midtermScore: midtermMark,
+          finalScore: finalMark,
           attendanceScore,
           totalScore,
           gradeLetter: letter as any,
@@ -879,9 +888,9 @@ export function registerAcademicRoutes(router: Router) {
       results.push({
         studentId,
         studentName: enrollment.student.fullName,
-        quizScore: quizAverage,
-        midtermScore,
-        finalScore,
+        quizScore: quizMark,
+        midtermScore: midtermMark,
+        finalScore: finalMark,
         attendanceScore,
         totalScore,
         gradeLetter: letter,

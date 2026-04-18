@@ -411,12 +411,13 @@ export default function GradebookPage() {
                               <input
                                 type="number"
                                 min="0"
-                                max="100"
+                                max={gradebook.config.attendanceWeight}
+                                step="0.1"
                                 value={attendance[g.student.id] || 0}
                                 onChange={(e) => handleAttendanceChange(g.student.id, e.target.value)}
                                 className="w-20 px-2 py-1 border border-gray-200 rounded text-center"
                               />
-                              <span className="text-gray-500">%</span>
+                              <span className="text-gray-500">/{gradebook.config.attendanceWeight}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -448,74 +449,94 @@ export default function GradebookPage() {
           );
         })()}
 
-        {/* Gradebook View */}
-        {activeView === 'gradebook' && gradebook && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Student Grades</h2>
-              <p className="text-sm text-gray-500">
-                Quiz: {gradebook.config.quizWeight}% | Midterm: {gradebook.config.midtermWeight}% | Final: {gradebook.config.finalWeight}% | Attendance: {gradebook.config.attendanceWeight}%
-              </p>
+        {/* Gradebook View - Grouped by Class */}
+        {activeView === 'gradebook' && gradebook && (() => {
+          // Group students by class
+          const classGroups = {};
+          gradebook.gradebook.forEach(g => {
+            const cls = g.student.className || 'Unassigned';
+            if (!classGroups[cls]) classGroups[cls] = [];
+            classGroups[cls].push(g);
+          });
+          const classNames = Object.keys(classGroups).sort();
+
+          return (
+            <div className="space-y-6">
+              {classNames.map(cls => (
+                <div key={cls} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b border-gray-200 bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+                        <Users className="w-4 h-4 text-primary-700" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{cls}</h3>
+                        <p className="text-xs text-gray-500">{classGroups[cls].length} student{classGroups[cls].length !== 1 ? 's' : ''} | Quiz: {gradebook.config.quizWeight}% | Midterm: {gradebook.config.midtermWeight}% | Final: {gradebook.config.finalWeight}% | Attendance: {gradebook.config.attendanceWeight}%</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quiz<br/><span className="text-gray-400">/{gradebook.config.quizWeight}</span></th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Midterm<br/><span className="text-gray-400">/{gradebook.config.midtermWeight}</span></th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Final<br/><span className="text-gray-400">/{gradebook.config.finalWeight}</span></th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Attendance<br/><span className="text-gray-400">/{gradebook.config.attendanceWeight}</span></th>
+                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase bg-primary-50">Total<br/><span className="text-gray-400">/100</span></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {classGroups[cls].map((g) => (
+                          <tr key={g.student.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                                  <span className="text-primary-700 font-medium text-sm">
+                                    {g.student.fullName?.charAt(0) || '?'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">{g.student.fullName}</p>
+                                  <p className="text-xs text-gray-500">{g.student.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-center">
+                              <span className={`font-medium ${g.quizMark > 0 ? (g.quizAverage >= 60 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
+                                {g.quizMark > 0 ? g.quizMark : '-'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center">
+                              <span className={`font-medium ${g.midtermMark > 0 ? (g.midtermScore >= 60 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
+                                {g.midtermMark > 0 ? g.midtermMark : '-'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center">
+                              <span className={`font-medium ${g.finalMark > 0 ? (g.finalScore >= 60 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
+                                {g.finalMark > 0 ? g.finalMark : '-'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center">
+                              <span className="font-medium text-gray-900">{g.attendanceMark > 0 ? g.attendanceMark : '-'}</span>
+                            </td>
+                            <td className="px-4 py-4 text-center bg-primary-50">
+                              <span className={`font-bold text-lg ${g.totalGrade >= 60 ? 'text-green-600' : 'text-red-600'}`}>
+                                {g.totalGrade}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
             </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quiz Avg</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Midterm</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Final</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Attendance</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase bg-primary-50">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {gradebook.gradebook.map((g) => (
-                    <tr key={g.student.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                            <span className="text-primary-700 font-medium text-sm">
-                              {g.student.fullName?.charAt(0) || '?'}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{g.student.fullName}</p>
-                            <p className="text-xs text-gray-500">{g.student.className}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <span className={`font-medium ${g.quizAverage >= 60 ? 'text-green-600' : 'text-red-600'}`}>
-                          {g.quizAverage}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <span className={`font-medium ${g.midtermScore >= 60 ? 'text-green-600' : g.midtermScore > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                          {g.midtermScore > 0 ? `${g.midtermScore}%` : '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <span className={`font-medium ${g.finalScore >= 60 ? 'text-green-600' : g.finalScore > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                          {g.finalScore > 0 ? `${g.finalScore}%` : '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <span className="font-medium text-gray-900">{g.attendanceScore}%</span>
-                      </td>
-                      <td className="px-4 py-4 text-center bg-primary-50">
-                        <span className={`font-bold text-lg ${g.totalGrade >= 60 ? 'text-green-600' : 'text-red-600'}`}>
-                          {g.totalGrade}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </Layout>
   );

@@ -115,7 +115,7 @@ export function registerGradebookRoutes(router: Router) {
   router.put('/courses/:courseId/attendance/:studentId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ courseId: z.string(), studentId: z.string() }).parse(req.params);
     const body = z.object({
-      score: z.number().int().min(0).max(100),
+      score: z.number().min(0).max(100),
       feedback: z.string().optional(),
     }).parse(req.body);
 
@@ -308,16 +308,18 @@ export function registerGradebookRoutes(router: Router) {
         }
       }
 
-      // Attendance score
+      // Attendance score (stored as weighted mark out of attendanceWeight)
       const studentAttendance = typedAttendance.find(a => a.studentId === student.id);
       const attendanceScore = studentAttendance?.score || 0;
+      const attendanceMark = Math.round(attendanceScore * 10) / 10;
 
-      // Calculate total grade
-      const totalGrade =
-        (quizAverage * config.quizWeight / 100) +
-        (midtermScore * config.midtermWeight / 100) +
-        (finalScore * config.finalWeight / 100) +
-        (attendanceScore * config.attendanceWeight / 100);
+      // Calculate weighted marks (each component out of its weight)
+      const quizMark = Math.round(quizAverage * config.quizWeight / 100 * 10) / 10;
+      const midtermMark = Math.round(midtermScore * config.midtermWeight / 100 * 10) / 10;
+      const finalMark = Math.round(finalScore * config.finalWeight / 100 * 10) / 10;
+
+      // Total = sum of weighted marks (out of 100)
+      const totalGrade = quizMark + midtermMark + finalMark + attendanceMark;
 
       return {
         student,
@@ -325,6 +327,10 @@ export function registerGradebookRoutes(router: Router) {
         midtermScore: Math.round(midtermScore * 10) / 10,
         finalScore: Math.round(finalScore * 10) / 10,
         attendanceScore,
+        quizMark,
+        midtermMark,
+        finalMark,
+        attendanceMark,
         totalGrade: Math.round(totalGrade * 10) / 10,
       };
     });
@@ -592,7 +598,7 @@ export function registerGradebookRoutes(router: Router) {
       // Verify teacher teaches this section
       const section = await prisma.courseSection.findFirst({
         where: { id: params.sectionId, teacherId: user.id },
-        include: { course: true, class: true },
+        include: { course: { include: { gradeConfig: true } }, class: true },
       });
 
       if (!section) {
@@ -651,7 +657,10 @@ export function registerGradebookRoutes(router: Router) {
         }
 
         const totalPoints = livePoints + manualPoints;
-        const score = Math.round(totalPoints / totalSessions);
+        const percentage = Math.round(totalPoints / totalSessions);
+        // Convert percentage to weighted mark (out of attendanceWeight)
+        const config = section.course.gradeConfig || { attendanceWeight: 10 };
+        const score = Math.round(percentage * config.attendanceWeight / 100 * 10) / 10;
 
         const record = await prisma.attendance.upsert({
           where: {

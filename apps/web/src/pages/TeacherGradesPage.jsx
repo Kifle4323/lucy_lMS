@@ -5,7 +5,8 @@ import {
   createExamSchedule, getSectionExamSchedules, updateExamSchedule, deleteExamSchedule,
   proposeEarlyExam, cancelEarlyExamProposal, getEarlyExamResponses, confirmEarlyExam,
   getLiveAttendanceStats, syncAttendanceToGrades,
-  createManualAttendance, getManualAttendanceSessions, deleteManualAttendanceSession
+  createManualAttendance, getManualAttendanceSessions, deleteManualAttendanceSession,
+  getGradeConfig
 } from '../api.js';
 import Layout from '../components/Layout';
 import { useToast } from '../ToastContext';
@@ -26,6 +27,7 @@ export default function TeacherGradesPage() {
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualForm, setManualForm] = useState({ title: '', date: '' });
   const [manualRecords, setManualRecords] = useState({}); // { studentId: status }
+  const [gradeConfig, setGradeConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -95,12 +97,14 @@ export default function TeacherGradesPage() {
     setEarlyResponses(null);
     setShowEarlyProposal(false);
     try {
-      const [studentsData, examsData] = await Promise.all([
+      const [studentsData, examsData, configData] = await Promise.all([
         getSectionStudents(section.id),
-        getSectionExamSchedules(section.id)
+        getSectionExamSchedules(section.id),
+        getGradeConfig(section.courseId).catch(() => null)
       ]);
       setStudents(studentsData);
       setExamSchedules(examsData);
+      setGradeConfig(configData || { quizWeight: 25, midtermWeight: 25, finalWeight: 40, attendanceWeight: 10 });
     } catch (err) {
       setError(err.message);
     }
@@ -554,10 +558,10 @@ export default function TeacherGradesPage() {
                       <thead>
                         <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                           <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Quiz<br/><span className="text-xs text-gray-400">/100</span></th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Midterm<br/><span className="text-xs text-gray-400">/100</span></th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Final<br/><span className="text-xs text-gray-400">/100</span></th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Attendance<br/><span className="text-xs text-gray-400">/100</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Quiz<br/><span className="text-xs text-gray-400">/{gradeConfig?.quizWeight || 25}</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Midterm<br/><span className="text-xs text-gray-400">/{gradeConfig?.midtermWeight || 25}</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Final<br/><span className="text-xs text-gray-400">/{gradeConfig?.finalWeight || 40}</span></th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Attendance<br/><span className="text-xs text-gray-400">/{gradeConfig?.attendanceWeight || 10}</span></th>
                           <th className="text-center p-3 text-gray-700 dark:text-gray-300">Total</th>
                           <th className="text-center p-3 text-gray-700 dark:text-gray-300">Grade</th>
                           <th className="text-center p-3 text-gray-700 dark:text-gray-300">Status</th>
@@ -575,7 +579,8 @@ export default function TeacherGradesPage() {
                               <input
                                 type="number"
                                 min="0"
-                                max="100"
+                                max={gradeConfig?.quizWeight || 25}
+                                step="0.1"
                                 value={student.grade?.quizScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'quizScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
@@ -586,7 +591,8 @@ export default function TeacherGradesPage() {
                               <input
                                 type="number"
                                 min="0"
-                                max="100"
+                                max={gradeConfig?.midtermWeight || 25}
+                                step="0.1"
                                 value={student.grade?.midtermScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'midtermScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
@@ -597,7 +603,8 @@ export default function TeacherGradesPage() {
                               <input
                                 type="number"
                                 min="0"
-                                max="100"
+                                max={gradeConfig?.finalWeight || 40}
+                                step="0.1"
                                 value={student.grade?.finalScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'finalScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
@@ -608,7 +615,8 @@ export default function TeacherGradesPage() {
                               <input
                                 type="number"
                                 min="0"
-                                max="100"
+                                max={gradeConfig?.attendanceWeight || 10}
+                                step="0.1"
                                 value={student.grade?.attendanceScore ?? ''}
                                 onChange={e => updateStudentGrade(student.id, 'attendanceScore', e.target.value)}
                                 disabled={student.grade?.isSubmitted}
