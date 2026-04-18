@@ -157,7 +157,7 @@ export default function CoursePage() {
           clearInterval(timer);
           // Auto-submit when time runs out
           if (activeAttempt) {
-            handleSubmitAttempt();
+            handleSubmitAttempt(true);
           }
           return 0;
         }
@@ -462,26 +462,32 @@ export default function CoursePage() {
     await saveAnswer(activeAttempt.id, questionId, { textAnswer });
   };
 
-  const handleSubmitAttempt = async () => {
-    const confirmed = await confirm({
-      title: 'Submit Exam',
-      message: 'Are you sure you want to submit this attempt? You cannot change your answers after submission.',
-      confirmText: 'Submit',
-      cancelText: 'Cancel',
-      type: 'info',
-    });
-    if (!confirmed) return;
-    const result = await submitAttempt(activeAttempt.id);
-    handleEndExam();
-    // Refresh attempts list
-    getStudentAttempts(courseId).then(setStudentAttempts);
-    if (result.hasManualGrading) {
-      toast.success(`Submitted! Auto-graded score: ${result.autoScore}. Short answer questions will be graded by your teacher.`);
-    } else {
-      toast.success(`Submitted! Score: ${result.score}`);
+  const handleSubmitAttempt = async (autoSubmit = false) => {
+    if (!autoSubmit) {
+      const confirmed = await confirm({
+        title: 'Submit Exam',
+        message: 'Are you sure you want to submit this attempt? You cannot change your answers after submission.',
+        confirmText: 'Submit',
+        cancelText: 'Cancel',
+        type: 'info',
+      });
+      if (!confirmed) return;
     }
-    setActiveAttempt(null);
-    setAnswers({});
+    try {
+      const result = await submitAttempt(activeAttempt.id);
+      handleEndExam();
+      // Refresh attempts list
+      getStudentAttempts(courseId).then(setStudentAttempts);
+      if (autoSubmit) {
+        toast.success('Time is up! Your answers have been submitted automatically.');
+      } else if (result.hasManualGrading) {
+        toast.success('Exam submitted! Some questions require manual grading.');
+      } else {
+        toast.success('Exam submitted successfully!');
+      }
+    } catch (err) {
+      toast.error('Failed to submit: ' + err.message);
+    }
   };
 
   const handleOpenGrading = async (attempt) => {
