@@ -275,8 +275,8 @@ export function registerGradebookRoutes(router: Router) {
         a.attempts.filter(attempt => attempt.studentId === student.id)
       );
 
-      // Quiz average (average of all QUIZ assessments)
-      const quizzes = typedAssessments.filter(a => a.examType === 'QUIZ');
+      // Quiz/Assignment average (average of all QUIZ and ASSIGNMENT assessments)
+      const quizzes = typedAssessments.filter(a => a.examType === 'QUIZ' || a.examType === 'ASSIGNMENT');
       let quizScore = 0;
       let quizCount = 0;
       for (const quiz of quizzes) {
@@ -390,8 +390,8 @@ export function registerGradebookRoutes(router: Router) {
       },
     });
 
-    // Quiz average
-    const quizzes = typedAssessments.filter(a => a.examType === 'QUIZ');
+    // Quiz/Assignment average
+    const quizzes = typedAssessments.filter(a => a.examType === 'QUIZ' || a.examType === 'ASSIGNMENT');
     let quizScore = 0;
     let quizCount = 0;
     const quizDetails: { title: string; score: number; maxScore: number; percent: number }[] = [];

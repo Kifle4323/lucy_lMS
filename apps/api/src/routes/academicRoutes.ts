@@ -814,8 +814,8 @@ export function registerAcademicRoutes(router: Router) {
     for (const enrollment of section.enrollments) {
       const studentId = enrollment.studentId;
 
-      // Calculate quiz average from QUIZ assessments
-      const quizzes = assessments.filter(a => a.examType === 'QUIZ');
+      // Calculate quiz/assignment average from QUIZ and ASSIGNMENT assessments
+      const quizzes = assessments.filter(a => a.examType === 'QUIZ' || a.examType === 'ASSIGNMENT');
       let quizScore = 0;
       let quizCount = 0;
       for (const quiz of quizzes) {

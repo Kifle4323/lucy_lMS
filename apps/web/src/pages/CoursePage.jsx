@@ -1216,6 +1216,7 @@ export default function CoursePage() {
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                       >
                         <option value="QUIZ">Quiz</option>
+                        <option value="ASSIGNMENT">Assignment</option>
                         <option value="MIDTERM">Midterm</option>
                         <option value="FINAL">Final</option>
                       </select>
@@ -1296,6 +1297,7 @@ export default function CoursePage() {
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
                               a.examType === 'QUIZ' ? 'bg-blue-50 text-blue-700' :
+                              a.examType === 'ASSIGNMENT' ? 'bg-emerald-50 text-emerald-700' :
                               a.examType === 'MIDTERM' ? 'bg-yellow-50 text-yellow-700' :
                               'bg-red-50 text-red-700'
                             }`}>

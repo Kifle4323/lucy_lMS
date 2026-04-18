@@ -23,6 +23,7 @@ enum ExamType {
   QUIZ
   MIDTERM
   FINAL
+  ASSIGNMENT
 }
 
 enum DeliveryMode {
