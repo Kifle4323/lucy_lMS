@@ -27,6 +27,7 @@ export function registerAssessmentRoutes(router: Router) {
       });
       const courseClass = await prisma.courseClass.findFirst({
         where: { courseId: params.courseId, teacherId: req.user!.id },
+        include: { course: true },
       });
 
       if (!courseSection && !courseClass) {
@@ -57,22 +58,39 @@ export function registerAssessmentRoutes(router: Router) {
         },
       });
 
-      // Notify all students enrolled in this teacher's course courseSections
+      // Notify all students enrolled in this teacher's course
+      const teacherSection = courseSection || courseClass;
       const enrollments = await prisma.studentEnrollment.findMany({
-        where: { 
-          courseSectionId: courseSection.id,
+        where: {
+          courseSectionId: courseSection?.id,
           status: 'ENROLLED',
         },
         select: { studentId: true },
       });
 
-      if (enrollments.length > 0) {
+      // Also get students from courseClass if applicable
+      let classStudentIds: string[] = [];
+      if (courseClass) {
+        const classStudents = await prisma.classStudent.findMany({
+          where: { courseClassId: courseClass.id },
+          select: { studentId: true },
+        });
+        classStudentIds = classStudents.map(cs => cs.studentId);
+      }
+
+      const allStudentIds = [...new Set([
+        ...enrollments.map(e => e.studentId),
+        ...classStudentIds,
+      ])];
+
+      if (allStudentIds.length > 0) {
+        const courseTitle = courseSection?.course?.title || courseClass?.course?.title || 'your course';
         await prisma.notification.createMany({
-          data: enrollments.map(e => ({
-            userId: e.studentId,
+          data: allStudentIds.map(studentId => ({
+            userId: studentId,
             type: 'NEW_ASSESSMENT',
             title: 'New Assessment Available',
-            message: `A new ${body.examType?.toLowerCase() || 'quiz'} "${body.title}" has been created for ${courseSection.course?.title || 'your course'}.`,
+            message: `A new ${body.examType?.toLowerCase() || 'quiz'} "${body.title}" has been created for ${courseTitle}.`,
           })),
         });
       }
