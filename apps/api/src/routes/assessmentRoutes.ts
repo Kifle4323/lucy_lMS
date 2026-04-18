@@ -103,15 +103,16 @@ export function registerAssessmentRoutes(router: Router) {
         points: z.number().int().positive().optional(),
       }).parse(req.body);
 
-      const assessment = await prisma.assessment.findUnique({ where: { id: params.assessmentId }, include: { course: { include: { courseSections: true } } } });
+      const assessment = await prisma.assessment.findUnique({ where: { id: params.assessmentId }, include: { course: { include: { courseSections: true, courseClasses: true } } } });
       if (!assessment) {
         res.status(404).json({ error: 'not_found' });
         return;
       }
 
-      // Check if teacher is assigned to this course through CourseSection
+      // Check if teacher is assigned to this course through CourseSection or CourseClass
       const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
-      if (!courseSection) {
+      const courseClass = assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+      if (!courseSection && !courseClass) {
         res.status(403).json({ error: 'forbidden' });
         return;
       }
@@ -167,6 +168,7 @@ export function registerAssessmentRoutes(router: Router) {
             enrollments: { where: { status: 'ENROLLED' } },
           },
         },
+        courseClasses: true,
       },
     });
 
@@ -179,7 +181,7 @@ export function registerAssessmentRoutes(router: Router) {
 
     // Check access: admin, teacher assigned to this course, or student enrolled in this course
     const isAdmin = user.role === 'ADMIN';
-    const isTeacher = course.courseSections.some((s: { teacherId: string | null }) => s.teacherId === user.id);
+    const isTeacher = course.courseSections.some((s: { teacherId: string | null }) => s.teacherId === user.id) || course.courseClasses.some((c: { teacherId: string | null }) => c.teacherId === user.id);
     const isStudent = course.courseSections.some((s: { enrollments: { studentId: string }[] }) =>
       s.enrollments.some((e: { studentId: string }) => e.studentId === user.id)
     );
@@ -200,7 +202,7 @@ export function registerAssessmentRoutes(router: Router) {
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: params.assessmentId },
-      include: { course: { include: { courseSections: true } } },
+      include: { course: { include: { courseSections: true, courseClasses: true } } },
     });
 
     if (!assessment) {
@@ -208,9 +210,10 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if teacher is assigned to this course through CourseSection
+    // Check if teacher is assigned to this course through CourseSection or CourseClass
     const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
-    if (!courseSection) {
+    const courseClass = assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+    if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -228,14 +231,14 @@ export function registerAssessmentRoutes(router: Router) {
     const params = z.object({ assessmentId: z.string() }).parse(req.params);
     const body = z.object({
       title: z.string().min(2).optional(),
-      examType: z.enum(['QUIZ', 'MIDTERM', 'FINAL']).optional(),
+      examType: z.enum(['QUIZ', 'MIDTERM', 'FINAL', 'ASSIGNMENT']).optional(),
       timeLimit: z.number().int().positive().nullable().optional(),
       maxScore: z.number().int().positive().optional(),
     }).parse(req.body);
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: params.assessmentId },
-      include: { course: { include: { courseSections: true } } },
+      include: { course: { include: { courseSections: true, courseClasses: true } } },
     });
 
     if (!assessment) {
@@ -243,9 +246,10 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if teacher is assigned to this course
+    // Check if teacher is assigned to this course through CourseSection or CourseClass
     const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
-    if (!courseSection) {
+    const courseClass = assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+    if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -265,7 +269,7 @@ export function registerAssessmentRoutes(router: Router) {
     try {
       const assessment = await prisma.assessment.findUnique({
         where: { id: params.assessmentId },
-        include: { course: { include: { courseSections: true } } },
+        include: { course: { include: { courseSections: true, courseClasses: true } } },
       });
 
       if (!assessment) {
@@ -273,9 +277,10 @@ export function registerAssessmentRoutes(router: Router) {
         return;
       }
 
-      // Check if teacher is assigned to this course
+      // Check if teacher is assigned to this course through CourseSection or CourseClass
       const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
-      if (!courseSection) {
+      const courseClass = assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+      if (!courseSection && !courseClass) {
         res.status(403).json({ error: 'forbidden' });
         return;
       }
@@ -336,7 +341,7 @@ export function registerAssessmentRoutes(router: Router) {
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: params.assessmentId },
-      include: { course: { include: { courseSections: true } } },
+      include: { course: { include: { courseSections: true, courseClasses: true } } },
     });
 
     if (!assessment) {
@@ -344,9 +349,10 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if teacher is assigned to this course
-    const courseClass = assessment.course.courseSections.find((cc: { teacherId: string | null }) => cc.teacherId === req.user!.id);
-    if (!courseClass) {
+    // Check if teacher is assigned to this course through CourseSection or CourseClass
+    const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+    const courseClass = assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+    if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -369,7 +375,7 @@ export function registerAssessmentRoutes(router: Router) {
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: params.assessmentId },
-      include: { course: { include: { courseSections: true } } },
+      include: { course: { include: { courseSections: true, courseClasses: true } } },
     });
 
     if (!assessment) {
@@ -377,9 +383,10 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if teacher is assigned to this course
-    const courseClass = assessment.course.courseSections.find((cc: { teacherId: string | null }) => cc.teacherId === req.user!.id);
-    if (!courseClass) {
+    // Check if teacher is assigned to this course through CourseSection or CourseClass
+    const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+    const courseClass = assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+    if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -419,7 +426,7 @@ export function registerAssessmentRoutes(router: Router) {
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: params.assessmentId },
-      include: { course: { include: { courseSections: true } } },
+      include: { course: { include: { courseSections: true, courseClasses: true } } },
     });
 
     if (!assessment) {
@@ -427,9 +434,10 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if teacher is assigned to this course
-    const courseClass = assessment.course.courseSections.find((cc: { teacherId: string | null }) => cc.teacherId === req.user!.id);
-    if (!courseClass) {
+    // Check if teacher is assigned to this course through CourseSection or CourseClass
+    const courseSection = assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+    const courseClass = assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+    if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }
@@ -679,6 +687,8 @@ export function registerAssessmentRoutes(router: Router) {
 
     // Check if teacher is assigned to this course
     const isTeacher = attempt.assessment.course.courseSections.some(
+      (cc: { teacherId: string | null }) => cc.teacherId === req.user!.id
+    ) || attempt.assessment.course.courseClasses?.some(
       (cc: { teacherId: string | null }) => cc.teacherId === req.user!.id
     );
     if (!isTeacher) {
