@@ -10,6 +10,7 @@ export function registerAssessmentRoutes(router: Router) {
     authRequired,
     requireRole(['TEACHER']),
     async (req: AuthedRequest, res: Response) => {
+      try {
       const params = z.object({ courseId: z.string() }).parse(req.params);
       const body = z.object({
         title: z.string().min(2),
@@ -96,6 +97,10 @@ export function registerAssessmentRoutes(router: Router) {
       }
 
       res.json(assessment);
+      } catch (err: any) {
+        console.error('Create assessment error:', err);
+        res.status(500).json({ error: 'Failed to create assessment', message: err?.message || String(err) });
+      }
     },
   );
 
@@ -104,6 +109,7 @@ export function registerAssessmentRoutes(router: Router) {
     authRequired,
     requireRole(['TEACHER']),
     async (req: AuthedRequest, res: Response) => {
+      try {
       const params = z.object({ assessmentId: z.string() }).parse(req.params);
       const body = z.object({
         type: z.enum(['MCQ', 'FITB', 'SHORT_ANSWER']).default('MCQ'),
@@ -170,6 +176,10 @@ export function registerAssessmentRoutes(router: Router) {
       });
 
       res.json(question);
+      } catch (err: any) {
+        console.error('Create question error:', err);
+        res.status(500).json({ error: 'Failed to create question', message: err?.message || String(err) });
+      }
     },
   );
 
