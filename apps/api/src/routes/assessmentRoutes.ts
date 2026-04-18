@@ -113,17 +113,17 @@ export function registerAssessmentRoutes(router: Router) {
       const params = z.object({ assessmentId: z.string() }).parse(req.params);
       const body = z.object({
         type: z.enum(['MCQ', 'FITB', 'SHORT_ANSWER']).default('MCQ'),
-        prompt: z.string().min(2),
+        prompt: z.string().min(1),
         // MCQ fields
-        optionA: z.string().optional(),
-        optionB: z.string().optional(),
-        optionC: z.string().optional(),
-        optionD: z.string().optional(),
+        optionA: z.string().min(1).optional().or(z.literal('')),
+        optionB: z.string().min(1).optional().or(z.literal('')),
+        optionC: z.string().min(1).optional().or(z.literal('')),
+        optionD: z.string().min(1).optional().or(z.literal('')),
         correct: z.enum(['A', 'B', 'C', 'D']).optional(),
         // FITB field
-        correctAnswer: z.string().optional(),
+        correctAnswer: z.string().min(1).optional().or(z.literal('')),
         // Short answer field
-        modelAnswer: z.string().optional(),
+        modelAnswer: z.string().min(1).optional().or(z.literal('')),
         points: z.number().int().positive().optional(),
       }).parse(req.body);
 
