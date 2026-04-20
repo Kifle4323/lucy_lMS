@@ -664,7 +664,7 @@ export function registerAcademicRoutes(router: Router) {
     // Verify teacher owns this enrollment's course section
     const enrollment = await prisma.studentEnrollment.findUnique({
       where: { id: body.enrollmentId },
-      include: { courseSection: { include: { course: { include: { gradeConfig: true } } } } },
+      include: { courseSection: { include: { course: { include: { gradeConfig: true, gradeComponents: true } } } } },
     });
 
     if (!enrollment) {
@@ -675,13 +675,25 @@ export function registerAcademicRoutes(router: Router) {
       return res.status(403).json({ error: 'Not authorized to grade this student' });
     }
 
-    // Get grade config or use defaults
-    const config = enrollment.courseSection.course.gradeConfig || {
-      quizWeight: 25,
-      midtermWeight: 25,
-      finalWeight: 40,
-      attendanceWeight: 10,
+    // Get weights from GradeComponents (new system) or fall back to gradeConfig
+    const components = enrollment.courseSection.course.gradeComponents || [];
+    const getWeight = (name: string, fallback: number) => {
+      const comp = components.find((c: any) => c.name === name);
+      return comp ? comp.weight : fallback;
     };
+    const config = enrollment.courseSection.course.gradeConfig || {
+      quizWeight: getWeight('Quiz', 25),
+      midtermWeight: getWeight('Midterm', 25),
+      finalWeight: getWeight('Final', 40),
+      attendanceWeight: getWeight('Attendance', 10),
+    };
+    // Override with component weights if available
+    if (components.length > 0) {
+      config.quizWeight = getWeight('Quiz', config.quizWeight);
+      config.midtermWeight = getWeight('Midterm', config.midtermWeight);
+      config.finalWeight = getWeight('Final', config.finalWeight);
+      config.attendanceWeight = getWeight('Attendance', config.attendanceWeight);
+    }
 
     // Validate scores don't exceed weights
     if (body.quizScore !== undefined && body.quizScore > config.quizWeight) {

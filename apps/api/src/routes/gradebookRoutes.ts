@@ -719,9 +719,8 @@ export function registerGradebookRoutes(router: Router) {
 
         const totalPoints = livePoints + manualPoints;
         const percentage = Math.round(totalPoints / totalSessions);
-        // Convert percentage to weighted mark (out of attendanceWeight)
-        const config = section.course.gradeConfig || { attendanceWeight: 10 };
-        const score = Math.round(percentage * config.attendanceWeight / 100 * 10) / 10;
+        // Store raw percentage (0-100) so gradebook can scale by component weight
+        const score = Math.min(100, Math.max(0, percentage));
 
         const record = await prisma.attendance.upsert({
           where: {
