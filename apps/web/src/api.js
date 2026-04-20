@@ -169,6 +169,18 @@ export async function createQuestion(assessmentId, data) {
   return apiFetch(`/assessments/${assessmentId}/questions`, { method: 'POST', body: JSON.stringify(data) });
 }
 
+export async function updateQuestion(questionId, data) {
+  return apiFetch(`/questions/${questionId}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteQuestion(questionId) {
+  return apiFetch(`/questions/${questionId}`, { method: 'DELETE' });
+}
+
+export async function getAssessmentQuestions(assessmentId) {
+  return apiFetch(`/assessments/${assessmentId}/questions`);
+}
+
 export async function toggleAssessmentOpen(assessmentId, isOpen) {
   return apiFetch(`/assessments/${assessmentId}/open`, { method: 'PATCH', body: JSON.stringify({ isOpen }) });
 }
@@ -319,6 +331,33 @@ export async function recordMaterialView(materialId) {
 
 export async function closeMaterialView(viewId) {
   return apiFetch(`/material-views/${viewId}/close`, { method: 'PATCH' });
+}
+
+// Get PPTX material as HTML with reading time tracking
+export async function getMaterialHtml(materialId) {
+  const res = await fetch(`${API_BASE}/materials/${materialId}/html`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) throw new Error('Failed to load HTML material');
+  return res.text();
+}
+
+// Save reading progress for PPTX materials
+export async function saveReadingProgress(materialId, progress) {
+  return apiFetch(`/materials/${materialId}/progress`, {
+    method: 'POST',
+    body: JSON.stringify(progress),
+  });
+}
+
+// Get student's reading progress for a material
+export async function getReadingProgress(materialId) {
+  return apiFetch(`/materials/${materialId}/progress`);
+}
+
+// Teacher: Get all students' reading progress for a material
+export async function getAllReadingProgress(materialId) {
+  return apiFetch(`/materials/${materialId}/progress-all`);
 }
 
 export async function getCourseMaterialStats(courseId) {

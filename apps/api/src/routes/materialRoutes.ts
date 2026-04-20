@@ -7,8 +7,16 @@ import { convert as libreConvert } from 'libreoffice-convert';
 import tmp from 'tmp';
 import fs from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const OFFICE_TYPES = ['ppt', 'doc', 'xls', 'pptx', 'docx', 'xlsx'];
+const PPTX_TYPES = ['ppt', 'pptx'];
+
 
 async function convertToPdf(fileUrl: string, fileType: string): Promise<string | null> {
   if (!OFFICE_TYPES.includes(fileType)) return null;
@@ -42,6 +50,65 @@ async function convertToPdf(fileUrl: string, fileType: string): Promise<string |
             resolve(pdfBase64);
           } catch (readErr) {
             console.error('Error reading converted PDF:', readErr);
+            resolve(null);
+          }
+        });
+      } catch (writeErr) {
+        console.error('Error writing temp file:', writeErr);
+        cleanup();
+        resolve(null);
+      }
+    });
+  });
+}
+
+// Convert PPTX to HTML using Python script
+async function convertPptxToHtml(fileUrl: string, fileType: string, materialId: string): Promise<string | null> {
+  if (!PPTX_TYPES.includes(fileType)) return null;
+  if (!fileUrl.startsWith('data:')) return null;
+
+  return new Promise((resolve) => {
+    // Use keep: true to manually control cleanup
+    tmp.file({ postfix: `.${fileType}`, keep: true }, (err, tmpPath, fd, cleanup) => {
+      if (err) { console.error('tmp file error:', err); resolve(null); return; }
+
+      try {
+        const matches = fileUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) { cleanup(); resolve(null); return; }
+
+        const buffer = Buffer.from(matches[2], 'base64');
+        fs.writeFileSync(tmpPath, buffer);
+        // Close file descriptor to allow Python to read it
+        fs.closeSync(fd);
+
+        const outputPath = tmpPath + '.html';
+        const scriptPath = path.join(__dirname, '../../scripts/pptx_to_html.py');
+
+        // Run Python script with UTF-8 encoding
+        const python = spawn('python', [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
+          env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+        
+        let errorOutput = '';
+        python.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+
+        python.on('close', (code) => {
+          // Clean up temp files after Python finishes
+          try { fs.unlinkSync(tmpPath); } catch (_) {}
+          
+          if (code !== 0) {
+            console.error('PPTX conversion error:', errorOutput);
+            resolve(null);
+            return;
+          }
+          try {
+            const htmlContent = fs.readFileSync(outputPath, 'utf-8');
+            try { fs.unlinkSync(outputPath); } catch (_) {}
+            resolve(htmlContent);
+          } catch (readErr) {
+            console.error('Error reading HTML file:', readErr);
             resolve(null);
           }
         });
@@ -144,11 +211,23 @@ export function registerMaterialRoutes(router: Router) {
 
     // Convert office files to PDF for inline preview
     let previewFileUrl = null;
+    let htmlContent = null;
+    
     if (body.fileUrl && body.fileType && OFFICE_TYPES.includes(body.fileType)) {
       try {
         previewFileUrl = await convertToPdf(body.fileUrl, body.fileType);
       } catch (err) {
-        console.error('Conversion failed, material will be created without preview:', err);
+        console.error('PDF conversion failed:', err);
+      }
+    }
+    
+    // Convert PPTX to HTML with reading time tracking
+    if (body.fileUrl && body.fileType && PPTX_TYPES.includes(body.fileType)) {
+      try {
+        // Create a temporary material ID for the conversion
+        htmlContent = await convertPptxToHtml(body.fileUrl, body.fileType, 'temp-id');
+      } catch (err) {
+        console.error('HTML conversion failed:', err);
       }
     }
 
@@ -161,6 +240,7 @@ export function registerMaterialRoutes(router: Router) {
         fileType: body.fileType,
         fileName: body.fileName,
         previewFileUrl,
+        htmlContent,
         createdBy: user.id,
       },
       include: { author: { select: { id: true, fullName: true, email: true } } },
@@ -460,6 +540,235 @@ export function registerMaterialRoutes(router: Router) {
     } catch (err) {
       console.error('Error fetching material stats:', err);
       res.status(500).json({ error: 'Failed to fetch material stats' });
+    }
+  });
+
+  // Serve PPTX as HTML with reading time tracking
+  router.get('/materials/:materialId/html', authRequired, async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ materialId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    try {
+      const material = await prisma.material.findUnique({
+        where: { id: params.materialId },
+        include: { course: true },
+      });
+
+      if (!material) {
+        return res.status(404).json({ error: 'Material not found' });
+      }
+
+      // Check access permissions
+      if (user.role === 'ADMIN') {
+        // Admin has full access
+      } else if (user.role === 'TEACHER') {
+        const courseSection = await prisma.courseSection.findFirst({
+          where: { courseId: material.courseId, teacherId: user.id },
+        });
+        const courseClass = await prisma.courseClass.findFirst({
+          where: { courseId: material.courseId, teacherId: user.id },
+        });
+        if (!courseSection && !courseClass) {
+          return res.status(403).json({ error: 'forbidden' });
+        }
+      } else {
+        // Student check
+        const enrollment = await prisma.studentEnrollment.findFirst({
+          where: {
+            studentId: user.id,
+            status: 'ENROLLED',
+            courseSection: { courseId: material.courseId },
+          },
+        });
+        const courseClass = await prisma.courseClass.findFirst({
+          where: {
+            courseId: material.courseId,
+            class: { students: { some: { studentId: user.id } } },
+          },
+        });
+        if (!enrollment && !courseClass) {
+          return res.status(403).json({ error: 'forbidden' });
+        }
+      }
+
+      // If HTML content exists, serve it
+      if (material.htmlContent) {
+        // Inject API base URL for the frontend tracking
+        const htmlWithApi = material.htmlContent.replace(
+          'const apiBase = \'\';',
+          `const apiBase = '${process.env.API_URL || ''}';`
+        );
+        res.setHeader('Content-Type', 'text/html');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.send(htmlWithApi);
+      }
+
+      // If no HTML content, check if it's a PPTX that needs conversion
+      if (PPTX_TYPES.includes(material.fileType) && material.fileUrl) {
+        // Convert on-demand
+        const htmlContent = await convertPptxToHtml(material.fileUrl, material.fileType, material.id);
+        if (htmlContent) {
+          await prisma.material.update({
+            where: { id: params.materialId },
+            data: { htmlContent },
+          });
+          res.setHeader('Content-Type', 'text/html');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          return res.send(htmlContent);
+        }
+      }
+
+      return res.status(404).json({ error: 'HTML version not available for this material' });
+    } catch (err) {
+      console.error('Error serving HTML material:', err);
+      res.status(500).json({ error: 'Failed to serve HTML material' });
+    }
+  });
+
+  // Save reading progress for PPTX materials
+  router.post('/materials/:materialId/progress', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ materialId: z.string() }).parse(req.params);
+    const body = z.object({
+      totalTime: z.number(),
+      completedSlides: z.number(),
+      totalSlides: z.number(),
+      slideStatuses: z.record(z.string()).optional(),
+      slideTimeSpent: z.record(z.number()).optional(),
+      isCompleted: z.boolean().optional(),
+    }).parse(req.body);
+    const user = req.user!;
+
+    try {
+      // Verify student has access to this material
+      const material = await prisma.material.findUnique({
+        where: { id: params.materialId },
+        select: { courseId: true },
+      });
+
+      if (!material) {
+        return res.status(404).json({ error: 'Material not found' });
+      }
+
+      const enrollment = await prisma.studentEnrollment.findFirst({
+        where: {
+          studentId: user.id,
+          status: 'ENROLLED',
+          courseSection: { courseId: material.courseId },
+        },
+      });
+      const courseClass = await prisma.courseClass.findFirst({
+        where: {
+          courseId: material.courseId,
+          class: { students: { some: { studentId: user.id } } },
+        },
+      });
+
+      if (!enrollment && !courseClass) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+
+      // Upsert reading progress
+      const progress = await prisma.materialReadingProgress.upsert({
+        where: {
+          materialId_studentId: {
+            materialId: params.materialId,
+            studentId: user.id,
+          },
+        },
+        update: {
+          totalTime: body.totalTime,
+          completedSlides: body.completedSlides,
+          totalSlides: body.totalSlides,
+          slideStatuses: body.slideStatuses || {},
+          slideTimeSpent: body.slideTimeSpent || {},
+          isCompleted: body.isCompleted || body.completedSlides >= body.totalSlides,
+          lastReadAt: new Date(),
+        },
+        create: {
+          materialId: params.materialId,
+          studentId: user.id,
+          totalTime: body.totalTime,
+          completedSlides: body.completedSlides,
+          totalSlides: body.totalSlides,
+          slideStatuses: body.slideStatuses || {},
+          slideTimeSpent: body.slideTimeSpent || {},
+          isCompleted: body.isCompleted || body.completedSlides >= body.totalSlides,
+        },
+      });
+
+      res.json({ success: true, progress });
+    } catch (err) {
+      console.error('Error saving reading progress:', err);
+      res.status(500).json({ error: 'Failed to save reading progress' });
+    }
+  });
+
+  // Get reading progress for PPTX materials
+  router.get('/materials/:materialId/progress', authRequired, async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ materialId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    try {
+      const progress = await prisma.materialReadingProgress.findUnique({
+        where: {
+          materialId_studentId: {
+            materialId: params.materialId,
+            studentId: user.id,
+          },
+        },
+      });
+
+      if (!progress) {
+        return res.status(404).json({ error: 'No progress found' });
+      }
+
+      res.json(progress);
+    } catch (err) {
+      console.error('Error fetching reading progress:', err);
+      res.status(500).json({ error: 'Failed to fetch reading progress' });
+    }
+  });
+
+  // Teacher: Get all student reading progress for a material
+  router.get('/materials/:materialId/progress-all', authRequired, requireRole(['TEACHER', 'ADMIN']), async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ materialId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    try {
+      const material = await prisma.material.findUnique({
+        where: { id: params.materialId },
+        select: { courseId: true, title: true },
+      });
+
+      if (!material) {
+        return res.status(404).json({ error: 'Material not found' });
+      }
+
+      // Verify teacher teaches this course
+      if (user.role === 'TEACHER') {
+        const courseSection = await prisma.courseSection.findFirst({
+          where: { courseId: material.courseId, teacherId: user.id },
+        });
+        const courseClass = await prisma.courseClass.findFirst({
+          where: { courseId: material.courseId, teacherId: user.id },
+        });
+        if (!courseSection && !courseClass) {
+          return res.status(403).json({ error: 'forbidden' });
+        }
+      }
+
+      const progress = await prisma.materialReadingProgress.findMany({
+        where: { materialId: params.materialId },
+        include: {
+          student: { select: { id: true, fullName: true, email: true } },
+        },
+        orderBy: { lastReadAt: 'desc' },
+      });
+
+      res.json({ materialTitle: material.title, progress });
+    } catch (err) {
+      console.error('Error fetching all reading progress:', err);
+      res.status(500).json({ error: 'Failed to fetch reading progress' });
     }
   });
 }

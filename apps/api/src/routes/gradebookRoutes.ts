@@ -172,43 +172,47 @@ export function registerGradebookRoutes(router: Router) {
 
   // Set attendance for a student
   router.put('/courses/:courseId/attendance/:studentId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
-    const params = z.object({ courseId: z.string(), studentId: z.string() }).parse(req.params);
-    const body = z.object({
-      score: z.number().min(0).max(100),
-      feedback: z.string().optional(),
-    }).parse(req.body);
+    try {
+      const params = z.object({ courseId: z.string(), studentId: z.string() }).parse(req.params);
+      const body = z.object({
+        score: z.number().int().min(0).max(100),
+        feedback: z.union([z.string(), z.null()]).optional(),
+      }).parse(req.body);
 
-    // Verify teacher teaches this course through CourseSection or CourseClass
-    const courseSection = await prisma.courseSection.findFirst({
-      where: { courseId: params.courseId, teacherId: req.user!.id },
-    });
-    const courseClass = await prisma.courseClass.findFirst({
-      where: { courseId: params.courseId, teacherId: req.user!.id },
-    });
+      // Verify teacher teaches this course through CourseSection or CourseClass
+      const courseSection = await prisma.courseSection.findFirst({
+        where: { courseId: params.courseId, teacherId: req.user!.id },
+      });
+      const courseClass = await prisma.courseClass.findFirst({
+        where: { courseId: params.courseId, teacherId: req.user!.id },
+      });
 
-    if (!courseSection && !courseClass) {
-      res.status(403).json({ error: 'forbidden' });
-      return;
-    }
+      if (!courseSection && !courseClass) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
 
-    const attendance = await prisma.attendance.upsert({
-      where: {
-        courseId_studentId: {
+      const attendance = await prisma.attendance.upsert({
+        where: {
+          courseId_studentId: {
+            courseId: params.courseId,
+            studentId: params.studentId,
+          },
+        },
+        update: { score: body.score, ...(body.feedback !== undefined && { feedback: body.feedback }) },
+        create: {
           courseId: params.courseId,
           studentId: params.studentId,
+          score: body.score,
+          ...(body.feedback !== undefined && { feedback: body.feedback }),
         },
-      },
-      update: { score: body.score, feedback: body.feedback },
-      create: {
-        courseId: params.courseId,
-        studentId: params.studentId,
-        score: body.score,
-        feedback: body.feedback,
-      },
-      include: { student: { select: { id: true, fullName: true, email: true } } },
-    });
+      });
 
-    res.json(attendance);
+      res.json(attendance);
+    } catch (error) {
+      console.error('Attendance save error:', error);
+      res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
   });
 
   // Get complete gradebook for a course (teacher view)
@@ -354,9 +358,9 @@ export function registerGradebookRoutes(router: Router) {
 
       for (const component of components) {
         if (component.name === 'Attendance') {
-          // Attendance is stored as weighted mark directly
+          // Attendance is stored as percentage (0-100), scale by component weight
           const studentAttendance = typedAttendance.find(a => a.studentId === student.id);
-          const attendanceMark = Math.round((studentAttendance?.score || 0) * 10) / 10;
+          const attendanceMark = Math.round(((studentAttendance?.score || 0) / 100) * component.weight * 10) / 10;
           componentMarks[component.id] = attendanceMark;
           totalGrade += attendanceMark;
         } else {
@@ -490,7 +494,7 @@ export function registerGradebookRoutes(router: Router) {
 
     for (const component of components) {
       if (component.name === 'Attendance') {
-        const mark = Math.round((attendance?.score || 0) * 10) / 10;
+        const mark = Math.round(((attendance?.score || 0) / 100) * component.weight * 10) / 10;
         componentMarks[component.id] = mark;
         totalGrade += mark;
       } else {

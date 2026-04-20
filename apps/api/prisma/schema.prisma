@@ -106,6 +106,7 @@ model User {
   manualAttendanceRecords ManualAttendanceRecord[]
   manualAttendanceSessions ManualAttendanceSession[]
   materialViews MaterialView[]
+  readingProgress MaterialReadingProgress[]
 }
 
 model StudentProfile {
@@ -277,6 +278,7 @@ model Material {
   fileType    String?   // e.g., "pdf", "doc", "ppt", "link"
   fileName    String?   // Original file name
   previewFileUrl String? // PDF version for inline preview (converted from PPT/DOC/XLS)
+  htmlContent    String?  // HTML version for PPTX files with reading time tracking
   createdBy   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -284,6 +286,7 @@ model Material {
   course Course @relation(fields: [courseId], references: [id])
   author User   @relation(fields: [createdBy], references: [id])
   views   MaterialView[]
+  readingProgress MaterialReadingProgress[]
 }
 
 model MaterialView {
@@ -300,6 +303,28 @@ model MaterialView {
   student  User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([materialId, studentId, openedAt])
+}
+
+// Reading progress for PPTX/HTML materials with slide-by-slide tracking
+model MaterialReadingProgress {
+  id             String   @id @default(cuid())
+  materialId     String
+  studentId      String
+  totalTime      Int      @default(0)     // Total time spent in seconds
+  completedSlides Int     @default(0)     // Number of slides marked as read
+  totalSlides    Int      @default(0)     // Total number of slides
+  slideStatuses  Json?                   // JSON object {slideNum: status}
+  slideTimeSpent Json?                    // JSON object {slideNum: seconds}
+  isCompleted    Boolean  @default(false)  // All slides read
+  lastReadAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  student  User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, studentId])
+  @@index([studentId, isCompleted])
 }
 
 model LiveSession {

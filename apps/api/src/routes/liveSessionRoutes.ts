@@ -170,11 +170,15 @@ export function registerLiveSessionRoutes(router: Router) {
     }).parse(req.body);
     const user = req.user!;
 
-    // Verify teacher teaches this course in this class
+    // Verify teacher teaches this course in this class either via CourseClass or CourseSection
     const courseClass = await prisma.courseClass.findFirst({
       where: { courseId: params.courseId, classId: body.classId, teacherId: user.id },
     });
-    if (!courseClass) {
+    const courseSection = await prisma.courseSection.findFirst({
+      where: { courseId: params.courseId, classId: body.classId, teacherId: user.id },
+    });
+
+    if (!courseClass && !courseSection) {
       res.status(403).json({ error: 'forbidden' });
       return;
     }

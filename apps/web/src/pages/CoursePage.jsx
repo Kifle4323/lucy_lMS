@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getCourseAssessments, createAssessment, createQuestion, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion, recordMaterialView, closeMaterialView, getCourseMaterialStats, getGradeComponents, API_BASE } from '../api';
+import { getCourseAssessments, createAssessment, createQuestion, updateQuestion, deleteQuestion, getAssessmentQuestions, startAttempt, getAttempt, saveAnswer, submitAttempt, gradeAttempt, getCourseMaterials, createMaterial, deleteMaterial, getCourseStudents, toggleAssessmentOpen, updateAssessment, deleteAssessment, getManualGrades, setManualGrade, createFaceVerification, getProfileStatus, getAttemptsForGrading, getStudentAttempts, reportQuestion, recordMaterialView, closeMaterialView, getCourseMaterialStats, getGradeComponents, getMaterialHtml, saveReadingProgress, getReadingProgress, API_BASE } from '../api';
 import Layout from '../components/Layout';
 import FaceTracker from '../components/FaceTracker';
 import {
@@ -33,7 +33,10 @@ import {
   Flag,
   AlertTriangle,
   X,
-  Eye
+  Eye,
+  BookOpen as ReadIcon,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 export default function CoursePage() {
@@ -63,9 +66,17 @@ export default function CoursePage() {
   const [previewMaterial, setPreviewMaterial] = useState(null);
   const [currentViewId, setCurrentViewId] = useState(null);
   const [materialStats, setMaterialStats] = useState(null);
+  const [htmlReaderMaterial, setHtmlReaderMaterial] = useState(null); // For PPTX HTML reader
+  const [htmlContent, setHtmlContent] = useState(null); // Fetched HTML content
+  const [htmlLoading, setHtmlLoading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Teacher: add question form
   const [selectedAssessment, setSelectedAssessment] = useState(null);
+  const [selectedAssessmentQuestions, setSelectedAssessmentQuestions] = useState([]);
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editingAssessmentId, setEditingAssessmentId] = useState(null);
+  const [editingAssessmentData, setEditingAssessmentData] = useState({ title: '', timeLimit: '', maxScore: '' });
   const [questionType, setQuestionType] = useState('MCQ');
   const [questionForm, setQuestionForm] = useState({
     type: 'MCQ',
@@ -147,6 +158,15 @@ export default function CoursePage() {
     ]).finally(() => setLoading(false));
   }, [courseId, user?.role]);
 
+  // Fullscreen change listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   // Timer countdown effect
   useEffect(() => {
     if (timeRemaining === null || timeRemaining <= 0) return;
@@ -199,27 +219,8 @@ export default function CoursePage() {
       const updated = await toggleAssessmentOpen(assessmentId, isOpen);
       setAssessments(assessments.map(a => a.id === assessmentId ? updated : a));
     } catch (err) {
-      toast.error('Failed to update assessment: ' + err.message);
-    }
-  };
-
-  const handleEditAssessment = async (assessment) => {
-    const title = prompt('Enter new title:', assessment.title);
-    if (!title) return;
-    
-    const timeLimit = prompt('Enter time limit in minutes (leave empty for no limit):', assessment.timeLimit || '');
-    const maxScore = prompt('Enter max score:', assessment.maxScore || 100);
-    
-    try {
-      const updated = await updateAssessment(assessment.id, {
-        title,
-        timeLimit: timeLimit ? parseInt(timeLimit) : null,
-        maxScore: parseInt(maxScore) || 100,
-      });
-      setAssessments(assessments.map(a => a.id === assessment.id ? updated : a));
-      toast.success('Assessment updated!');
-    } catch (err) {
-      toast.error('Failed to update assessment: ' + err.message);
+      const msg = err?.data?.message || err.message;
+      toast.error(msg);
     }
   };
 
@@ -240,6 +241,137 @@ export default function CoursePage() {
     } catch (err) {
       toast.error('Failed to delete assessment: ' + err.message);
     }
+  };
+
+  const startEditAssessment = (assessment) => {
+    setEditingAssessmentId(assessment.id);
+    setEditingAssessmentData({
+      title: assessment.title || '',
+      timeLimit: assessment.timeLimit || '',
+      maxScore: assessment.maxScore || '',
+    });
+  };
+
+  const cancelEditAssessment = () => {
+    setEditingAssessmentId(null);
+    setEditingAssessmentData({ title: '', timeLimit: '', maxScore: '' });
+  };
+
+  const handleSaveAssessment = async (assessmentId) => {
+    try {
+      const updated = await updateAssessment(assessmentId, {
+        title: editingAssessmentData.title,
+        timeLimit: editingAssessmentData.timeLimit ? parseInt(editingAssessmentData.timeLimit) : null,
+        maxScore: editingAssessmentData.maxScore ? parseInt(editingAssessmentData.maxScore) : 100,
+      });
+      setAssessments(assessments.map(a => a.id === assessmentId ? updated : a));
+      setEditingAssessmentId(null);
+      setEditingAssessmentData({ title: '', timeLimit: '', maxScore: '' });
+      toast.success('Assessment updated!');
+    } catch (err) {
+      toast.error('Failed to update assessment: ' + err.message);
+    }
+  };
+
+  const resetQuestionForm = (type = 'MCQ') => {
+    setQuestionType(type);
+    setQuestionForm({
+      type,
+      prompt: '',
+      optionA: '',
+      optionB: '',
+      optionC: '',
+      optionD: '',
+      correct: 'A',
+      correctAnswer: '',
+      modelAnswer: '',
+      points: 1,
+    });
+    setEditingQuestion(null);
+  };
+
+  const loadAssessmentQuestions = async (assessment) => {
+    try {
+      const questions = await getAssessmentQuestions(assessment.id);
+      setSelectedAssessmentQuestions(questions);
+      setSelectedAssessment(assessment);
+      resetQuestionForm('MCQ');
+    } catch (err) {
+      toast.error('Failed to load questions: ' + err.message);
+    }
+  };
+
+  const toggleQuestionPanel = async (assessment) => {
+    if (selectedAssessment?.id === assessment.id) {
+      setSelectedAssessment(null);
+      setSelectedAssessmentQuestions([]);
+      setEditingQuestion(null);
+      return;
+    }
+    await loadAssessmentQuestions(assessment);
+  };
+
+  const prepareEditQuestion = (question) => {
+    setEditingQuestion(question);
+    setQuestionType(question.type);
+    setQuestionForm({
+      type: question.type,
+      prompt: question.prompt || '',
+      optionA: question.optionA || '',
+      optionB: question.optionB || '',
+      optionC: question.optionC || '',
+      optionD: question.optionD || '',
+      correct: question.correct || 'A',
+      correctAnswer: question.correctAnswer || '',
+      modelAnswer: question.modelAnswer || '',
+      points: question.points || 1,
+    });
+  };
+
+  const handleSubmitQuestion = async (e) => {
+    e.preventDefault();
+    if (!selectedAssessment) return;
+
+    try {
+      if (editingQuestion) {
+        await updateQuestion(editingQuestion.id, questionForm);
+        toast.success('Question updated!');
+      } else {
+        await createQuestion(selectedAssessment.id, questionForm);
+        toast.success('Question added!');
+      }
+      const questions = await getAssessmentQuestions(selectedAssessment.id);
+      setSelectedAssessmentQuestions(questions);
+      resetQuestionForm(questionForm.type);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleDeleteQuestion = async (question) => {
+    const confirmed = await confirm({
+      title: 'Delete Question',
+      message: 'Delete this question? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      await deleteQuestion(question.id);
+      setSelectedAssessmentQuestions(selectedAssessmentQuestions.filter((q) => q.id !== question.id));
+      toast.success('Question deleted!');
+      if (editingQuestion?.id === question.id) {
+        resetQuestionForm(questionType);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleCancelQuestionEdit = () => {
+    resetQuestionForm('MCQ');
   };
 
   const handleOpenGradeModal = async (assessment) => {
@@ -371,32 +503,74 @@ export default function CoursePage() {
       try {
         await closeMaterialView(currentViewId);
       } catch (err) {
-        console.error('Failed to close view:', err);
+        console.error('Failed to close view tracking:', err);
       }
-      setCurrentViewId(null);
     }
+    setCurrentViewId(null);
     setPreviewMaterial(null);
   };
 
-  const handleAddQuestion = async (e) => {
-    e.preventDefault();
+  // Open PPTX material as HTML with reading time tracking
+  const handleOpenHtmlReader = async (material) => {
+    setHtmlReaderMaterial(material);
+    setHtmlLoading(true);
     try {
-      await createQuestion(selectedAssessment.id, questionForm);
-      toast.success('Question added!');
-      setQuestionForm({
-        type: questionType,
-        prompt: '',
-        optionA: '',
-        optionB: '',
-        optionC: '',
-        optionD: '',
-        correct: 'A',
-        correctAnswer: '',
-        modelAnswer: '',
-        points: 1,
-      });
+      // Fetch HTML content with authentication
+      const content = await getMaterialHtml(material.id);
+      setHtmlContent(content);
     } catch (err) {
-      toast.error(err.message);
+      console.error('Failed to load HTML content:', err);
+      toast.error('Failed to load interactive reader: ' + err.message);
+      setHtmlReaderMaterial(null);
+      return;
+    } finally {
+      setHtmlLoading(false);
+    }
+    // Track student view
+    if (user?.role === 'STUDENT') {
+      try {
+        const view = await recordMaterialView(material.id);
+        setCurrentViewId(view.viewId);
+      } catch (err) {
+        console.error('Failed to record view:', err);
+      }
+    }
+  };
+
+  const handleCloseHtmlReader = async () => {
+    // Exit fullscreen if active
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+    }
+    setIsFullscreen(false);
+    
+    // Close view tracking for student
+    if (user?.role === 'STUDENT' && currentViewId) {
+      try {
+        await closeMaterialView(currentViewId);
+      } catch (err) {
+        console.error('Failed to close view tracking:', err);
+      }
+    }
+    setCurrentViewId(null);
+    setHtmlReaderMaterial(null);
+    setHtmlContent(null);
+  };
+
+  const toggleFullscreen = async () => {
+    const modalElement = document.getElementById('html-reader-modal');
+    if (!modalElement) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await modalElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
     }
   };
 
@@ -1143,6 +1317,16 @@ export default function CoursePage() {
                             Preview
                           </button>
                         )}
+                        {/* Read with Tracking button for PPTX materials */}
+                        {(m.fileType === 'ppt' || m.fileType === 'pptx') && (
+                          <button
+                            onClick={() => handleOpenHtmlReader(m)}
+                            className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium"
+                          >
+                            <ReadIcon className="w-4 h-4" />
+                            Read with Tracking
+                          </button>
+                        )}
                         {m.fileUrl && m.fileType === 'link' && (
                           <a
                             href={m.fileUrl}
@@ -1349,6 +1533,57 @@ export default function CoursePage() {
                         </div>
                         <FileText className="w-5 h-5 text-gray-400" />
                       </div>
+                      {editingAssessmentId === a.id && (
+                        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+                          <h4 className="text-sm font-semibold text-gray-900">Edit Assessment</h4>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="sm:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700">Title</label>
+                              <input
+                                type="text"
+                                value={editingAssessmentData.title}
+                                onChange={(e) => setEditingAssessmentData({ ...editingAssessmentData, title: e.target.value })}
+                                className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700">Time Limit</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editingAssessmentData.timeLimit}
+                                onChange={(e) => setEditingAssessmentData({ ...editingAssessmentData, timeLimit: e.target.value })}
+                                className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg"
+                                placeholder="Minutes"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700">Max Score</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={editingAssessmentData.maxScore}
+                                onChange={(e) => setEditingAssessmentData({ ...editingAssessmentData, maxScore: e.target.value })}
+                                className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSaveAssessment(a.id)}
+                              className="flex-1 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
+                            >
+                              Save Changes
+                            </button>
+                            <button
+                              onClick={cancelEditAssessment}
+                              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       {a.timeLimit && (
                         <div className="flex items-center gap-1 mt-2 text-sm text-gray-500">
                           <Clock className="w-4 h-4" />
@@ -1357,6 +1592,16 @@ export default function CoursePage() {
                       )}
                       <div className="flex items-center gap-1 mt-2 text-sm text-gray-500">
                         <span className="font-medium">Max Score:</span> {a.maxScore || 100}
+                        {a.totalPoints !== undefined && a.totalPoints !== a.maxScore && (
+                          <span className="ml-2 text-red-600 text-xs font-medium">
+                            (Questions total: {a.totalPoints} — must equal {a.maxScore} to open)
+                          </span>
+                        )}
+                        {a.totalPoints !== undefined && a.totalPoints === a.maxScore && (
+                          <span className="ml-2 text-green-600 text-xs font-medium">
+                            ✓ Points match
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -1389,7 +1634,7 @@ export default function CoursePage() {
                             Enter Grades
                           </button>
                           <button
-                            onClick={() => setSelectedAssessment(selectedAssessment?.id === a.id ? null : a)}
+                            onClick={() => toggleQuestionPanel(a)}
                             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-50 hover:bg-primary-100 text-primary-700 font-medium rounded-lg transition-colors"
                           >
                             <Plus className="w-4 h-4" />
@@ -1397,7 +1642,7 @@ export default function CoursePage() {
                           </button>
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleEditAssessment(a)}
+                              onClick={() => startEditAssessment(a)}
                               className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-medium rounded-lg transition-colors"
                             >
                               <Edit3 className="w-4 h-4" />
@@ -1448,106 +1693,171 @@ export default function CoursePage() {
                       )}
                     </div>
 
-                    {/* Add Question Form */}
+                    {/* Question Manager */}
                     {selectedAssessment?.id === a.id && (
-                      <div className="p-5 border-t border-gray-100 bg-gray-50">
-                        <h4 className="font-medium text-gray-900 mb-3">Add Question</h4>
-                        <form onSubmit={handleAddQuestion} className="space-y-3">
+                      <div className="p-5 border-t border-gray-100 bg-gray-50 space-y-6">
+                        <div className="flex items-center justify-between">
                           <div>
-                            <label className="text-sm text-gray-600">Type</label>
-                            <select
-                              value={questionType}
-                              onChange={(e) => {
-                                setQuestionType(e.target.value);
-                                setQuestionForm({ ...questionForm, type: e.target.value });
-                              }}
-                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg bg-white"
-                        >
-                          <option value="MCQ">Multiple Choice</option>
-                          <option value="FITB">Fill in the Blank</option>
-                          <option value="SHORT_ANSWER">Short Answer</option>
-                        </select>
-                      </div>
+                            <h4 className="font-medium text-gray-900">Question Manager</h4>
+                            <p className="text-sm text-gray-500">Create, edit, or remove questions for this assessment.</p>
+                          </div>
+                          {editingQuestion && (
+                            <button
+                              type="button"
+                              onClick={handleCancelQuestionEdit}
+                              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm"
+                            >
+                              Cancel edit
+                            </button>
+                          )}
+                        </div>
 
-                      <div>
-                        <label className="text-sm text-gray-600">Prompt</label>
-                        <textarea
-                          value={questionForm.prompt}
-                          onChange={(e) => setQuestionForm({ ...questionForm, prompt: e.target.value })}
-                          required
-                          rows={2}
-                          className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg"
-                          placeholder="Enter the question..."
-                        />
-                      </div>
+                        {selectedAssessmentQuestions.length > 0 && (
+                          <div className="space-y-3">
+                            {selectedAssessmentQuestions.map((question, idx) => (
+                              <div key={question.id} className="rounded-xl border border-gray-200 bg-white p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                                      <span className="px-2 py-0.5 bg-primary-50 text-primary-700 rounded-full">Q{idx + 1}</span>
+                                      <span>{question.type}</span>
+                                    </div>
+                                    <p className="font-medium text-gray-900">{question.prompt}</p>
+                                    <p className="mt-2 text-sm text-gray-500">{question.points} point{question.points === 1 ? '' : 's'}</p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => prepareEditQuestion(question)}
+                                      className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-sm"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteQuestion(question)}
+                                      className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      {questionType === 'MCQ' && (
-                        <div className="space-y-2">
-                          {['A', 'B', 'C', 'D'].map((opt) => (
-                            <div key={opt} className="flex gap-2">
-                              <input
-                                placeholder={`Option ${opt}`}
-                                value={questionForm[`option${opt}`]}
-                                onChange={(e) => setQuestionForm({ ...questionForm, [`option${opt}`]: e.target.value })}
+                        <div className="rounded-xl border border-gray-200 bg-white p-5">
+                          <h5 className="text-base font-semibold text-gray-900 mb-4">
+                            {editingQuestion ? 'Edit Question' : 'Add Question'}
+                          </h5>
+                          <form onSubmit={handleSubmitQuestion} className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                              <select
+                                value={questionType}
+                                onChange={(e) => {
+                                  setQuestionType(e.target.value);
+                                  setQuestionForm({ ...questionForm, type: e.target.value });
+                                }}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
+                              >
+                                <option value="MCQ">Multiple Choice</option>
+                                <option value="FITB">Fill in the Blank</option>
+                                <option value="SHORT_ANSWER">Short Answer</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
+                              <textarea
+                                value={questionForm.prompt}
+                                onChange={(e) => setQuestionForm({ ...questionForm, prompt: e.target.value })}
                                 required
-                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg"
+                                rows={2}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                                placeholder="Enter the question..."
                               />
                             </div>
-                          ))}
-                          <select
-                            value={questionForm.correct}
-                            onChange={(e) => setQuestionForm({ ...questionForm, correct: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
-                          >
-                            <option value="A">Correct: A</option>
-                            <option value="B">Correct: B</option>
-                            <option value="C">Correct: C</option>
-                            <option value="D">Correct: D</option>
-                          </select>
+
+                            {questionType === 'MCQ' && (
+                              <div className="space-y-3">
+                                {['A', 'B', 'C', 'D'].map((opt) => (
+                                  <div key={opt} className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr] items-center">
+                                    <span className="text-sm font-medium text-gray-700">Option {opt}</span>
+                                    <input
+                                      placeholder={`Option ${opt}`}
+                                      value={questionForm[`option${opt}`]}
+                                      onChange={(e) => setQuestionForm({ ...questionForm, [`option${opt}`]: e.target.value })}
+                                      required
+                                      className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                                    />
+                                  </div>
+                                ))}
+                                <select
+                                  value={questionForm.correct}
+                                  onChange={(e) => setQuestionForm({ ...questionForm, correct: e.target.value })}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
+                                >
+                                  <option value="A">Correct: A</option>
+                                  <option value="B">Correct: B</option>
+                                  <option value="C">Correct: C</option>
+                                  <option value="D">Correct: D</option>
+                                </select>
+                              </div>
+                            )}
+
+                            {questionType === 'FITB' && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Correct answer</label>
+                                <input
+                                  placeholder="Correct answer"
+                                  value={questionForm.correctAnswer}
+                                  onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
+                                  required
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                                />
+                              </div>
+                            )}
+
+                            {questionType === 'SHORT_ANSWER' && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Model answer</label>
+                                <textarea
+                                  placeholder="Model answer for grading reference"
+                                  value={questionForm.modelAnswer}
+                                  onChange={(e) => setQuestionForm({ ...questionForm, modelAnswer: e.target.value })}
+                                  required
+                                  rows={3}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                                />
+                              </div>
+                            )}
+
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                              <div className="sm:flex-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={questionForm.points}
+                                  onChange={(e) => setQuestionForm({ ...questionForm, points: parseInt(e.target.value) || 1 })}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                className="w-full sm:w-auto px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
+                              >
+                                {editingQuestion ? 'Update Question' : 'Add Question'}
+                              </button>
+                            </div>
+                          </form>
                         </div>
-                      )}
-
-                      {questionType === 'FITB' && (
-                        <input
-                          placeholder="Correct answer"
-                          value={questionForm.correctAnswer}
-                          onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
-                          required
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                        />
-                      )}
-
-                      {questionType === 'SHORT_ANSWER' && (
-                        <textarea
-                          placeholder="Model answer for grading reference"
-                          value={questionForm.modelAnswer}
-                          onChange={(e) => setQuestionForm({ ...questionForm, modelAnswer: e.target.value })}
-                          required
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                        />
-                      )}
-
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          min="1"
-                          value={questionForm.points}
-                          onChange={(e) => setQuestionForm({ ...questionForm, points: parseInt(e.target.value) || 1 })}
-                          className="w-20 px-3 py-2 border border-gray-200 rounded-lg"
-                        />
-                        <span className="text-gray-500 self-center">points</span>
                       </div>
-
-                      <button
-                        type="submit"
-                        className="w-full px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
-                      >
-                        Add Question
-                      </button>
-                    </form>
-                  </div>
-                )}
+                    )}
               </div>
             ))}
             </div>
@@ -2067,6 +2377,96 @@ export default function CoursePage() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HTML Reader Modal for PPTX materials */}
+      {htmlReaderMaterial && (
+        <div id="html-reader-modal" className={`${isFullscreen ? '' : 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2'}`}>
+          <div className={`bg-white dark:bg-gray-800 ${isFullscreen ? 'w-full h-full' : 'rounded-xl shadow-2xl w-full h-full max-w-[95vw]'} flex flex-col`}>
+            {/* Header - hidden in fullscreen */}
+            <div className={`flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 ${isFullscreen ? 'hidden' : ''}`}>
+              <div className="flex items-center gap-3">
+                <ReadIcon className="w-5 h-5 text-green-500" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{htmlReaderMaterial.title}</h2>
+                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">
+                  Interactive Reader
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                >
+                  {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                </button>
+                <button
+                  onClick={() => handleCloseHtmlReader()}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Floating exit button for fullscreen */}
+            {isFullscreen && (
+              <div className="fixed top-4 right-4 z-[60] flex gap-2">
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
+                  title="Exit Fullscreen"
+                >
+                  <Minimize2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => handleCloseHtmlReader()}
+                  className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
+                  title="Close Reader"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {/* HTML Content */}
+            <div className="flex-1 overflow-hidden p-0 bg-white">
+              {htmlLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+                    <p className="text-gray-500">Loading interactive reader...</p>
+                  </div>
+                </div>
+              ) : htmlContent ? (
+                <iframe
+                  srcDoc={htmlContent}
+                  className="w-full h-full border-0"
+                  style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 140px)' }}
+                  title={htmlReaderMaterial.title}
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-red-500">Failed to load content. Please try again.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer - hidden in fullscreen */}
+            <div className={`flex items-center justify-between p-3 border-t border-gray-200 dark:border-gray-700 ${isFullscreen ? 'hidden' : ''}`}>
+              <p className="text-xs text-gray-400">
+                Progress auto-saves as you read
+              </p>
+              <button
+                onClick={() => handleCloseHtmlReader()}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm"
+              >
+                Close Reader
+              </button>
             </div>
           </div>
         </div>

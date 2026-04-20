@@ -45,7 +45,9 @@ export default function GradebookPage() {
           const attMap = {};
           data.gradebook.forEach(g => {
             const attComponent = (data.components || []).find(c => c.name === 'Attendance');
-            attMap[g.student.id] = attComponent && g.componentMarks ? g.componentMarks[attComponent.id] || 0 : 0;
+            const mark = attComponent && g.componentMarks ? g.componentMarks[attComponent.id] || 0 : 0;
+            // Convert mark back to percentage: score = (mark / weight) * 100
+            attMap[g.student.id] = attComponent ? Math.round((mark / attComponent.weight) * 100) : 0;
           });
           setAttendance(attMap);
         }),
@@ -88,10 +90,14 @@ export default function GradebookPage() {
   };
 
   const handleAttendanceChange = (studentId, value) => {
-    setAttendance({ ...attendance, [studentId]: parseInt(value) || 0 });
+    setAttendance({ ...attendance, [studentId]: Math.round(parseFloat(value) || 0) });
   };
 
   const handleSaveAttendance = async (studentId) => {
+    if (attendance[studentId] === undefined) {
+      toast.error('Attendance data not loaded yet');
+      return;
+    }
     try {
       await setAttendance(courseId, studentId, attendance[studentId]);
       toast.success('Attendance saved!');
@@ -103,9 +109,10 @@ export default function GradebookPage() {
   const handleSaveAllAttendance = async () => {
     setSaving(true);
     try {
-      const promises = Object.entries(attendance).map(([studentId, score]) =>
-        setAttendance(courseId, studentId, score)
-      );
+      const promises = Object.entries(attendance).map(([studentId, score]) => {
+        if (score === undefined) return Promise.resolve();
+        return setAttendance(courseId, studentId, score);
+      });
       await Promise.all(promises);
       toast.success('All attendance saved!');
     } catch (err) {
@@ -144,7 +151,7 @@ export default function GradebookPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-primary-100 text-sm font-medium">Total Grade</p>
-                <p className="text-5xl font-bold mt-2">{myGrades.totalGrade}%</p>
+                <p className="text-5xl font-bold mt-2">{myGrades.totalGrade > 0 ? `${myGrades.totalGrade}%` : 'Not graded'}</p>
               </div>
               <Award className="w-16 h-16 text-primary-200" />
             </div>
@@ -175,7 +182,7 @@ export default function GradebookPage() {
                       <p className="text-sm text-gray-500">{comp.weight}% weight</p>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-gray-900">{mark}/{comp.weight}</p>
+                  <p className="text-3xl font-bold text-gray-900">{mark > 0 ? `${mark}/${comp.weight}` : 'Not graded'}</p>
                   {details.length > 0 && (
                     <div className="mt-4 space-y-2">
                       {details.map((d, i) => (
@@ -389,13 +396,13 @@ export default function GradebookPage() {
                               <input
                                 type="number"
                                 min="0"
-                                max={(() => { const ac = (gradebook.components || components).find(c => c.name === 'Attendance'); return ac ? ac.weight : 10; })()}
-                                step="0.1"
+                                max="100"
+                                step="1"
                                 value={attendance[g.student.id] || 0}
                                 onChange={(e) => handleAttendanceChange(g.student.id, e.target.value)}
                                 className="w-20 px-2 py-1 border border-gray-200 rounded text-center"
                               />
-                              <span className="text-gray-500">/{(() => { const ac = (gradebook.components || components).find(c => c.name === 'Attendance'); return ac ? ac.weight : 10; })()}</span>
+                              <span className="text-gray-500">/100</span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -495,8 +502,8 @@ export default function GradebookPage() {
                               );
                             })}
                             <td className="px-4 py-4 text-center bg-primary-50">
-                              <span className={`font-bold text-lg ${g.totalGrade >= 60 ? 'text-green-600' : 'text-red-600'}`}>
-                                {g.totalGrade}
+                              <span className={`font-bold text-lg ${g.totalGrade > 0 ? (g.totalGrade >= 60 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
+                                {g.totalGrade > 0 ? g.totalGrade : '-'}
                               </span>
                             </td>
                           </tr>

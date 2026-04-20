@@ -183,6 +183,150 @@ export function registerAssessmentRoutes(router: Router) {
     },
   );
 
+  // Get questions for an assessment
+  router.get('/assessments/:assessmentId/questions', authRequired, async (req: AuthedRequest, res: Response) => {
+    try {
+      const params = z.object({ assessmentId: z.string() }).parse(req.params);
+      const assessment = await prisma.assessment.findUnique({
+        where: { id: params.assessmentId },
+        include: {
+          course: {
+            include: {
+              courseSections: { include: { enrollments: true, teacher: true } },
+              courseClasses: true,
+            },
+          },
+        },
+      });
+
+      if (!assessment) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      const user = req.user!;
+      const isAdmin = user.role === 'ADMIN';
+      const isTeacher = assessment.course.courseSections.some((s: { teacherId: string | null }) => s.teacherId === user.id) || assessment.course.courseClasses.some((c: { teacherId: string | null }) => c.teacherId === user.id);
+      const isStudent = assessment.course.courseSections.some((s: { enrollments: { studentId: string }[] }) =>
+        s.enrollments.some((e: { studentId: string }) => e.studentId === user.id)
+      );
+
+      if (!isAdmin && !isTeacher && !isStudent) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+
+      const questions = await prisma.question.findMany({
+        where: { assessmentId: params.assessmentId },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      res.json(questions);
+    } catch (err: any) {
+      console.error('Get assessment questions error:', err);
+      res.status(500).json({ error: 'Failed to load assessment questions', message: err?.message || String(err) });
+    }
+  });
+
+  // Update question (Teacher only)
+  router.put('/questions/:questionId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    try {
+      const params = z.object({ questionId: z.string() }).parse(req.params);
+      const body = z.object({
+        type: z.enum(['MCQ', 'FITB', 'SHORT_ANSWER']).optional(),
+        prompt: z.string().min(1).optional(),
+        optionA: z.string().min(1).optional().or(z.literal('')).optional(),
+        optionB: z.string().min(1).optional().or(z.literal('')).optional(),
+        optionC: z.string().min(1).optional().or(z.literal('')).optional(),
+        optionD: z.string().min(1).optional().or(z.literal('')).optional(),
+        correct: z.enum(['A', 'B', 'C', 'D']).optional(),
+        correctAnswer: z.string().min(1).optional().or(z.literal('')).optional(),
+        modelAnswer: z.string().min(1).optional().or(z.literal('')).optional(),
+        points: z.number().int().positive().optional(),
+      }).parse(req.body);
+
+      const question = await prisma.question.findUnique({
+        where: { id: params.questionId },
+        include: { assessment: { include: { course: { include: { courseSections: true, courseClasses: true } } } } },
+      });
+
+      if (!question) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      // Check if teacher is assigned to this course
+      const courseSection = question.assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+      const courseClass = question.assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+      if (!courseSection && !courseClass) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+
+      // Don't allow editing if assessment has submitted attempts
+      const attemptCount = await prisma.attempt.count({
+        where: { assessmentId: question.assessmentId, status: { in: ['SUBMITTED', 'GRADED'] } },
+      });
+      if (attemptCount > 0) {
+        res.status(400).json({ error: 'has_submissions', message: 'Cannot edit questions after students have submitted attempts' });
+        return;
+      }
+
+      const updated = await prisma.question.update({
+        where: { id: params.questionId },
+        data: body,
+      });
+
+      res.json(updated);
+    } catch (err: any) {
+      console.error('Update question error:', err);
+      res.status(500).json({ error: 'Failed to update question', message: err?.message || String(err) });
+    }
+  });
+
+  // Delete question (Teacher only)
+  router.delete('/questions/:questionId', authRequired, requireRole(['TEACHER']), async (req: AuthedRequest, res: Response) => {
+    try {
+      const params = z.object({ questionId: z.string() }).parse(req.params);
+
+      const question = await prisma.question.findUnique({
+        where: { id: params.questionId },
+        include: { assessment: { include: { course: { include: { courseSections: true, courseClasses: true } } } } },
+      });
+
+      if (!question) {
+        res.status(404).json({ error: 'not_found' });
+        return;
+      }
+
+      // Check if teacher is assigned to this course
+      const courseSection = question.assessment.course.courseSections.find((s: { teacherId: string | null }) => s.teacherId === req.user!.id);
+      const courseClass = question.assessment.course.courseClasses.find((c: { teacherId: string | null }) => c.teacherId === req.user!.id);
+      if (!courseSection && !courseClass) {
+        res.status(403).json({ error: 'forbidden' });
+        return;
+      }
+
+      // Don't allow deleting if assessment has submitted attempts
+      const attemptCount = await prisma.attempt.count({
+        where: { assessmentId: question.assessmentId, status: { in: ['SUBMITTED', 'GRADED'] } },
+      });
+      if (attemptCount > 0) {
+        res.status(400).json({ error: 'has_submissions', message: 'Cannot delete questions after students have submitted attempts' });
+        return;
+      }
+
+      // Delete answers for this question first
+      await prisma.answer.deleteMany({ where: { questionId: params.questionId } });
+      await prisma.question.delete({ where: { id: params.questionId } });
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('Delete question error:', err);
+      res.status(500).json({ error: 'Failed to delete question', message: err?.message || String(err) });
+    }
+  });
+
   router.get('/courses/:courseId/assessments', authRequired, async (req: AuthedRequest, res: Response) => {
     const params = z.object({ courseId: z.string() }).parse(req.params);
 
@@ -219,8 +363,21 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    const assessments = await prisma.assessment.findMany({ where: { courseId: params.courseId }, orderBy: { createdAt: 'desc' } });
-    res.json(assessments);
+    const assessments = await prisma.assessment.findMany({
+      where: { courseId: params.courseId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { questions: true } },
+        questions: { select: { points: true } },
+      },
+    });
+    const result = assessments.map(a => ({
+      ...a,
+      totalPoints: a.questions.reduce((sum: number, q: { points: number }) => sum + q.points, 0),
+      questionCount: a._count.questions,
+      questions: undefined,
+    }));
+    res.json(result);
   });
 
   // Toggle assessment open/closed status (Teacher only)
@@ -230,7 +387,7 @@ export function registerAssessmentRoutes(router: Router) {
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: params.assessmentId },
-      include: { course: { include: { courseSections: true, courseClasses: true } } },
+      include: { course: { include: { courseSections: true, courseClasses: true } }, questions: true },
     });
 
     if (!assessment) {
@@ -244,6 +401,18 @@ export function registerAssessmentRoutes(router: Router) {
     if (!courseSection && !courseClass) {
       res.status(403).json({ error: 'forbidden' });
       return;
+    }
+
+    // If opening the exam, validate that total question points match maxScore
+    if (body.isOpen) {
+      const totalPoints = assessment.questions.reduce((sum: number, q: { points: number }) => sum + q.points, 0);
+      if (totalPoints !== assessment.maxScore) {
+        res.status(400).json({
+          error: 'points_mismatch',
+          message: `Cannot open exam: total question points (${totalPoints}) must equal the max score (${assessment.maxScore}). ${assessment.questions.length} question(s) added.`,
+        });
+        return;
+      }
     }
 
     const updated = await prisma.assessment.update({

@@ -656,7 +656,7 @@ export function registerAcademicRoutes(router: Router) {
       midtermScore: z.number().min(0).optional(),
       finalScore: z.number().min(0).optional(),
       attendanceScore: z.number().min(0).optional(),
-      feedback: z.string().optional(),
+      feedback: z.union([z.string(), z.null()]).optional(),
     }).parse(req.body);
 
     const user = req.user!;
