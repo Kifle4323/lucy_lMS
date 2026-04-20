@@ -17,6 +17,7 @@ export default function AdminCoursesPage() {
     title: '',
     code: '',
     description: '',
+    stream: '',
     creditHours: 3,
     ectsCredits: 5
   });
@@ -37,6 +38,7 @@ export default function AdminCoursesPage() {
         title: '',
         code: '',
         description: '',
+        stream: '',
         creditHours: 3,
         ectsCredits: 5
       });
@@ -137,6 +139,7 @@ export default function AdminCoursesPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Course</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Code</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stream</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Credits</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ECTS</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
@@ -162,6 +165,19 @@ export default function AdminCoursesPage() {
                       <span className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-mono rounded">
                         {course.code}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {course.stream ? (
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${
+                          course.stream === 'Natural Science' 
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                            : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                        }`}>
+                          {course.stream === 'Natural Science' ? 'NS' : 'SS'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">Common</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-gray-900 dark:text-white font-medium">{course.creditHours}</span>
@@ -354,6 +370,19 @@ export default function AdminCoursesPage() {
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stream (optional)</label>
+                <select
+                  value={editingCourse.stream || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, stream: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Common Course (all streams)</option>
+                  <option value="Natural Science">Natural Science</option>
+                  <option value="Social Science">Social Science</option>
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty for courses available to all students</p>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button

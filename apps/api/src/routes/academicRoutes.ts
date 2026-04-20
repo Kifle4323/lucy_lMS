@@ -469,21 +469,37 @@ export function registerAcademicRoutes(router: Router) {
       return res.json({ semester: null, courses: [] });
     }
 
-    // Get student's class
-    const classStudent = await prisma.classStudent.findFirst({
-      where: { studentId: user.id },
-      include: { class: true },
-    });
+    // Get student's class and profile
+    const [classStudent, studentProfile] = await Promise.all([
+      prisma.classStudent.findFirst({
+        where: { studentId: user.id },
+        include: { class: true },
+      }),
+      prisma.studentProfile.findUnique({
+        where: { userId: user.id },
+      })
+    ]);
 
     if (!classStudent) {
       return res.json({ semester: currentSemester, courses: [], message: 'You are not assigned to a class yet.' });
     }
 
+    if (!studentProfile?.stream) {
+      return res.json({ semester: currentSemester, courses: [], message: 'Please select your stream (Natural Science or Social Science) in your profile first.' });
+    }
+
     // Get course sections assigned to student's class for this semester
+    // Filter by student's stream: show courses matching their stream or common courses (stream = null)
     const courseSections = await prisma.courseSection.findMany({
       where: {
         semesterId: currentSemester.id,
         classId: classStudent.classId,
+        course: {
+          OR: [
+            { stream: studentProfile.stream },
+            { stream: null }
+          ]
+        }
       },
       include: {
         course: true,
