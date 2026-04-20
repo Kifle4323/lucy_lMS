@@ -659,7 +659,7 @@ export function registerGradebookRoutes(router: Router) {
       // Verify teacher teaches this section
       const section = await prisma.courseSection.findFirst({
         where: { id: params.sectionId, teacherId: user.id },
-        include: { course: { include: { gradeConfig: true } }, class: true },
+        include: { course: { include: { gradeConfig: true, gradeComponents: true } }, class: true },
       });
 
       if (!section) {
