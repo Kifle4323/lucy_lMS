@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate",
-    "prestart": "prisma db push --skip-generate",
+    "prestart": "python3 -m pip install --break-system-packages python-pptx Pillow 2>/dev/null; prisma db push --skip-generate",
     "start": "tsx src/index.ts",
     "lint": "eslint .",
     "prisma": "prisma",
