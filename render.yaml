@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: apt-get update && apt-get install -y libreoffice-writer libreoffice-impress libreoffice-calc && cd apps/api && npm install && npx prisma generate && npm run build
+    buildCommand: apt-get update && apt-get install -y python3 python3-pip libreoffice-writer libreoffice-impress libreoffice-calc && pip3 install python-pptx Pillow && cd apps/api && npm install && npx prisma generate && npm run build
     startCommand: cd apps/api && npm run start
     envVars:
       - key: NODE_ENV
