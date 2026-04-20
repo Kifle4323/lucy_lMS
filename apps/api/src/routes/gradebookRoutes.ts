@@ -358,9 +358,9 @@ export function registerGradebookRoutes(router: Router) {
 
       for (const component of components) {
         if (component.name === 'Attendance') {
-          // Attendance is stored as percentage (0-100), scale by component weight
+          // Attendance is stored as weighted mark (out of component.weight), use directly
           const studentAttendance = typedAttendance.find(a => a.studentId === student.id);
-          const attendanceMark = Math.round(((studentAttendance?.score || 0) / 100) * component.weight * 10) / 10;
+          const attendanceMark = Math.round((studentAttendance?.score || 0) * 10) / 10;
           componentMarks[component.id] = attendanceMark;
           totalGrade += attendanceMark;
         } else {
@@ -719,8 +719,10 @@ export function registerGradebookRoutes(router: Router) {
 
         const totalPoints = livePoints + manualPoints;
         const percentage = Math.round(totalPoints / totalSessions);
-        // Store raw percentage (0-100) so gradebook can scale by component weight
-        const score = Math.min(100, Math.max(0, percentage));
+        // Convert percentage to weighted mark (out of attendance component weight)
+        const attendanceComponent = section.course.gradeComponents?.find((c: any) => c.name === 'Attendance');
+        const attendanceWeight = attendanceComponent?.weight || section.course.gradeConfig?.attendanceWeight || 10;
+        const score = Math.round(Math.min(100, Math.max(0, percentage)) * attendanceWeight / 100 * 10) / 10;
 
         const record = await prisma.attendance.upsert({
           where: {
