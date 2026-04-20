@@ -87,12 +87,18 @@ async function convertPptxToHtml(fileUrl: string, fileType: string, materialId: 
         // Run Python script with UTF-8 encoding (use python3 for Linux/Render)
         const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
         
-        // Function to run the actual conversion
+        console.log(`Converting PPTX: ${pythonCommand} ${scriptPath} ${tmpPath} ${outputPath}`);
+        
+        // Run the conversion script
         const python = spawn(pythonCommand, [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
           env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
         });
         
         let errorOutput = '';
+        let stdoutOutput = '';
+        python.stdout.on('data', (data) => {
+          stdoutOutput += data.toString();
+        });
         python.stderr.on('data', (data) => {
           errorOutput += data.toString();
         });
