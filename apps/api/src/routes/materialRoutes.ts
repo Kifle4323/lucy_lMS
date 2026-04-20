@@ -120,8 +120,8 @@ async function convertPptxToHtml(fileUrl: string, fileType: string, materialId: 
         
         // Try to install python-pptx first (for Render deployment), then run conversion
         console.log('Installing python-pptx...');
-        const pipInstall = spawn(pythonCommand, ['-m', 'pip', 'install', '--user', 'python-pptx', 'Pillow'], {
-          env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUSERBASE: '/opt/render/.local' },
+        const pipInstall = spawn(pythonCommand, ['-m', 'pip', 'install', '--break-system-packages', 'python-pptx', 'Pillow'], {
+          env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
           stdio: 'pipe'
         });
         
