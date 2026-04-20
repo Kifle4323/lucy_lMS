@@ -738,3 +738,16 @@ export async function getSemestersAddDrop() {
 export async function updateSemesterAddDrop(semesterId, addDropStart, addDropEnd) {
   return apiFetch(`/admin/semesters/${semesterId}/add-drop`, { method: 'PATCH', body: JSON.stringify({ addDropStart, addDropEnd }) });
 }
+
+// Analytics
+export async function getAdminAnalytics() {
+  return apiFetch('/analytics/admin');
+}
+
+export async function getTeacherAnalytics() {
+  return apiFetch('/analytics/teacher');
+}
+
+export async function getStudentAnalytics() {
+  return apiFetch('/analytics/student');
+}
