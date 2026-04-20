@@ -88,57 +88,32 @@ async function convertPptxToHtml(fileUrl: string, fileType: string, materialId: 
         const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
         
         // Function to run the actual conversion
-        const runConversion = () => {
-          const python = spawn(pythonCommand, [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
-            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
-          });
-          
-          let errorOutput = '';
-          python.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-          });
+        const python = spawn(pythonCommand, [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
+          env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        });
+        
+        let errorOutput = '';
+        python.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
 
-          python.on('close', (code) => {
-            // Clean up temp files after Python finishes
-            try { fs.unlinkSync(tmpPath); } catch (_) {}
-            
-            if (code !== 0) {
-              console.error('PPTX conversion error:', errorOutput);
-              resolve(null);
-              return;
-            }
-            try {
-              const htmlContent = fs.readFileSync(outputPath, 'utf-8');
-              try { fs.unlinkSync(outputPath); } catch (_) {}
-              resolve(htmlContent);
-            } catch (readErr) {
-              console.error('Error reading HTML file:', readErr);
-              resolve(null);
-            }
-          });
-        };
-        
-        // Try to install python-pptx first (for Render deployment), then run conversion
-        console.log('Installing python-pptx...');
-        const pipInstall = spawn(pythonCommand, ['-m', 'pip', 'install', '--break-system-packages', 'python-pptx', 'Pillow'], {
-          env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-          stdio: 'pipe'
-        });
-        
-        let pipOutput = '';
-        let pipError = '';
-        pipInstall.stdout.on('data', (data) => { pipOutput += data.toString(); });
-        pipInstall.stderr.on('data', (data) => { pipError += data.toString(); });
-        
-        pipInstall.on('close', (code) => {
-          console.log('pip install exit code:', code);
-          if (pipOutput) console.log('pip stdout:', pipOutput);
-          if (pipError) console.log('pip stderr:', pipError);
-          runConversion();
-        });
-        pipInstall.on('error', (err) => {
-          console.error('pip install error:', err);
-          runConversion();
+        python.on('close', (code) => {
+          // Clean up temp files after Python finishes
+          try { fs.unlinkSync(tmpPath); } catch (_) {}
+          
+          if (code !== 0) {
+            console.error('PPTX conversion error:', errorOutput);
+            resolve(null);
+            return;
+          }
+          try {
+            const htmlContent = fs.readFileSync(outputPath, 'utf-8');
+            try { fs.unlinkSync(outputPath); } catch (_) {}
+            resolve(htmlContent);
+          } catch (readErr) {
+            console.error('Error reading HTML file:', readErr);
+            resolve(null);
+          }
         });
       } catch (writeErr) {
         console.error('Error writing temp file:', writeErr);
