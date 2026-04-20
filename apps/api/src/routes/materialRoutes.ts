@@ -84,8 +84,9 @@ async function convertPptxToHtml(fileUrl: string, fileType: string, materialId: 
         const outputPath = tmpPath + '.html';
         const scriptPath = path.join(__dirname, '../../scripts/pptx_to_html.py');
 
-        // Run Python script with UTF-8 encoding
-        const python = spawn('python', [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
+        // Run Python script with UTF-8 encoding (use python3 for Linux/Render)
+        const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+        const python = spawn(pythonCommand, [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
           env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
         });
         
