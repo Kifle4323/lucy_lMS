@@ -1524,10 +1524,10 @@ export default function CoursePage() {
                               {a.deliveryMode || 'ONLINE'}
                             </span>
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded ${
-                              a.isOpen ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+                              a.isOpen ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
                             }`}>
                               {a.isOpen ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                              {a.isOpen ? 'Open' : 'Closed'}
+                              {a.isOpen ? 'Active' : 'Inactive'}
                             </span>
                           </div>
                         </div>
@@ -1612,12 +1612,12 @@ export default function CoursePage() {
                             onClick={() => handleToggleAssessment(a.id, !a.isOpen)}
                             className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${
                               a.isOpen 
-                                ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' 
+                                ? 'bg-red-50 hover:bg-red-100 text-red-700' 
                                 : 'bg-green-600 hover:bg-green-700 text-white'
                             }`}
                           >
                             {a.isOpen ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                            {a.isOpen ? 'Close for Students' : 'Open for Students'}
+                            {a.isOpen ? 'Deactivate' : 'Activate'}
                           </button>
                           <button
                             onClick={() => handleViewSubmissions(a)}
@@ -1684,9 +1684,9 @@ export default function CoursePage() {
                               Start Exam
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2 text-gray-500 text-sm">
+                            <div className="flex items-center gap-2 text-red-500 text-sm">
                               <Lock className="w-4 h-4" />
-                              Waiting for teacher to open
+                              Assessment not yet activated
                             </div>
                           );
                         })()
