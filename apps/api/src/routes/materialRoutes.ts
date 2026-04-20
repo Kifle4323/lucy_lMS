@@ -119,13 +119,27 @@ async function convertPptxToHtml(fileUrl: string, fileType: string, materialId: 
         };
         
         // Try to install python-pptx first (for Render deployment), then run conversion
-        const pipInstall = spawn(pythonCommand, ['-m', 'pip', 'install', 'python-pptx', 'Pillow'], {
-          env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+        console.log('Installing python-pptx...');
+        const pipInstall = spawn(pythonCommand, ['-m', 'pip', 'install', '--user', 'python-pptx', 'Pillow'], {
+          env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUSERBASE: '/opt/render/.local' },
           stdio: 'pipe'
         });
         
-        pipInstall.on('close', runConversion);
-        pipInstall.on('error', runConversion); // Run anyway even if pip fails
+        let pipOutput = '';
+        let pipError = '';
+        pipInstall.stdout.on('data', (data) => { pipOutput += data.toString(); });
+        pipInstall.stderr.on('data', (data) => { pipError += data.toString(); });
+        
+        pipInstall.on('close', (code) => {
+          console.log('pip install exit code:', code);
+          if (pipOutput) console.log('pip stdout:', pipOutput);
+          if (pipError) console.log('pip stderr:', pipError);
+          runConversion();
+        });
+        pipInstall.on('error', (err) => {
+          console.error('pip install error:', err);
+          runConversion();
+        });
       } catch (writeErr) {
         console.error('Error writing temp file:', writeErr);
         cleanup();
