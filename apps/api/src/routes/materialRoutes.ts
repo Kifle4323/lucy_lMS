@@ -86,33 +86,46 @@ async function convertPptxToHtml(fileUrl: string, fileType: string, materialId: 
 
         // Run Python script with UTF-8 encoding (use python3 for Linux/Render)
         const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-        const python = spawn(pythonCommand, [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
-          env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        
+        // Function to run the actual conversion
+        const runConversion = () => {
+          const python = spawn(pythonCommand, [scriptPath, tmpPath, outputPath, '--material-id', materialId], {
+            env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+          });
+          
+          let errorOutput = '';
+          python.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+          });
+
+          python.on('close', (code) => {
+            // Clean up temp files after Python finishes
+            try { fs.unlinkSync(tmpPath); } catch (_) {}
+            
+            if (code !== 0) {
+              console.error('PPTX conversion error:', errorOutput);
+              resolve(null);
+              return;
+            }
+            try {
+              const htmlContent = fs.readFileSync(outputPath, 'utf-8');
+              try { fs.unlinkSync(outputPath); } catch (_) {}
+              resolve(htmlContent);
+            } catch (readErr) {
+              console.error('Error reading HTML file:', readErr);
+              resolve(null);
+            }
+          });
+        };
+        
+        // Try to install python-pptx first (for Render deployment), then run conversion
+        const pipInstall = spawn(pythonCommand, ['-m', 'pip', 'install', 'python-pptx', 'Pillow'], {
+          env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+          stdio: 'pipe'
         });
         
-        let errorOutput = '';
-        python.stderr.on('data', (data) => {
-          errorOutput += data.toString();
-        });
-
-        python.on('close', (code) => {
-          // Clean up temp files after Python finishes
-          try { fs.unlinkSync(tmpPath); } catch (_) {}
-          
-          if (code !== 0) {
-            console.error('PPTX conversion error:', errorOutput);
-            resolve(null);
-            return;
-          }
-          try {
-            const htmlContent = fs.readFileSync(outputPath, 'utf-8');
-            try { fs.unlinkSync(outputPath); } catch (_) {}
-            resolve(htmlContent);
-          } catch (readErr) {
-            console.error('Error reading HTML file:', readErr);
-            resolve(null);
-          }
-        });
+        pipInstall.on('close', runConversion);
+        pipInstall.on('error', runConversion); // Run anyway even if pip fails
       } catch (writeErr) {
         console.error('Error writing temp file:', writeErr);
         cleanup();
