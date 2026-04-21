@@ -76,7 +76,7 @@ export function registerPaymentRoutes(router: Router) {
       const chapaPayload = {
         amount: semester.registrationFee.toString(),
         currency: 'ETB',
-        email: user.email,
+        email: user.email || studentProfile?.email || `${user.id}@lucy.edu`,
         first_name: firstName,
         last_name: lastName,
         phone_number: studentProfile?.phone || '',
@@ -159,7 +159,7 @@ export function registerPaymentRoutes(router: Router) {
 
         const verifyData = await verifyResponse.json();
 
-        if (verifyData.status === 'success' && verifyData.data.status === 'success') {
+        if (verifyData.status === 'success' && verifyData.data?.status === 'success') {
           await prisma.semesterPayment.update({
             where: { txRef: trx_ref as string },
             data: {
@@ -171,11 +171,12 @@ export function registerPaymentRoutes(router: Router) {
 
           console.log(`Payment completed: ${trx_ref}`);
         } else {
+          // Chapa returns 'failed/cancelled' for failed or cancelled payments
           await prisma.semesterPayment.update({
             where: { txRef: trx_ref as string },
             data: {
               status: 'FAILED',
-              chapaRefId: ref_id as string || null,
+              chapaRefId: ref_id as string || verifyData.data?.reference || null,
             },
           });
         }
@@ -235,10 +236,10 @@ export function registerPaymentRoutes(router: Router) {
           payment.status = 'COMPLETED';
           payment.chapaRefId = verifyData.data.ref_id;
           payment.paidAt = new Date();
-        } else if (verifyData.data?.status === 'failed') {
+        } else if (verifyData.data?.status === 'failed' || verifyData.data?.status === 'failed/cancelled') {
           await prisma.semesterPayment.update({
             where: { txRef: params.txRef },
-            data: { status: 'FAILED' },
+            data: { status: 'FAILED', chapaRefId: verifyData.data?.reference || null },
           });
           payment.status = 'FAILED';
         } else {
