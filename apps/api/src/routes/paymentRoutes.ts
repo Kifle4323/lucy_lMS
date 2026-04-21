@@ -84,8 +84,8 @@ export function registerPaymentRoutes(router: Router) {
         callback_url: `${process.env.API_URL || 'http://localhost:4000'}/api/payments/callback`,
         return_url: `${FRONTEND_URL}/payment-return?txRef=${txRef}`,
         customization: {
-          title: `Lucy LMS - ${semester.name} Registration`,
-          description: `Semester registration fee for ${semester.name}`,
+          title: 'Lucy LMS Fee',
+          description: `Registration fee for ${semester.name}`,
         },
       };
 
