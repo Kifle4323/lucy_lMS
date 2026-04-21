@@ -210,10 +210,60 @@ export function registerAcademicRoutes(router: Router) {
     res.json(semester);
   });
 
-  // Delete semester
+  // Delete semester (cascades related records)
   router.delete('/admin/semesters/:id', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ id: z.string() }).parse(req.params);
-    await prisma.semester.delete({ where: { id: params.id } });
+    const semesterId = params.id;
+
+    // Get all course sections for this semester
+    const sections = await prisma.courseSection.findMany({
+      where: { semesterId },
+      select: { id: true },
+    });
+    const sectionIds = sections.map(s => s.id);
+
+    // Delete in correct order to respect foreign keys
+    // 1. Early exam requests
+    await prisma.earlyExamRequest.deleteMany({
+      where: { examSchedule: { courseSectionId: { in: sectionIds } } },
+    });
+    // 2. Exam schedules
+    await prisma.examSchedule.deleteMany({
+      where: { courseSectionId: { in: sectionIds } },
+    });
+    // 3. Student grades (via enrollments)
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { courseSectionId: { in: sectionIds } },
+      select: { id: true },
+    });
+    const enrollmentIds = enrollments.map(e => e.id);
+    await prisma.studentGrade.deleteMany({
+      where: { enrollmentId: { in: enrollmentIds } },
+    });
+    // 4. Add/drop requests referencing these enrollments or sections
+    await prisma.addDropRequest.deleteMany({
+      where: {
+        OR: [
+          { semesterId },
+          { courseSectionId: { in: sectionIds } },
+          { dropEnrollmentId: { in: enrollmentIds } },
+        ],
+      },
+    });
+    // 5. Student enrollments
+    await prisma.studentEnrollment.deleteMany({
+      where: { courseSectionId: { in: sectionIds } },
+    });
+    // 6. Attendance
+    await prisma.attendance.deleteMany({
+      where: { courseId: { in: (await prisma.courseSection.findMany({ where: { id: { in: sectionIds } }, select: { courseId: true } })).map(s => s.courseId) } },
+    });
+    // 7. Course sections
+    await prisma.courseSection.deleteMany({
+      where: { semesterId },
+    });
+    // 8. Finally, the semester itself
+    await prisma.semester.delete({ where: { id: semesterId } });
     res.status(204).send();
   });
 
