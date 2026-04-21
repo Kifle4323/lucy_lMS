@@ -60,20 +60,32 @@ export default function StudentRegistrationPage() {
   async function handlePaymentReturn(txRef) {
     setVerifyingPayment(true);
     try {
-      const result = await verifyPayment(txRef);
-      if (result.payment?.status === 'COMPLETED') {
+      // Retry verification up to 3 times with delay (Chapa may take a moment)
+      let result = null;
+      for (let i = 0; i < 3; i++) {
+        try {
+          result = await verifyPayment(txRef);
+          if (result.payment?.status === 'COMPLETED') break;
+          if (i < 2) await new Promise(r => setTimeout(r, 2000)); // wait 2s between retries
+        } catch (err) {
+          if (i < 2) await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+
+      if (result?.payment?.status === 'COMPLETED') {
         toast.success('Payment completed successfully!');
         setPaymentStatus({ isPaid: true, status: 'COMPLETED', payment: result.payment });
-      } else if (result.payment?.status === 'FAILED') {
+      } else if (result?.payment?.status === 'FAILED') {
         toast.error('Payment failed. Please try again.');
         setPaymentStatus({ isPaid: false, status: 'FAILED', payment: result.payment });
       } else {
-        toast.info('Payment is still being processed...');
+        toast.info('Payment is still being processed. Click "Verify Payment" to check again.');
+        setPaymentStatus({ isPaid: false, status: 'PENDING', payment: result?.payment || null });
       }
       // Reload data
       await loadData();
     } catch (err) {
-      toast.error('Failed to verify payment: ' + err.message);
+      toast.error('Failed to verify payment: ' + (err.message || 'Unknown error'));
     } finally {
       setVerifyingPayment(false);
     }

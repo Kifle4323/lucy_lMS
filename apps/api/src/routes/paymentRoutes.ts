@@ -61,8 +61,8 @@ export function registerPaymentRoutes(router: Router) {
         });
       }
 
-      // Generate unique transaction reference
-      const txRef = `LUCY-${body.semesterId.substring(0, 8)}-${user.id.substring(0, 8)}-${Date.now()}`;
+      // Generate unique transaction reference (alphanumeric, hyphens, underscores only)
+      const txRef = `lucy${Date.now()}${Math.random().toString(36).substring(2, 8)}`;
 
       // Get student profile for name
       const studentProfile = await prisma.studentProfile.findUnique({
@@ -213,6 +213,7 @@ export function registerPaymentRoutes(router: Router) {
 
       // If still pending, verify with Chapa
       if (payment.status === 'PENDING') {
+        console.log('Verifying payment with Chapa:', params.txRef);
         const verifyResponse = await fetch(`${CHAPA_API}/verify/${params.txRef}`, {
           headers: {
             'Authorization': `Bearer ${CHAPA_SECRET}`,
@@ -220,8 +221,9 @@ export function registerPaymentRoutes(router: Router) {
         });
 
         const verifyData = await verifyResponse.json();
+        console.log('Chapa verify response:', JSON.stringify(verifyData, null, 2));
 
-        if (verifyData.status === 'success' && verifyData.data.status === 'success') {
+        if (verifyData.status === 'success' && verifyData.data?.status === 'success') {
           await prisma.semesterPayment.update({
             where: { txRef: params.txRef },
             data: {
@@ -239,6 +241,9 @@ export function registerPaymentRoutes(router: Router) {
             data: { status: 'FAILED' },
           });
           payment.status = 'FAILED';
+        } else {
+          // Verification returned but not success - could still be processing
+          console.log('Payment not yet confirmed by Chapa. Response status:', verifyData.status, 'data.status:', verifyData.data?.status);
         }
       }
 
