@@ -1317,7 +1317,8 @@ export default function CoursePage() {
                         <p className="text-sm text-gray-600 line-clamp-3">{m.content}</p>
                       )}
                       <div className="flex items-center gap-3 mt-2">
-                        {(m.fileUrl || m.content) && (
+                        {/* Preview button for teachers/admins only */}
+                        {(m.fileUrl || m.content) && user?.role !== 'STUDENT' && (
                           <button
                             onClick={() => handleOpenPreview(m)}
                             className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
@@ -1326,7 +1327,7 @@ export default function CoursePage() {
                             Preview
                           </button>
                         )}
-                        {/* Read with Tracking button for all materials */}
+                        {/* Read with Tracking button for all materials (students) */}
                         {user?.role === 'STUDENT' && (
                           <button
                             onClick={() => handleOpenHtmlReader(m)}
