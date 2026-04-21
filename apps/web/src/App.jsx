@@ -198,6 +198,14 @@ export default function App() {
         }
       />
       <Route
+        path="/payment-return"
+        element={
+          <PrivateRoute>
+            <StudentRegistrationPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path="/student/exams"
         element={
           <PrivateRoute>

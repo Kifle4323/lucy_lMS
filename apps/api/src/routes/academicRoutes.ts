@@ -104,6 +104,9 @@ export function registerAcademicRoutes(router: Router) {
       midtermExamDate: z.string().optional(),
       finalExamDate: z.string().optional(),
       gradingDeadline: z.string().optional(),
+      addDropStart: z.string().optional(),
+      addDropEnd: z.string().optional(),
+      registrationFee: z.number().positive().nullable().optional(),
     }).parse(req.body);
 
     const semester = await prisma.semester.create({
@@ -118,6 +121,9 @@ export function registerAcademicRoutes(router: Router) {
         midtermExamDate: body.midtermExamDate ? new Date(body.midtermExamDate) : null,
         finalExamDate: body.finalExamDate ? new Date(body.finalExamDate) : null,
         gradingDeadline: body.gradingDeadline ? new Date(body.gradingDeadline) : null,
+        addDropStart: body.addDropStart ? new Date(body.addDropStart) : null,
+        addDropEnd: body.addDropEnd ? new Date(body.addDropEnd) : null,
+        registrationFee: body.registrationFee ?? null,
       },
       include: { academicYear: true },
     });
@@ -155,6 +161,9 @@ export function registerAcademicRoutes(router: Router) {
       midtermExamDate: z.string().nullable().optional(),
       finalExamDate: z.string().nullable().optional(),
       gradingDeadline: z.string().nullable().optional(),
+      addDropStart: z.string().nullable().optional(),
+      addDropEnd: z.string().nullable().optional(),
+      registrationFee: z.number().positive().nullable().optional(),
       status: z.enum(['UPCOMING', 'REGISTRATION_OPEN', 'IN_PROGRESS', 'GRADING', 'COMPLETED']).optional(),
       isCurrent: z.boolean().optional(),
     }).parse(req.body);
@@ -183,6 +192,9 @@ export function registerAcademicRoutes(router: Router) {
         midtermExamDate: body.midtermExamDate ? new Date(body.midtermExamDate) : body.midtermExamDate === null ? null : undefined,
         finalExamDate: body.finalExamDate ? new Date(body.finalExamDate) : body.finalExamDate === null ? null : undefined,
         gradingDeadline: body.gradingDeadline ? new Date(body.gradingDeadline) : body.gradingDeadline === null ? null : undefined,
+        addDropStart: body.addDropStart ? new Date(body.addDropStart) : body.addDropStart === null ? null : undefined,
+        addDropEnd: body.addDropEnd ? new Date(body.addDropEnd) : body.addDropEnd === null ? null : undefined,
+        registrationFee: body.registrationFee !== undefined ? body.registrationFee : undefined,
       },
       include: { academicYear: true },
     });
@@ -591,6 +603,26 @@ export function registerAcademicRoutes(router: Router) {
       return res.status(400).json({ error: 'No semester open for registration' });
     }
 
+    // Check payment if registration fee is set
+    if (currentSemester.registrationFee && currentSemester.registrationFee > 0) {
+      const completedPayment = await prisma.semesterPayment.findFirst({
+        where: {
+          studentId: user.id,
+          semesterId: currentSemester.id,
+          status: 'COMPLETED',
+        },
+      });
+
+      if (!completedPayment) {
+        return res.status(402).json({
+          error: 'Payment required before registration',
+          requiresPayment: true,
+          semesterId: currentSemester.id,
+          registrationFee: currentSemester.registrationFee,
+        });
+      }
+    }
+
     // Get student's class
     const classStudent = await prisma.classStudent.findFirst({
       where: { studentId: user.id },
@@ -600,12 +632,29 @@ export function registerAcademicRoutes(router: Router) {
       return res.status(400).json({ error: 'You are not assigned to a class' });
     }
 
+    // Get student profile for stream filtering
+    const studentProfile = await prisma.studentProfile.findUnique({
+      where: { userId: user.id },
+    });
+
     // Get course sections for student's class this semester
+    // Filter by stream if the student has one selected
+    const courseSectionsWhere: any = {
+      semesterId: currentSemester.id,
+      classId: classStudent.classId,
+    };
+
+    if (studentProfile?.stream) {
+      courseSectionsWhere.course = {
+        OR: [
+          { stream: studentProfile.stream },
+          { stream: null }
+        ]
+      };
+    }
+
     const courseSections = await prisma.courseSection.findMany({
-      where: {
-        semesterId: currentSemester.id,
-        classId: classStudent.classId,
-      },
+      where: courseSectionsWhere,
     });
 
     if (courseSections.length === 0) {

@@ -77,6 +77,7 @@ export default function CoursePage() {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [editingAssessmentId, setEditingAssessmentId] = useState(null);
   const [editingAssessmentData, setEditingAssessmentData] = useState({ title: '', timeLimit: '', maxScore: '' });
+  const [editingAssessmentComponentId, setEditingAssessmentComponentId] = useState(null);
   const [questionType, setQuestionType] = useState('MCQ');
   const [questionForm, setQuestionForm] = useState({
     type: 'MCQ',
@@ -250,20 +251,27 @@ export default function CoursePage() {
       timeLimit: assessment.timeLimit || '',
       maxScore: assessment.maxScore || '',
     });
+    setEditingAssessmentComponentId(assessment.componentId || null);
   };
 
   const cancelEditAssessment = () => {
     setEditingAssessmentId(null);
     setEditingAssessmentData({ title: '', timeLimit: '', maxScore: '' });
+    setEditingAssessmentComponentId(null);
   };
 
   const handleSaveAssessment = async (assessmentId) => {
     try {
-      const updated = await updateAssessment(assessmentId, {
+      const payload = {
         title: editingAssessmentData.title,
         timeLimit: editingAssessmentData.timeLimit ? parseInt(editingAssessmentData.timeLimit) : null,
-        maxScore: editingAssessmentData.maxScore ? parseInt(editingAssessmentData.maxScore) : 100,
-      });
+      };
+      // Only send maxScore when the assessment is NOT linked to a grade component
+      if (!editingAssessmentComponentId) {
+        payload.maxScore = editingAssessmentData.maxScore ? parseInt(editingAssessmentData.maxScore) : 100;
+      }
+
+      const updated = await updateAssessment(assessmentId, payload);
       setAssessments(assessments.map(a => a.id === assessmentId ? updated : a));
       setEditingAssessmentId(null);
       setEditingAssessmentData({ title: '', timeLimit: '', maxScore: '' });
@@ -1477,6 +1485,7 @@ export default function CoursePage() {
                       min="1"
                       value={newAssessment.maxScore}
                       onChange={(e) => setNewAssessment({ ...newAssessment, maxScore: e.target.value })}
+                      disabled={!!newAssessment.componentId}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="e.g., 100"
                     />
@@ -1574,6 +1583,7 @@ export default function CoursePage() {
                                 min="1"
                                 value={editingAssessmentData.maxScore}
                                 onChange={(e) => setEditingAssessmentData({ ...editingAssessmentData, maxScore: e.target.value })}
+                                disabled={!!editingAssessmentComponentId}
                                 className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg"
                               />
                             </div>

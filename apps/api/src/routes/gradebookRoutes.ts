@@ -116,6 +116,14 @@ export function registerGradebookRoutes(router: Router) {
       data: body,
     });
 
+    // If weight changed, sync linked assessments' maxScore to the new weight
+    if (body.weight !== undefined) {
+      await prisma.assessment.updateMany({
+        where: { componentId: params.componentId },
+        data: { maxScore: body.weight },
+      });
+    }
+
     res.json(component);
   });
 

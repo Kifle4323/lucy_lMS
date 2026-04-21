@@ -107,6 +107,7 @@ model User {
   manualAttendanceSessions ManualAttendanceSession[]
   materialViews MaterialView[]
   readingProgress MaterialReadingProgress[]
+  semesterPayments SemesterPayment[] @relation("StudentPayments")
 }
 
 model StudentProfile {
@@ -611,12 +612,14 @@ model Semester {
   gradingDeadline   DateTime?
   status          SemesterStatus @default(UPCOMING)
   isCurrent       Boolean       @default(false)
+  registrationFee Float?        // Fee required for semester registration (ETB)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   academicYear    AcademicYear  @relation(fields: [academicYearId], references: [id])
   courseSections  CourseSection[]
   addDropRequests AddDropRequest[]
+  payments       SemesterPayment[]
 
   @@unique([academicYearId, type])
 }
@@ -791,4 +794,33 @@ enum ReportStatus {
   RESOLVED_CORRECT   // Question was indeed wrong
   RESOLVED_INCORRECT // Report was invalid
   DISMISSED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model SemesterPayment {
+  id              String       @id @default(cuid())
+  studentId       String
+  semesterId      String
+  amount          Float
+  currency        String       @default("ETB")
+  txRef           String       @unique  // Chapa transaction reference
+  chapaRefId      String?               // Chapa reference ID (returned after payment)
+  status          PaymentStatus @default(PENDING)
+  checkoutUrl     String?              // Chapa checkout URL
+  returnUrl       String?              // URL to redirect after payment
+  paidAt          DateTime?            // When payment was completed
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  student         User         @relation("StudentPayments", fields: [studentId], references: [id])
+  semester        Semester     @relation(fields: [semesterId], references: [id])
+
+  @@index([studentId, semesterId])
+  @@index([txRef])
 }

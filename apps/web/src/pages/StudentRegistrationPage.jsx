@@ -1,24 +1,36 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { getAvailableCourses, registerForSemester, getStudentProfile } from '../api.js';
+import { Link, useSearchParams } from 'react-router-dom';
+import { getAvailableCourses, registerForSemester, getStudentProfile, initializePayment, verifyPayment, getPaymentStatus } from '../api.js';
 import Layout from '../components/Layout';
-import { AlertCircle, FileText } from 'lucide-react';
+import { AlertCircle, FileText, CreditCard, CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
 
 export default function StudentRegistrationPage() {
   const toast = useToast();
   const confirm = useConfirm();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [profileStatus, setProfileStatus] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null); // { isPaid, status, payment }
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Handle payment return redirect
+  useEffect(() => {
+    const txRef = searchParams.get('txRef');
+    if (txRef) {
+      handlePaymentReturn(txRef);
+    }
+  }, [searchParams]);
 
   async function loadData() {
     try {
@@ -28,10 +40,58 @@ export default function StudentRegistrationPage() {
       ]);
       setData(result);
       setProfileStatus(profile?.status || null);
+
+      // Check payment status if semester has a fee
+      if (result?.semester?.registrationFee > 0) {
+        try {
+          const payment = await getPaymentStatus(result.semester.id);
+          setPaymentStatus(payment);
+        } catch (err) {
+          console.error('Failed to check payment status:', err);
+        }
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handlePaymentReturn(txRef) {
+    setVerifyingPayment(true);
+    try {
+      const result = await verifyPayment(txRef);
+      if (result.payment?.status === 'COMPLETED') {
+        toast.success('Payment completed successfully!');
+        setPaymentStatus({ isPaid: true, status: 'COMPLETED', payment: result.payment });
+      } else if (result.payment?.status === 'FAILED') {
+        toast.error('Payment failed. Please try again.');
+        setPaymentStatus({ isPaid: false, status: 'FAILED', payment: result.payment });
+      } else {
+        toast.info('Payment is still being processed...');
+      }
+      // Reload data
+      await loadData();
+    } catch (err) {
+      toast.error('Failed to verify payment: ' + err.message);
+    } finally {
+      setVerifyingPayment(false);
+    }
+  }
+
+  async function handlePayNow() {
+    if (!data?.semester) return;
+    setPaymentLoading(true);
+    try {
+      const result = await initializePayment(data.semester.id);
+      if (result.checkoutUrl) {
+        // Redirect to Chapa checkout
+        window.location.href = result.checkoutUrl;
+      }
+    } catch (err) {
+      toast.error('Failed to initialize payment: ' + err.message);
+    } finally {
+      setPaymentLoading(false);
     }
   }
 
@@ -52,9 +112,14 @@ export default function StudentRegistrationPage() {
     try {
       const result = await registerForSemester();
       toast.success(result.message);
-      loadAvailableCourses();
+      loadData();
     } catch (err) {
-      toast.error(err.message);
+      if (err.message?.includes('Payment required') || err.requiresPayment) {
+        toast.error('Payment is required before registration');
+        setPaymentStatus({ isPaid: false, status: 'NONE', payment: null });
+      } else {
+        toast.error(err.message);
+      }
     } finally {
       setRegistering(false);
     }
@@ -228,6 +293,36 @@ export default function StudentRegistrationPage() {
             </div>
           </div>
         </div>
+
+        {/* Registration Fee & Payment Status */}
+        {semester.registrationFee > 0 && (
+          <div className="mt-4 border-t pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Registration Fee</p>
+                <p className="text-2xl font-bold text-gray-900">ETB {semester.registrationFee?.toLocaleString()}</p>
+              </div>
+              <div>
+                {paymentStatus?.isPaid ? (
+                  <span className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-medium">
+                    <CheckCircle className="w-5 h-5" />
+                    Paid
+                  </span>
+                ) : paymentStatus?.status === 'PENDING' ? (
+                  <span className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg text-sm font-medium">
+                    <Clock className="w-5 h-5" />
+                    Payment Pending
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-medium">
+                    <CreditCard className="w-5 h-5" />
+                    Unpaid
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Courses Assigned to Class */}
@@ -270,16 +365,95 @@ export default function StudentRegistrationPage() {
         </div>
       </div>
 
-      {/* Registration Button */}
+      {/* Payment & Registration Steps */}
       {!allEnrolled && courses.length > 0 && (
-        <div className="flex justify-center">
-          <button
-            onClick={handleRegister}
-            disabled={registering}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-lg font-medium"
-          >
-            {registering ? 'Registering...' : someEnrolled ? 'Complete Registration' : 'Register for Semester'}
-          </button>
+        <div className="space-y-4">
+          {/* Step 1: Payment (if fee is set) */}
+          {semester.registrationFee > 0 && !paymentStatus?.isPaid && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+              <div className="flex items-start gap-4">
+                <CreditCard className="w-8 h-8 text-orange-600 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-orange-800 mb-1">Step 1: Pay Registration Fee</h3>
+                  <p className="text-orange-700 text-sm mb-3">
+                    You must pay the registration fee of <strong>ETB {semester.registrationFee?.toLocaleString()}</strong> before you can register for courses.
+                  </p>
+                  {verifyingPayment ? (
+                    <div className="flex items-center gap-2 text-orange-600">
+                      <div className="w-5 h-5 border-2 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
+                      Verifying payment...
+                    </div>
+                  ) : paymentStatus?.status === 'PENDING' ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-3">
+                        You have a pending payment. If you already completed payment, click verify below.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => paymentStatus?.payment?.checkoutUrl && (window.location.href = paymentStatus.payment.checkoutUrl)}
+                          className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg font-medium text-sm"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Resume Payment
+                        </button>
+                        <button
+                          onClick={() => handlePaymentReturn(paymentStatus?.payment?.txRef)}
+                          disabled={verifyingPayment}
+                          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium text-sm"
+                        >
+                          Verify Payment
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handlePayNow}
+                      disabled={paymentLoading}
+                      className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-medium disabled:bg-gray-400"
+                    >
+                      {paymentLoading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-5 h-5" />
+                          Pay ETB {semester.registrationFee?.toLocaleString()} with Chapa
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Register (only if paid or no fee) */}
+          {(!semester.registrationFee || semester.registrationFee <= 0 || paymentStatus?.isPaid) && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleRegister}
+                disabled={registering}
+                className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-lg font-medium"
+              >
+                {registering ? 'Registering...' : someEnrolled ? 'Complete Registration' : 'Register for Semester'}
+              </button>
+            </div>
+          )}
+
+          {/* Payment completed message */}
+          {semester.registrationFee > 0 && paymentStatus?.isPaid && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="text-green-700 font-medium">Payment confirmed! You can now register for courses.</p>
+                {paymentStatus?.payment?.paidAt && (
+                  <p className="text-green-600 text-sm">Paid on {new Date(paymentStatus.payment.paidAt).toLocaleDateString()}</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

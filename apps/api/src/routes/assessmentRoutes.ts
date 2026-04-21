@@ -36,14 +36,12 @@ export function registerAssessmentRoutes(router: Router) {
         return;
       }
 
-      // If componentId provided, auto-set maxScore from component weight
+      // If componentId provided, derive maxScore from component weight (ignore client-provided maxScore)
       let maxScore = body.maxScore ?? 100;
       if (body.componentId) {
-        const component = await prisma.gradeComponent.findUnique({
-          where: { id: body.componentId },
-        });
+        const component = await prisma.gradeComponent.findUnique({ where: { id: body.componentId } });
         if (component) {
-          maxScore = body.maxScore ?? component.weight;
+          maxScore = component.weight;
         }
       }
 
@@ -451,9 +449,15 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
+    // Prevent updating maxScore directly if this assessment is linked to a grade component.
+    const updateData: any = { ...body };
+    if (assessment.componentId) {
+      delete updateData.maxScore;
+    }
+
     const updated = await prisma.assessment.update({
       where: { id: params.assessmentId },
-      data: body,
+      data: updateData,
     });
 
     res.json(updated);

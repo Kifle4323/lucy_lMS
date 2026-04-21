@@ -751,3 +751,35 @@ export async function getTeacherAnalytics() {
 export async function getStudentAnalytics() {
   return apiFetch('/analytics/student');
 }
+
+// ==================== PAYMENT (Chapa) ====================
+
+export async function initializePayment(semesterId) {
+  return apiFetch('/payments/initialize', {
+    method: 'POST',
+    body: JSON.stringify({ semesterId }),
+  });
+}
+
+export async function verifyPayment(txRef) {
+  return apiFetch(`/payments/verify/${txRef}`);
+}
+
+export async function getMyPayments() {
+  return apiFetch('/payments/my');
+}
+
+export async function getPaymentStatus(semesterId) {
+  return apiFetch(`/payments/semester/${semesterId}/status`);
+}
+
+export async function getSemesterPayments(semesterId) {
+  return apiFetch(`/admin/payments/semester/${semesterId}`);
+}
+
+export async function setRegistrationFee(semesterId, registrationFee) {
+  return apiFetch(`/admin/semesters/${semesterId}/fee`, {
+    method: 'PATCH',
+    body: JSON.stringify({ registrationFee }),
+  });
+}

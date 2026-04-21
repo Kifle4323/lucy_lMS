@@ -28,7 +28,7 @@ export default function AdminAcademicPage() {
   const [semesterForm, setSemesterForm] = useState({
     academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
     registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '',
-    midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
+    midtermExamDate: '', finalExamDate: '', gradingDeadline: '', registrationFee: ''
   });
   const [courseSectionRows, setCourseSectionRows] = useState([
     { courseId: '', teacherId: '', classId: '', sectionCode: '' }
@@ -121,7 +121,7 @@ export default function AdminAcademicPage() {
       setSemesterForm({
         academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
         registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '',
-        midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
+        midtermExamDate: '', finalExamDate: '', gradingDeadline: '', registrationFee: ''
       });
     } catch (err) {
       setError(err.message);
@@ -137,7 +137,7 @@ export default function AdminAcademicPage() {
       setSemesterForm({
         academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '',
         registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '',
-        midtermExamDate: '', finalExamDate: '', gradingDeadline: ''
+        midtermExamDate: '', finalExamDate: '', gradingDeadline: '', registrationFee: ''
       });
     } catch (err) {
       setError(err.message);
@@ -217,7 +217,8 @@ export default function AdminAcademicPage() {
       addDropEnd: sem.addDropEnd?.split('T')[0] || '',
       midtermExamDate: sem.midtermExamDate?.split('T')[0] || '',
       finalExamDate: sem.finalExamDate?.split('T')[0] || '',
-      gradingDeadline: sem.gradingDeadline?.split('T')[0] || ''
+      gradingDeadline: sem.gradingDeadline?.split('T')[0] || '',
+      registrationFee: sem.registrationFee?.toString() || ''
     });
   }
 
@@ -582,12 +583,25 @@ export default function AdminAcademicPage() {
                   className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Registration Fee (ETB)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Leave empty for no fee"
+                  value={semesterForm.registrationFee}
+                  onChange={e => setSemesterForm({ ...semesterForm, registrationFee: e.target.value })}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">Set a fee to require Chapa payment before registration</p>
+              </div>
               <div className="flex gap-2">
                 <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                   {editingSemester ? 'Update' : 'Create'}
                 </button>
                 {editingSemester && (
-                  <button type="button" onClick={() => { setEditingSemester(null); setSemesterForm({ academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '', registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <button type="button" onClick={() => { setEditingSemester(null); setSemesterForm({ academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '', registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: '', registrationFee: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                     Cancel
                   </button>
                 )}
@@ -646,6 +660,13 @@ export default function AdminAcademicPage() {
                       {sem.gradingDeadline && (
                         <div className="mt-2 text-sm text-purple-600 dark:text-purple-400">
                           Grading Deadline: {new Date(sem.gradingDeadline).toLocaleDateString()}
+                        </div>
+                      )}
+
+                      {/* Registration Fee */}
+                      {sem.registrationFee > 0 && (
+                        <div className="mt-1 text-sm text-orange-600 dark:text-orange-400">
+                          Registration Fee: ETB {sem.registrationFee?.toLocaleString()}
                         </div>
                       )}
 

@@ -17,6 +17,7 @@ import { registerAcademicRoutes } from './routes/academicRoutes';
 import { registerAddDropRoutes } from './routes/addDropRoutes';
 import { registerQuestionReportRoutes } from './routes/questionReportRoutes';
 import { registerAnalyticsRoutes } from './routes/analyticsRoutes';
+import { registerPaymentRoutes } from './routes/paymentRoutes';
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ registerAcademicRoutes(router);
 registerAddDropRoutes(router);
 registerQuestionReportRoutes(router);
 registerAnalyticsRoutes(router);
+registerPaymentRoutes(router);
 
 app.get('/health', (_req: express.Request, res: express.Response) => {
   res.json({ ok: true });
