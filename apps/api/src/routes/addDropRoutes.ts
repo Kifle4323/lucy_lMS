@@ -10,21 +10,27 @@ export function registerAddDropRoutes(router: Router) {
     const user = req.user!;
     
     try {
-      // Get current semester
-      const currentSemester = await prisma.semester.findFirst({
-        where: { isCurrent: true },
+      // Find semester with active add/drop period
+      const now = new Date();
+      const allSemesters = await prisma.semester.findMany({
+        where: {
+          addDropStart: { not: null },
+          addDropEnd: { not: null },
+        },
+      });
+      const currentSemester = allSemesters.find(s => {
+        return now >= new Date(s.addDropStart!) && now <= new Date(s.addDropEnd!);
       });
       
       if (!currentSemester) {
         res.json({ 
           canAddDrop: false, 
-          message: 'No current semester found' 
+          message: 'No active add/drop period found' 
         });
         return;
       }
       
       // Check if add/drop period is active
-      const now = new Date();
       const addDropStart = currentSemester.addDropStart;
       const addDropEnd = currentSemester.addDropEnd;
       
@@ -120,18 +126,19 @@ export function registerAddDropRoutes(router: Router) {
     }).parse(req.body);
     
     try {
-      const currentSemester = await prisma.semester.findFirst({
-        where: { isCurrent: true },
+      // Find semester with active add/drop period
+      const now = new Date();
+      const allSemesters = await prisma.semester.findMany({
+        where: {
+          addDropStart: { not: null },
+          addDropEnd: { not: null },
+        },
+      });
+      const currentSemester = allSemesters.find(s => {
+        return now >= new Date(s.addDropStart!) && now <= new Date(s.addDropEnd!);
       });
       
-      if (!currentSemester || !currentSemester.addDropStart || !currentSemester.addDropEnd) {
-        res.status(400).json({ error: 'No active add/drop period' });
-        return;
-      }
-      
-      // Verify add/drop period
-      const now = new Date();
-      if (now < new Date(currentSemester.addDropStart) || now > new Date(currentSemester.addDropEnd)) {
+      if (!currentSemester) {
         res.status(400).json({ error: 'Add/drop period is not active' });
         return;
       }
@@ -208,18 +215,19 @@ export function registerAddDropRoutes(router: Router) {
     }).parse(req.body);
     
     try {
-      const currentSemester = await prisma.semester.findFirst({
-        where: { isCurrent: true },
+      // Find semester with active add/drop period
+      const now = new Date();
+      const allSemesters = await prisma.semester.findMany({
+        where: {
+          addDropStart: { not: null },
+          addDropEnd: { not: null },
+        },
+      });
+      const currentSemester = allSemesters.find(s => {
+        return now >= new Date(s.addDropStart!) && now <= new Date(s.addDropEnd!);
       });
       
-      if (!currentSemester || !currentSemester.addDropStart || !currentSemester.addDropEnd) {
-        res.status(400).json({ error: 'No active add/drop period' });
-        return;
-      }
-      
-      // Verify add/drop period
-      const now = new Date();
-      if (now < new Date(currentSemester.addDropStart) || now > new Date(currentSemester.addDropEnd)) {
+      if (!currentSemester) {
         res.status(400).json({ error: 'Add/drop period is not active' });
         return;
       }
