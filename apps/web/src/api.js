@@ -481,7 +481,13 @@ export async function deleteAcademicYear(id) {
 
 // Semesters (Admin)
 export async function createSemester(data) {
-  return apiFetch('/admin/semesters', { method: 'POST', body: JSON.stringify(data) });
+  const sanitized = { ...data };
+  if (sanitized.registrationFee !== '' && sanitized.registrationFee !== undefined) {
+    sanitized.registrationFee = parseFloat(sanitized.registrationFee) || null;
+  } else {
+    sanitized.registrationFee = null;
+  }
+  return apiFetch('/admin/semesters', { method: 'POST', body: JSON.stringify(sanitized) });
 }
 
 export async function getSemesters() {
@@ -493,7 +499,13 @@ export async function getCurrentSemester() {
 }
 
 export async function updateSemester(id, data) {
-  return apiFetch(`/admin/semesters/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  const sanitized = { ...data };
+  if (sanitized.registrationFee !== '' && sanitized.registrationFee !== undefined) {
+    sanitized.registrationFee = parseFloat(sanitized.registrationFee) || null;
+  } else if (sanitized.registrationFee === '') {
+    sanitized.registrationFee = null;
+  }
+  return apiFetch(`/admin/semesters/${id}`, { method: 'PATCH', body: JSON.stringify(sanitized) });
 }
 
 export async function deleteSemester(id) {

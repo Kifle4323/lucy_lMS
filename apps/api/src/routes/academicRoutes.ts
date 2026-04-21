@@ -109,26 +109,40 @@ export function registerAcademicRoutes(router: Router) {
       registrationFee: z.number().positive().nullable().optional(),
     }).parse(req.body);
 
-    const semester = await prisma.semester.create({
-      data: {
-        academicYearId: body.academicYearId,
-        type: body.type,
-        name: body.name,
-        startDate: new Date(body.startDate),
-        endDate: new Date(body.endDate),
-        registrationStart: body.registrationStart ? new Date(body.registrationStart) : null,
-        registrationEnd: body.registrationEnd ? new Date(body.registrationEnd) : null,
-        midtermExamDate: body.midtermExamDate ? new Date(body.midtermExamDate) : null,
-        finalExamDate: body.finalExamDate ? new Date(body.finalExamDate) : null,
-        gradingDeadline: body.gradingDeadline ? new Date(body.gradingDeadline) : null,
-        addDropStart: body.addDropStart ? new Date(body.addDropStart) : null,
-        addDropEnd: body.addDropEnd ? new Date(body.addDropEnd) : null,
-        registrationFee: body.registrationFee ?? null,
-      },
-      include: { academicYear: true },
-    });
+    try {
+      // Validate academic year exists
+      const ay = await prisma.academicYear.findUnique({ where: { id: body.academicYearId } });
+      if (!ay) {
+        return res.status(400).json({ error: 'invalid_academic_year', message: 'Academic year not found' });
+      }
 
-    res.status(201).json(semester);
+      const semester = await prisma.semester.create({
+        data: {
+          academicYearId: body.academicYearId,
+          type: body.type,
+          name: body.name,
+          startDate: new Date(body.startDate),
+          endDate: new Date(body.endDate),
+          registrationStart: body.registrationStart ? new Date(body.registrationStart) : null,
+          registrationEnd: body.registrationEnd ? new Date(body.registrationEnd) : null,
+          midtermExamDate: body.midtermExamDate ? new Date(body.midtermExamDate) : null,
+          finalExamDate: body.finalExamDate ? new Date(body.finalExamDate) : null,
+          gradingDeadline: body.gradingDeadline ? new Date(body.gradingDeadline) : null,
+          addDropStart: body.addDropStart ? new Date(body.addDropStart) : null,
+          addDropEnd: body.addDropEnd ? new Date(body.addDropEnd) : null,
+          registrationFee: body.registrationFee ?? null,
+        },
+        include: { academicYear: true },
+      });
+
+      res.status(201).json(semester);
+    } catch (err: any) {
+      console.error('Create semester error:', err);
+      if (err.code === 'P2002') {
+        return res.status(400).json({ error: 'duplicate_semester', message: 'A semester with this type already exists for the selected academic year' });
+      }
+      res.status(500).json({ error: 'Failed to create semester', message: err?.message || String(err) });
+    }
   });
 
   // Get all semesters
@@ -274,7 +288,10 @@ export function registerAcademicRoutes(router: Router) {
     await prisma.courseSection.deleteMany({
       where: { semesterId },
     });
-    // 8. Finally, the semester itself
+    // 8a. Delete semester payments if any
+    await prisma.semesterPayment.deleteMany({ where: { semesterId } });
+
+    // 8b. Finally, the semester itself
     await prisma.semester.delete({ where: { id: semesterId } });
     res.status(204).send();
   });
