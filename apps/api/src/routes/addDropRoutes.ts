@@ -42,10 +42,10 @@ export function registerAddDropRoutes(router: Router) {
         where: { 
           studentId: user.id,
           status: 'ENROLLED',
+          courseSection: { semesterId: currentSemester.id },
         },
         include: {
           courseSection: {
-            where: { semesterId: currentSemester.id },
             include: {
               course: true,
               teacher: { select: { id: true, fullName: true } },
