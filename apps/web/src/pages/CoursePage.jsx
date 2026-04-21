@@ -498,6 +498,11 @@ export default function CoursePage() {
   };
 
   const handleClosePreview = async () => {
+    // Exit fullscreen if active
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+    }
+    setIsFullscreen(false);
     // Close view tracking for student
     if (user?.role === 'STUDENT' && currentViewId) {
       try {
@@ -510,19 +515,23 @@ export default function CoursePage() {
     setPreviewMaterial(null);
   };
 
-  // Open PPTX material as HTML with reading time tracking
+  // Open material with reading time tracking (all types)
   const handleOpenHtmlReader = async (material) => {
     setHtmlReaderMaterial(material);
     setHtmlLoading(true);
     try {
-      // Fetch HTML content with authentication
-      const content = await getMaterialHtml(material.id);
-      setHtmlContent(content);
+      // PPTX/PPT files have HTML content via conversion
+      if (material.htmlContent || material.fileType === 'pptx' || material.fileType === 'ppt') {
+        const content = await getMaterialHtml(material.id);
+        setHtmlContent(content);
+      } else {
+        // For other types, we'll render them in the reader modal directly
+        setHtmlContent(null);
+      }
     } catch (err) {
-      console.error('Failed to load HTML content:', err);
-      toast.error('Failed to load interactive reader: ' + err.message);
-      setHtmlReaderMaterial(null);
-      return;
+      console.error('Failed to load content:', err);
+      // Non-fatal for non-PPTX materials, they can still be viewed
+      setHtmlContent(null);
     } finally {
       setHtmlLoading(false);
     }
@@ -1317,8 +1326,8 @@ export default function CoursePage() {
                             Preview
                           </button>
                         )}
-                        {/* Read with Tracking button for PPTX materials */}
-                        {(m.fileType === 'ppt' || m.fileType === 'pptx') && (
+                        {/* Read with Tracking button for all materials */}
+                        {user?.role === 'STUDENT' && (
                           <button
                             onClick={() => handleOpenHtmlReader(m)}
                             className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium"
@@ -2195,10 +2204,10 @@ export default function CoursePage() {
 
       {/* Material Preview Modal */}
       {previewMaterial && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+        <div id="preview-modal" className={`${isFullscreen ? '' : 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4'}`}>
+          <div className={`bg-white dark:bg-gray-800 ${isFullscreen ? 'w-full h-full' : 'rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh]'} flex flex-col`}>
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className={`flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 ${isFullscreen ? 'hidden' : ''}`}>
               <div className="flex items-center gap-3">
                 {previewMaterial.fileType === 'video' ? (
                   <ExternalLink className="w-5 h-5 text-purple-500" />
@@ -2218,13 +2227,42 @@ export default function CoursePage() {
                   {previewMaterial.fileType}
                 </span>
               </div>
-              <button
-                onClick={() => handleClosePreview()}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                >
+                  {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                </button>
+                <button
+                  onClick={() => handleClosePreview()}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
+
+            {/* Floating fullscreen buttons */}
+            {isFullscreen && (
+              <div className="fixed top-4 right-4 z-[60] flex gap-2">
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
+                  title="Exit Fullscreen"
+                >
+                  <Minimize2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => handleClosePreview()}
+                  className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
 
             {/* Preview Content */}
             <div className="flex-1 overflow-auto p-4">
@@ -2382,7 +2420,7 @@ export default function CoursePage() {
         </div>
       )}
 
-      {/* HTML Reader Modal for PPTX materials */}
+      {/* HTML Reader Modal - supports all material types with tracking */}
       {htmlReaderMaterial && (
         <div id="html-reader-modal" className={`${isFullscreen ? '' : 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2'}`}>
           <div className={`bg-white dark:bg-gray-800 ${isFullscreen ? 'w-full h-full' : 'rounded-xl shadow-2xl w-full h-full max-w-[95vw]'} flex flex-col`}>
@@ -2392,7 +2430,7 @@ export default function CoursePage() {
                 <ReadIcon className="w-5 h-5 text-green-500" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{htmlReaderMaterial.title}</h2>
                 <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">
-                  Interactive Reader
+                  Tracked Reader
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -2432,16 +2470,17 @@ export default function CoursePage() {
               </div>
             )}
 
-            {/* HTML Content */}
-            <div className="flex-1 overflow-hidden p-0 bg-white">
+            {/* Content - renders based on material type */}
+            <div className="flex-1 overflow-hidden bg-white">
               {htmlLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
-                    <p className="text-gray-500">Loading interactive reader...</p>
+                    <p className="text-gray-500">Loading reader...</p>
                   </div>
                 </div>
               ) : htmlContent ? (
+                /* PPTX/PPT HTML content */
                 <iframe
                   srcDoc={htmlContent}
                   className="w-full h-full border-0"
@@ -2449,9 +2488,71 @@ export default function CoursePage() {
                   title={htmlReaderMaterial.title}
                   sandbox="allow-scripts allow-same-origin"
                 />
+              ) : htmlReaderMaterial.fileType === 'text' ? (
+                /* Text content */
+                <div className="p-6 overflow-auto" style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 140px)' }}>
+                  <div className="prose dark:prose-invert max-w-none">
+                    <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 leading-relaxed">
+                      {htmlReaderMaterial.content}
+                    </div>
+                  </div>
+                </div>
+              ) : htmlReaderMaterial.fileType === 'pdf' && htmlReaderMaterial.fileUrl ? (
+                /* PDF via preview endpoint */
+                <iframe
+                  src={`${API_BASE}/materials/${htmlReaderMaterial.id}/preview`}
+                  className="w-full h-full border-0"
+                  style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 140px)' }}
+                  title={htmlReaderMaterial.title}
+                />
+              ) : (htmlReaderMaterial.fileType === 'ppt' || htmlReaderMaterial.fileType === 'doc' || htmlReaderMaterial.fileType === 'xls' || htmlReaderMaterial.fileType === 'pptx' || htmlReaderMaterial.fileType === 'docx' || htmlReaderMaterial.fileType === 'xlsx') && htmlReaderMaterial.fileUrl ? (
+                /* Office docs via preview endpoint */
+                <iframe
+                  src={`${API_BASE}/materials/${htmlReaderMaterial.id}/preview`}
+                  className="w-full h-full border-0"
+                  style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 140px)' }}
+                  title={htmlReaderMaterial.title}
+                />
+              ) : htmlReaderMaterial.fileType === 'video' && htmlReaderMaterial.fileUrl ? (
+                /* Video embed */
+                <div className="flex items-center justify-center h-full" style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 140px)' }}>
+                  {(() => {
+                    const url = htmlReaderMaterial.fileUrl;
+                    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/);
+                    if (ytMatch) {
+                      return <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ytMatch[1]}`} title={htmlReaderMaterial.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />;
+                    }
+                    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                    if (vimeoMatch) {
+                      return <iframe className="w-full h-full" src={`https://player.vimeo.com/video/${vimeoMatch[1]}`} title={htmlReaderMaterial.title} frameBorder="0" allow="autoplay; fullscreen" allowFullScreen />;
+                    }
+                    if (url.match(/\.(mp4|webm|ogg)$/i)) {
+                      return <video controls className="w-full h-full"><source src={url} />Your browser does not support the video tag.</video>;
+                    }
+                    return <iframe className="w-full h-full" src={url} title={htmlReaderMaterial.title} allowFullScreen />;
+                  })()}
+                </div>
+              ) : htmlReaderMaterial.fileType === 'link' && htmlReaderMaterial.fileUrl ? (
+                /* External link embed */
+                <iframe
+                  src={htmlReaderMaterial.fileUrl}
+                  className="w-full h-full border-0"
+                  style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 140px)' }}
+                  title={htmlReaderMaterial.title}
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                />
+              ) : htmlReaderMaterial.content ? (
+                /* Fallback: show text content */
+                <div className="p-6 overflow-auto" style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 140px)' }}>
+                  <div className="prose dark:prose-invert max-w-none">
+                    <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 leading-relaxed">
+                      {htmlReaderMaterial.content}
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-red-500">Failed to load content. Please try again.</p>
+                  <p className="text-red-500">No content available for this material.</p>
                 </div>
               )}
             </div>
@@ -2459,7 +2560,7 @@ export default function CoursePage() {
             {/* Footer - hidden in fullscreen */}
             <div className={`flex items-center justify-between p-3 border-t border-gray-200 dark:border-gray-700 ${isFullscreen ? 'hidden' : ''}`}>
               <p className="text-xs text-gray-400">
-                Progress auto-saves as you read
+                Reading time is being tracked
               </p>
               <button
                 onClick={() => handleCloseHtmlReader()}
