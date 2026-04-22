@@ -2119,6 +2119,11 @@ export default function CoursePage() {
                                 <CheckCircle className="w-3 h-3" />
                                 Verified
                               </span>
+                            ) : attempt.faceVerification.adminReviewed && !attempt.faceVerification.adminApproved ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
+                                <XCircle className="w-3 h-3" />
+                                Rejected
+                              </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded">
                                 <AlertCircle className="w-3 h-3" />
@@ -2130,10 +2135,10 @@ export default function CoursePage() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          {attempt.faceVerification && !attempt.faceVerification.matchResult && !attempt.faceVerification.adminReviewed ? (
+                          {attempt.faceVerification && !attempt.faceVerification.matchResult && (!attempt.faceVerification.adminReviewed || !attempt.faceVerification.adminApproved) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
                               <AlertCircle className="w-3 h-3" />
-                              Face mismatch - grading blocked
+                              {!attempt.faceVerification.adminReviewed ? 'Face mismatch - grading blocked' : 'Face rejected - grading blocked'}
                             </span>
                           ) : (
                             <button

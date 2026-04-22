@@ -178,6 +178,49 @@ export function registerFaceVerificationRoutes(router: Router) {
       }),
     ]);
 
+    // If approved, auto-grade the attempt if it's still SUBMITTED (MCQ auto-grading)
+    if (body.approved) {
+      const attempt = await prisma.attempt.findUnique({
+        where: { id: verification.attemptId },
+        include: {
+          answers: { include: { question: true } },
+          assessment: true,
+        },
+      });
+
+      if (attempt && attempt.status === 'SUBMITTED') {
+        // Auto-grade: calculate score from MCQ answers
+        const answers = attempt.answers;
+        let totalScore = 0;
+        let allAutoGraded = true;
+
+        for (const answer of answers) {
+          if (answer.question?.type === 'MCQ' || answer.question?.type === 'TRUE_FALSE') {
+            const isCorrect = answer.selectedOption === answer.question.correctAnswer;
+            const score = isCorrect ? (answer.question.points || 1) : 0;
+            await prisma.answer.update({
+              where: { id: answer.id },
+              data: { score, isCorrect },
+            });
+            totalScore += score;
+          } else if (answer.question?.type === 'SHORT_ANSWER') {
+            // Short answer needs manual grading - mark as needing review
+            allAutoGraded = false;
+          }
+        }
+
+        // If all questions are auto-gradable, mark as GRADED
+        if (allAutoGraded) {
+          await prisma.attempt.update({
+            where: { id: verification.attemptId },
+            data: { status: 'GRADED', score: totalScore },
+          });
+        }
+        // If there are short answer questions, the attempt stays SUBMITTED
+        // but the teacher can now grade it since faceVerified=true
+      }
+    }
+
     res.json(updated);
   });
 

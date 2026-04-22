@@ -1,0 +1,418 @@
+[33mcommit 7c9f164609ac95f8aaf0f79172a5607eb0f9c21e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Your Name <abumohr234@gmail.com>
+Date:   Wed Apr 22 08:49:27 2026 +0300
+
+    Add Department model, auto-calculate fees, certificate generation, department management UI
+
+[1mdiff --git a/apps/api/prisma/schema.prisma b/apps/api/prisma/schema.prisma[m
+[1mindex 7bc0cd1..57a0a91 100644[m
+[1m--- a/apps/api/prisma/schema.prisma[m
+[1m+++ b/apps/api/prisma/schema.prisma[m
+[36m@@ -108,6 +108,7 @@[m [mmodel User {[m
+   materialViews MaterialView[][m
+   readingProgress MaterialReadingProgress[][m
+   semesterPayments SemesterPayment[] @relation("StudentPayments")[m
+[32m+[m[32m  certificates    Certificate[] @relation("StudentCertificates")[m
+ }[m
+ [m
+ model StudentProfile {[m
+[36m@@ -193,15 +194,33 @@[m [mmodel StudentDocument {[m
+   studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)[m
+ }[m
+ [m
+[31m-model Class {[m
+[31m-  id          String   @id @default(cuid())[m
+[31m-  name        String[m
+[31m-  code        String   @unique[m
+[31m-  year        Int?[m
+[31m-  section     String?[m
+[31m-  createdAt   DateTime @default(now())[m
+[31m-  updatedAt   DateTime @updatedAt[m
+[32m+[m[32mmodel Department {[m
+[32m+[m[32m  id                    String   @id @default(cuid())[m
+[32m+[m[32m  name                  String   @unique  // e.g., "Computer Science", "Information Technology"[m
+[32m+[m[32m  code                  String   @unique  // e.g., "CS", "IT"[m
+[32m+[m[32m  description           String?[m
+[32m+[m[32m  pricePerCreditHour    Float              // Fee per credit hour in ETB[m
+[32m+[m[32m  totalCreditHours      Int                // Total credit hours required for the program[m
+[32m+[m[32m  minCreditHoursToGraduate Int            // Minimum credit hours needed to graduate[m
+[32m+[m[32m  durationYears         Int      @default(4) // Duration of the program in years[m
+[32m+[m[32m  createdAt             DateTime @default(now())[m
+[32m+[m[32m  updatedAt             DateTime @updatedAt[m
+[32m+[m
+[32m+[m[32m  classes    Class[][m
+[32m+[m[32m  certificates Certificate[][m
+[32m+[m[32m}[m
+ [m
+[32m+[m[32mmodel Class {[m
+[32m+[m[32m  id            String   @id @default(cuid())[m
+[32m+[m[32m  name          String[m
+[32m+[m[32m  code          String   @unique[m
+[32m+[m[32m  year          Int?[m
+[32m+[m[32m  section       String?[m
+[32m+[m[32m  departmentId  String?             // Reference to Department[m
+[32m+[m[32m  createdAt     DateTime @default(now())[m
+[32m+[m[32m  updatedAt     DateTime @updatedAt[m
+[32m+[m
+[32m+[m[32m  department    Department? @relation(fields: [departmentId], references: [id])[m
+   students       ClassStudent[][m
+   teachers       ClassTeacher[][m
+   courses        CourseClass[][m
+[36m@@ -824,3 +843,20 @@[m [mmodel SemesterPayment {[m
+   @@index([studentId, semesterId])[m
+   @@index([txRef])[m
+ }[m
+[32m+[m
+[32m+[m[32mmodel Certificate {[m
+[32m+[m[32m  id                String   @id @default(cuid())[m
+[32m+[m[32m  studentId         String[m
+[32m+[m[32m  departmentId      String[m
+[32m+[m[32m  certificateNumber String   @unique  // Auto-generated cert number[m
+[32m+[m[32m  cgpa              Float              // Cumulative Grade Point Average[m
+[32m+[m[32m  totalCreditHours  Int                // Total credit hours completed[m
+[32m+[m[32m  issuedAt          DateTime @default(now())[m
+[32m+[m[32m  createdAt         DateTime @default(now())[m
+[32m+[m[32m  updatedAt         DateTime @updatedAt[m
+[32m+[m
+[32m+[m[32m  student           User         @relation("StudentCertificates", fields: [studentId], references: [id])[m
+[32m+[m[32m  department        Department   @relation(fields: [departmentId], references: [id])[m
+[32m+[m
+[32m+[m[32m  @@index([studentId, departmentId])[m
+[32m+[m[32m}[m
+[1mdiff --git a/apps/api/src/index.ts b/apps/api/src/index.ts[m
+[1mindex d24f960..692de9b 100644[m
+[1m--- a/apps/api/src/index.ts[m
+[1m+++ b/apps/api/src/index.ts[m
+[36m@@ -18,6 +18,7 @@[m [mimport { registerAddDropRoutes } from './routes/addDropRoutes';[m
+ import { registerQuestionReportRoutes } from './routes/questionReportRoutes';[m
+ import { registerAnalyticsRoutes } from './routes/analyticsRoutes';[m
+ import { registerPaymentRoutes } from './routes/paymentRoutes';[m
+[32m+[m[32mimport { registerDepartmentRoutes } from './routes/departmentRoutes';[m
+ [m
+ dotenv.config();[m
+ [m
+[36m@@ -54,6 +55,7 @@[m [mregisterAddDropRoutes(router);[m
+ registerQuestionReportRoutes(router);[m
+ registerAnalyticsRoutes(router);[m
+ registerPaymentRoutes(router);[m
+[32m+[m[32mregisterDepartmentRoutes(router);[m
+ [m
+ app.get('/health', (_req: express.Request, res: express.Response) => {[m
+   res.json({ ok: true });[m
+[1mdiff --git a/apps/api/src/routes/classRoutes.ts b/apps/api/src/routes/classRoutes.ts[m
+[1mindex 91b6e52..9955944 100644[m
+[1m--- a/apps/api/src/routes/classRoutes.ts[m
+[1m+++ b/apps/api/src/routes/classRoutes.ts[m
+[36m@@ -12,6 +12,7 @@[m [mexport function registerClassRoutes(router: Router) {[m
+       code: z.string().min(2),[m
+       year: z.number().int().optional(),[m
+       section: z.string().optional(),[m
+[32m+[m[32m      departmentId: z.string().optional(),[m
+     }).parse(req.body);[m
+ [m
+     const newClass = await prisma.class.create({[m
+[36m@@ -20,7 +21,9 @@[m [mexport function registerClassRoutes(router: Router) {[m
+         code: body.code,[m
+         year: body.year,[m
+         section: body.section,[m
+[32m+[m[32m        departmentId: body.departmentId || null,[m
+       },[m
+[32m+[m[32m      include: { department: true },[m
+     });[m
+ [m
+     res.json(newClass);[m
+[1mdiff --git a/apps/api/src/routes/departmentRoutes.ts b/apps/api/src/routes/departmentRoutes.ts[m
+[1mnew file mode 100644[m
+[1mindex 0000000..fbeea51[m
+[1m--- /dev/null[m
+[1m+++ b/apps/api/src/routes/departmentRoutes.ts[m
+[36m@@ -0,0 +1,374 @@[m
+[32m+[m[32m// @ts-nocheck[m
+[32m+[m[32mimport type { Request, Response, Router } from 'express';[m
+[32m+[m[32mimport { z } from 'zod';[m
+[32m+[m[32mimport { prisma } from '../db';[m
+[32m+[m[32mimport { authRequired, requireRole, type AuthedRequest } from '../middleware';[m
+[32m+[m
+[32m+[m[32mexport function registerDepartmentRoutes(router: Router) {[m
+[32m+[m[32m  // Admin: Create department[m
+[32m+[m[32m  router.post('/admin/departments', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const body = z.object({[m
+[32m+[m[32m      name: z.string().min(2),[m
+[32m+[m[32m      code: z.string().min(1).max(10),[m
+[32m+[m[32m      description: z.string().optional().nullable(),[m
+[32m+[m[32m      pricePerCreditHour: z.number().positive(),[m
+[32m+[m[32m      totalCreditHours: z.number().int().positive(),[m
+[32m+[m[32m      minCreditHoursToGraduate: z.number().int().positive(),[m
+[32m+[m[32m      durationYears: z.number().int().min(1).max(8).optional(),[m
+[32m+[m[32m    }).parse(req.body);[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const department = await prisma.department.create({[m
+[32m+[m[32m        data: {[m
+[32m+[m[32m          name: body.name,[m
+[32m+[m[32m          code: body.code.toUpperCase(),[m
+[32m+[m[32m          description: body.description,[m
+[32m+[m[32m          pricePerCreditHour: body.pricePerCreditHour,[m
+[32m+[m[32m          totalCreditHours: body.totalCreditHours,[m
+[32m+[m[32m          minCreditHoursToGraduate: body.minCreditHoursToGraduate,[m
+[32m+[m[32m          durationYears: body.durationYears || 4,[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      res.status(201).json(department);[m
+[32m+[m[32m    } catch (err: any) {[m
+[32m+[m[32m      if (err.code === 'P2002') {[m
+[32m+[m[32m        return res.status(400).json({ error: 'Department with this name or code already exists' });[m
+[32m+[m[32m      }[m
+[32m+[m[32m      console.error('Create department error:', err);[m
+[32m+[m[32m      res.status(500).json({ error: 'Failed to create department' });[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  // Get all departments (admin, teacher, student)[m
+[32m+[m[32m  router.get('/departments', authRequired, async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const departments = await prisma.department.findMany({[m
+[32m+[m[32m      include: {[m
+[32m+[m[32m        _count: { select: { classes: true } },[m
+[32m+[m[32m      },[m
+[32m+[m[32m      orderBy: { name: 'asc' },[m
+[32m+[m[32m    });[m
+[32m+[m[32m    res.json(departments);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  // Get single department[m
+[32m+[m[32m  router.get('/departments/:id', authRequired, async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const params = z.object({ id: z.string() }).parse(req.params);[m
+[32m+[m
+[32m+[m[32m    const department = await prisma.department.findUnique({[m
+[32m+[m[32m      where: { id: params.id },[m
+[32m+[m[32m      include: {[m
+[32m+[m[32m        classes: {[m
+[32m+[m[32m          include: {[m
+[32m+[m[32m            _count: { select: { students: true } },[m
+[32m+[m[32m          },[m
+[32m+[m[32m        },[m
+[32m+[m[32m      },[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m    if (!department) {[m
+[32m+[m[32m      return res.status(404).json({ error: 'Department not found' });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    res.json(department);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  // Admin: Update department[m
+[32m+[m[32m  router.patch('/admin/departments/:id', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const params = z.object({ id: z.string() }).parse(req.params);[m
+[32m+[m[32m    const body = z.object({[m
+[32m+[m[32m      name: z.string().min(2).optional(),[m
+[32m+[m[32m      code: z.string().min(1).max(10).optional(),[m
+[32m+[m[32m      description: z.string().nullable().optional(),[m
+[32m+[m[32m      pricePerCreditHour: z.number().positive().optional(),[m
+[32m+[m[32m      totalCreditHours: z.number().int().positive().optional(),[m
+[32m+[m[32m      minCreditHoursToGraduate: z.number().int().positive().optional(),[m
+[32m+[m[32m      durationYears: z.number().int().min(1).max(8).optional(),[m
+[32m+[m[32m    }).parse(req.body);[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const department = await prisma.department.update({[m
+[32m+[m[32m        where: { id: params.id },[m
+[32m+[m[32m        data: {[m
+[32m+[m[32m          ...body,[m
+[32m+[m[32m          code: body.code?.toUpperCase(),[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      res.json(department);[m
+[32m+[m[32m    } catch (err: any) {[m
+[32m+[m[32m      if (err.code === 'P2002') {[m
+[32m+[m[32m        return res.status(400).json({ error: 'Department with this name or code already exists' });[m
+[32m+[m[32m      }[m
+[32m+[m[32m      console.error('Update department error:', err);[m
+[32m+[m[32m      res.status(500).json({ error: 'Failed to update department' });[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  // Admin: Delete department[m
+[32m+[m[32m  router.delete('/admin/departments/:id', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const params = z.object({ id: z.string() }).parse(req.params);[m
+[32m+[m
+[32m+[m[32m    // Check if department has classes[m
+[32m+[m[32m    const classCount = await prisma.class.count({[m
+[32m+[m[32m      where: { departmentId: params.id },[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m    if (classCount > 0) {[m
+[32m+[m[32m      return res.status(400).json({ error: `Cannot delete department with ${classCount} classes. Remove classes first.` });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    await prisma.department.delete({ where: { id: params.id } });[m
+[32m+[m[32m    res.status(204).send();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  // Student: Calculate registration fee for their department[m
+[32m+[m[32m  router.get('/student/registration-fee', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const user = req.user!;[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      // Get student's class and department[m
+[32m+[m[32m      const classStudent = await prisma.classStudent.findFirst({[m
+[32m+[m[32m        where: { studentId: user.id },[m
+[32m+[m[32m        include: {[m
+[32m+[m[32m          class: {[m
+[32m+[m[32m            include: { department: true },[m
+[32m+[m[32m          },[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      if (!classStudent?.class?.department) {[m
+[32m+[m[32m        return res.json({ hasDepartment: false, fee: 0, message: 'No department assigned' });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const dept = classStudent.class.department;[m
+[32m+[m
+[32m+[m[32m      // Get current semester's course sections for this student's class[m
+[32m+[m[32m      const currentSemester = await prisma.semester.findFirst({[m
+[32m+[m[32m        where: { status: 'REGISTRATION_OPEN' },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      let semesterCreditHours = 0;[m
+[32m+[m[32m      if (currentSemester) {[m
+[32m+[m[32m        const studentProfile = await prisma.studentProfile.findUnique({[m
+[32m+[m[32m          where: { userId: user.id },[m
+[32m+[m[32m        });[m
+[32m+[m
+[32m+[m[32m        const courseSectionsWhere: any = {[m
+[32m+[m[32m          semesterId: currentSemester.id,[m
+[32m+[m[32m          classId: classStudent.classId,[m
+[32m+[m[32m        };[m
+[32m+[m
+[32m+[m[32m        if (studentProfile?.stream) {[m
+[32m+[m[32m          courseSectionsWhere.course = {[m
+[32m+[m[32m            OR: [[m
+[32m+[m[32m              { stream: studentProfile.stream },[m
+[32m+[m[32m              { stream: null }[m
+[32m+[m[32m            ][m
+[32m+[m[32m          };[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        const courseSections = await prisma.courseSection.findMany({[m
+[32m+[m[32m          where: courseSectionsWhere,[m
+[32m+[m[32m          include: { course: true },[m
+[32m+[m[32m        });[m
+[32m+[m
+[32m+[m[32m        semesterCreditHours = courseSections.reduce((sum, cs) => sum + (cs.course?.creditHours || 3), 0);[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const registrationFee = semesterCreditHours * dept.pricePerCreditHour;[m
+[32m+[m
+[32m+[m[32m      res.json({[m
+[32m+[m[32m        hasDepartment: true,[m
+[32m+[m[32m        department: dept,[m
+[32m+[m[32m        semesterCreditHours,[m
+[32m+[m[32m        pricePerCreditHour: dept.pricePerCreditHour,[m
+[32m+[m[32m        fee: registrationFee,[m
+[32m+[m[32m        totalProgramFee: dept.totalCreditHours * dept.pricePerCreditHour,[m
+[32m+[m[32m      });[m
+[32m+[m[32m    } catch (err) {[m
+[32m+[m[32m      console.error('Error calculating registration fee:', err);[m
+[32m+[m[32m      res.status(500).json({ error: 'Failed to calculate registration fee' });[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  // Student: Check graduation eligibility and generate certificate[m
+[32m+[m[32m  router.get('/student/graduation-status', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const user = req.user!;[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const classStudent = await prisma.classStudent.findFirst({[m
+[32m+[m[32m        where: { studentId: user.id },[m
+[32m+[m[32m        include: {[m
+[32m+[m[32m          class: {[m
+[32m+[m[32m            include: { department: true },[m
+[32m+[m[32m          },[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      if (!classStudent?.class?.department) {[m
+[32m+[m[32m        return res.json({ eligible: false, message: 'No department assigned' });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const dept = classStudent.class.department;[m
+[32m+[m
+[32m+[m[32m      // Get all completed enrollments with grades[m
+[32m+[m[32m      const enrollments = await prisma.studentEnrollment.findMany({[m
+[32m+[m[32m        where: {[m
+[32m+[m[32m          studentId: user.id,[m
+[32m+[m[32m          status: 'ENROLLED',[m
+[32m+[m[32m          grade: { isNot: null },[m
+[32m+[m[32m        },[m
+[32m+[m[32m        include: {[m
+[32m+[m[32m          courseSection: { include: { course: true } },[m
+[32m+[m[32m          grade: true,[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      // Calculate total credit hours completed and CGPA[m
+[32m+[m[32m      let totalCreditHours = 0;[m
+[32m+[m[32m      let totalGradePoints = 0;[m
+[32m+[m
+[32m+[m[32m      enrollments.forEach(e => {[m
+[32m+[m[32m        const creditHours = e.courseSection?.course?.creditHours || 3;[m
+[32m+[m[32m        const gradePoint = e.grade?.gradePoint || 0;[m
+[32m+[m[32m        totalCreditHours += creditHours;[m
+[32m+[m[32m        totalGradePoints += creditHours * gradePoint;[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      const cgpa = totalCreditHours > 0 ? totalGradePoints / totalCreditHours : 0;[m
+[32m+[m
+[32m+[m[32m      // Check if existing certificate[m
+[32m+[m[32m      const existingCert = await prisma.certificate.findFirst({[m
+[32m+[m[32m        where: { studentId: user.id, departmentId: dept.id },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      const eligible = totalCreditHours >= dept.minCreditHoursToGraduate;[m
+[32m+[m
+[32m+[m[32m      res.json({[m
+[32m+[m[32m        eligible,[m
+[32m+[m[32m        department: dept,[m
+[32m+[m[32m        totalCreditHoursCompleted: totalCreditHours,[m
+[32m+[m[32m        minCreditHoursRequired: dept.minCreditHoursToGraduate,[m
+[32m+[m[32m        cgpa: Math.round(cgpa * 100) / 100,[m
+[32m+[m[32m        certificate: existingCert,[m
+[32m+[m[32m        enrollments: enrollments.length,[m
+[32m+[m[32m      });[m
+[32m+[m[32m    } catch (err) {[m
+[32m+[m[32m      console.error('Error checking graduation status:', err);[m
+[32m+[m[32m      res.status(500).json({ error: 'Failed to check graduation status' });[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  // Admin: Generate certificate for student[m
+[32m+[m[32m  router.post('/admin/certificates/generate', authRequired, requireRole(['ADMIN']), async (req: AuthedRequest, res: Response) => {[m
+[32m+[m[32m    const body = z.object({[m
+[32m+[m[32m      studentId: z.string(),[m
+[32m+[m[32m    }).parse(req.body);[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      // Check if certificate already exists[m
+[32m+[m[32m      const classStudent = await prisma.classStudent.findFirst({[m
+[32m+[m[32m        where: { studentId: body.studentId },[m
+[32m+[m[32m        include: {[m
+[32m+[m[32m          class: { include: { department: true } },[m
+[32m+[m[32m        },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      if (!classStudent?.class?.department) {[m
+[32m+[m[32m        return res.status(400).json({ error: 'Student has no department assigned' });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const dept = classStudent.class.department;[m
+[32m+[m
+[32m+[m[32m      const existingCert = await prisma.certificate.findFirst({[m
+[32m+[m[32m        where: { studentId: body.studentId, departmentId: dept.id },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      if (existingCert) {[m
+[32m+[m[32m        return res.status(400).json({ erro

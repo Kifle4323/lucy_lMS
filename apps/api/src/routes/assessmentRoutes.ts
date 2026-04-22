@@ -877,13 +877,19 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if attempt has an unreviewed face mismatch
+    // Check if attempt has an unreviewed or rejected face mismatch
     const faceVerification = await prisma.faceVerification.findUnique({
       where: { attemptId: params.attemptId },
     });
-    if (faceVerification && !faceVerification.matchResult && !faceVerification.adminReviewed) {
-      res.status(403).json({ error: 'face_mismatch_pending', message: 'This attempt has a pending face verification review. Grading is blocked until an admin confirms the student identity.' });
-      return;
+    if (faceVerification && !faceVerification.matchResult) {
+      if (!faceVerification.adminReviewed) {
+        res.status(403).json({ error: 'face_mismatch_pending', message: 'This attempt has a pending face verification review. Grading is blocked until an admin confirms the student identity.' });
+        return;
+      }
+      if (faceVerification.adminReviewed && !faceVerification.adminApproved) {
+        res.status(403).json({ error: 'face_mismatch_rejected', message: 'This attempt\'s face verification was rejected by admin. Grading is blocked.' });
+        return;
+      }
     }
 
     // Check if teacher is assigned to this course
