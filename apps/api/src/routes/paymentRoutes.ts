@@ -72,11 +72,16 @@ export function registerPaymentRoutes(router: Router) {
       const firstName = studentProfile?.firstName || user.fullName.split(' ')[0] || 'Student';
       const lastName = studentProfile?.fatherName || user.fullName.split(' ').slice(1).join(' ') || 'User';
 
+      // Validate email format - Chapa requires a valid email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const studentEmail = user.email || studentProfile?.email || '';
+      const validEmail = emailRegex.test(studentEmail) ? studentEmail : `student${Date.now()}@gmail.com`;
+
       // Initialize Chapa transaction
       const chapaPayload = {
         amount: semester.registrationFee.toString(),
         currency: 'ETB',
-        email: user.email || studentProfile?.email || `${user.id}@lucy.edu`,
+        email: validEmail,
         first_name: firstName,
         last_name: lastName,
         phone_number: studentProfile?.phone || '',
@@ -88,6 +93,8 @@ export function registerPaymentRoutes(router: Router) {
           description: `Registration fee for ${semester.name}`,
         },
       };
+
+      console.log('Sending to Chapa - email:', validEmail, '| user.email:', user.email, '| profile.email:', studentProfile?.email);
 
       const chapaResponse = await fetch(`${CHAPA_API}/initialize`, {
         method: 'POST',
