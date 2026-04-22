@@ -14,6 +14,7 @@ export function registerDepartmentRoutes(router: Router) {
       pricePerCreditHour: z.number().positive(),
       totalCreditHours: z.number().int().positive(),
       minCreditHoursToGraduate: z.number().int().positive(),
+      minGradeToGraduate: z.number().min(0).max(4).optional(),
       durationYears: z.number().int().min(1).max(8).optional(),
     }).parse(req.body);
 
@@ -26,6 +27,7 @@ export function registerDepartmentRoutes(router: Router) {
           pricePerCreditHour: body.pricePerCreditHour,
           totalCreditHours: body.totalCreditHours,
           minCreditHoursToGraduate: body.minCreditHoursToGraduate,
+          minGradeToGraduate: body.minGradeToGraduate || 2.0,
           durationYears: body.durationYears || 4,
         },
       });
@@ -83,6 +85,7 @@ export function registerDepartmentRoutes(router: Router) {
       pricePerCreditHour: z.number().positive().optional(),
       totalCreditHours: z.number().int().positive().optional(),
       minCreditHoursToGraduate: z.number().int().positive().optional(),
+      minGradeToGraduate: z.number().min(0).max(4).optional(),
       durationYears: z.number().int().min(1).max(8).optional(),
     }).parse(req.body);
 
@@ -243,7 +246,7 @@ export function registerDepartmentRoutes(router: Router) {
         where: { studentId: user.id, departmentId: dept.id },
       });
 
-      const eligible = totalCreditHours >= dept.minCreditHoursToGraduate;
+      const eligible = totalCreditHours >= dept.minCreditHoursToGraduate && cgpa >= dept.minGradeToGraduate;
 
       res.json({
         eligible,
@@ -251,6 +254,9 @@ export function registerDepartmentRoutes(router: Router) {
         totalCreditHoursCompleted: totalCreditHours,
         minCreditHoursRequired: dept.minCreditHoursToGraduate,
         cgpa: Math.round(cgpa * 100) / 100,
+        minGradeRequired: dept.minGradeToGraduate,
+        gradeMet: cgpa >= dept.minGradeToGraduate,
+        creditHoursMet: totalCreditHours >= dept.minCreditHoursToGraduate,
         certificate: existingCert,
         enrollments: enrollments.length,
       });
@@ -319,6 +325,14 @@ export function registerDepartmentRoutes(router: Router) {
           error: 'Student has not completed enough credit hours',
           completed: totalCreditHours,
           required: dept.minCreditHoursToGraduate,
+        });
+      }
+
+      if (cgpa < dept.minGradeToGraduate) {
+        return res.status(400).json({
+          error: 'Student CGPA is below the minimum required grade',
+          cgpa: Math.round(cgpa * 100) / 100,
+          required: dept.minGradeToGraduate,
         });
       }
 

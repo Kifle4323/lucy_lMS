@@ -117,7 +117,6 @@ export function registerAcademicRoutes(router: Router) {
       gradingDeadline: z.string().optional(),
       addDropStart: z.string().optional(),
       addDropEnd: z.string().optional(),
-      registrationFee: z.number().positive().nullable().optional(),
     }).parse(req.body);
 
     try {
@@ -141,7 +140,6 @@ export function registerAcademicRoutes(router: Router) {
           gradingDeadline: body.gradingDeadline ? new Date(body.gradingDeadline) : null,
           addDropStart: body.addDropStart ? new Date(body.addDropStart) : null,
           addDropEnd: body.addDropEnd ? new Date(body.addDropEnd) : null,
-          registrationFee: body.registrationFee ?? null,
         },
         include: { academicYear: true },
       });
@@ -188,7 +186,6 @@ export function registerAcademicRoutes(router: Router) {
       gradingDeadline: z.string().nullable().optional(),
       addDropStart: z.string().nullable().optional(),
       addDropEnd: z.string().nullable().optional(),
-      registrationFee: z.number().positive().nullable().optional(),
       status: z.enum(['UPCOMING', 'REGISTRATION_OPEN', 'IN_PROGRESS', 'GRADING', 'COMPLETED']).optional(),
       isCurrent: z.boolean().optional(),
     }).parse(req.body);
@@ -219,7 +216,6 @@ export function registerAcademicRoutes(router: Router) {
         gradingDeadline: body.gradingDeadline ? new Date(body.gradingDeadline) : body.gradingDeadline === null ? null : undefined,
         addDropStart: body.addDropStart ? new Date(body.addDropStart) : body.addDropStart === null ? null : undefined,
         addDropEnd: body.addDropEnd ? new Date(body.addDropEnd) : body.addDropEnd === null ? null : undefined,
-        registrationFee: body.registrationFee !== undefined ? body.registrationFee : undefined,
       },
       include: { academicYear: true },
     });
@@ -631,8 +627,47 @@ export function registerAcademicRoutes(router: Router) {
       return res.status(400).json({ error: 'No semester open for registration' });
     }
 
-    // Check payment if registration fee is set
-    if (currentSemester.registrationFee && currentSemester.registrationFee > 0) {
+    // Get student's class and department to calculate fee
+    const classStudent = await prisma.classStudent.findFirst({
+      where: { studentId: user.id },
+      include: { class: { include: { department: true } } },
+    });
+
+    // Auto-calculate registration fee from department pricePerCreditHour * credit hours
+    let registrationFee = 0;
+    if (classStudent?.class?.department) {
+      const dept = classStudent.class.department;
+
+      // Get student profile for stream filtering
+      const studentProfile = await prisma.studentProfile.findUnique({
+        where: { userId: user.id },
+      });
+
+      const courseSectionsWhere: any = {
+        semesterId: currentSemester.id,
+        classId: classStudent.classId,
+      };
+
+      if (studentProfile?.stream) {
+        courseSectionsWhere.course = {
+          OR: [
+            { stream: studentProfile.stream },
+            { stream: null }
+          ]
+        };
+      }
+
+      const courseSections = await prisma.courseSection.findMany({
+        where: courseSectionsWhere,
+        include: { course: true },
+      });
+
+      const semesterCreditHours = courseSections.reduce((sum, cs) => sum + (cs.course?.creditHours || 3), 0);
+      registrationFee = semesterCreditHours * dept.pricePerCreditHour;
+    }
+
+    // Check payment if fee is required
+    if (registrationFee > 0) {
       const completedPayment = await prisma.semesterPayment.findFirst({
         where: {
           studentId: user.id,
@@ -646,43 +681,37 @@ export function registerAcademicRoutes(router: Router) {
           error: 'Payment required before registration',
           requiresPayment: true,
           semesterId: currentSemester.id,
-          registrationFee: currentSemester.registrationFee,
+          registrationFee,
         });
       }
     }
-
-    // Get student's class
-    const classStudent = await prisma.classStudent.findFirst({
-      where: { studentId: user.id },
-    });
 
     if (!classStudent) {
       return res.status(400).json({ error: 'You are not assigned to a class' });
     }
 
-    // Get student profile for stream filtering
-    const studentProfile = await prisma.studentProfile.findUnique({
-      where: { userId: user.id },
-    });
-
     // Get course sections for student's class this semester
-    // Filter by stream if the student has one selected
-    const courseSectionsWhere: any = {
+    // (studentProfile and courseSectionsWhere already computed above for fee calculation)
+    const courseSectionsWhere2: any = {
       semesterId: currentSemester.id,
       classId: classStudent.classId,
     };
 
-    if (studentProfile?.stream) {
-      courseSectionsWhere.course = {
+    const studentProfile2 = await prisma.studentProfile.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (studentProfile2?.stream) {
+      courseSectionsWhere2.course = {
         OR: [
-          { stream: studentProfile.stream },
+          { stream: studentProfile2.stream },
           { stream: null }
         ]
       };
     }
 
     const courseSections = await prisma.courseSection.findMany({
-      where: courseSectionsWhere,
+      where: courseSectionsWhere2,
     });
 
     if (courseSections.length === 0) {

@@ -203,6 +203,7 @@ model Department {
   pricePerCreditHour    Float              // Fee per credit hour in ETB
   totalCreditHours      Int                // Total credit hours required for the program
   minCreditHoursToGraduate Int            // Minimum credit hours needed to graduate
+  minGradeToGraduate    Float    @default(2.0) // Minimum CGPA required to graduate (e.g., 2.0)
   durationYears         Int      @default(4) // Duration of the program in years
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
