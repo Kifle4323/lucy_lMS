@@ -189,35 +189,52 @@ export function registerFaceVerificationRoutes(router: Router) {
       });
 
       if (attempt && attempt.status === 'SUBMITTED') {
-        // Auto-grade: calculate score from MCQ answers
+        // Auto-grade: calculate score from auto-gradable answers
         const answers = attempt.answers;
         let totalScore = 0;
         let allAutoGraded = true;
 
         for (const answer of answers) {
-          if (answer.question?.type === 'MCQ' || answer.question?.type === 'TRUE_FALSE') {
-            const isCorrect = answer.selectedOption === answer.question.correctAnswer;
-            const score = isCorrect ? (answer.question.points || 1) : 0;
-            await prisma.answer.update({
-              where: { id: answer.id },
-              data: { score, isCorrect },
-            });
-            totalScore += score;
-          } else if (answer.question?.type === 'SHORT_ANSWER') {
-            // Short answer needs manual grading - mark as needing review
-            allAutoGraded = false;
-          }
-        }
+          let score = 0;
+          let isCorrect = false;
 
-        // If all questions are auto-gradable, mark as GRADED
-        if (allAutoGraded) {
-          await prisma.attempt.update({
-            where: { id: verification.attemptId },
-            data: { status: 'GRADED', score: totalScore },
+          if (answer.question?.type === 'MCQ' || answer.question?.type === 'TRUE_FALSE') {
+            isCorrect = answer.selectedOption === answer.question.correctAnswer;
+            score = isCorrect ? (answer.question.points || 1) : 0;
+            totalScore += score;
+          } else if (answer.question?.type === 'FITB') {
+            if (answer.textAnswer && answer.question.correctAnswer) {
+              const studentAns = answer.textAnswer.trim().toLowerCase();
+              const correctAns = answer.question.correctAnswer.trim().toLowerCase();
+              isCorrect = studentAns === correctAns;
+              score = isCorrect ? (answer.question.points || 1) : 0;
+              totalScore += score;
+            }
+          } else if (answer.question?.type === 'SHORT_ANSWER') {
+            // Auto-grade SHORT_ANSWER: give full points if student provided an answer
+            if (answer.textAnswer && answer.textAnswer.trim().length > 0) {
+              isCorrect = true;
+              score = answer.question.points || 1;
+              totalScore += score;
+            } else {
+              isCorrect = false;
+              score = 0;
+            }
+          }
+
+          // Update answer with score
+          await prisma.answer.update({
+            where: { id: answer.id },
+            data: { score, isCorrect },
           });
         }
-        // If there are short answer questions, the attempt stays SUBMITTED
-        // but the teacher can now grade it since faceVerified=true
+
+        // Always mark as GRADED with the auto-score
+        // Teacher can still manually grade SHORT_ANSWER questions to update the score
+        await prisma.attempt.update({
+          where: { id: verification.attemptId },
+          data: { status: 'GRADED', score: totalScore },
+        });
       }
     }
 

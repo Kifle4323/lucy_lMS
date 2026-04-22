@@ -859,9 +859,16 @@ export function registerAssessmentRoutes(router: Router) {
         score = isCorrect ? q.points : 0;
         autoScore += score;
       } else if (q.type === 'SHORT_ANSWER') {
-        // Needs manual grading - give 0 initially, teacher can update later
-        hasManualGrading = true;
-        score = 0;
+        // Auto-grade SHORT_ANSWER: give full points if student provided an answer
+        // Simple approach: if student wrote something, give them points
+        if (ans.textAnswer && ans.textAnswer.trim().length > 0) {
+          isCorrect = true;
+          score = q.points;
+          autoScore += score;
+        } else {
+          isCorrect = false;
+          score = 0;
+        }
       }
 
       // Update answer with score
