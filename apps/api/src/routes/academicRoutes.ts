@@ -19,6 +19,17 @@ const GRADE_POINTS: Record<string, { min: number; max: number; point: number; le
   'F': { min: 0, max: 39, point: 0.0, letter: 'F' },
 };
 
+// Helper function to convert display letter to Prisma enum value
+function letterToEnum(letter: string): string {
+  const map: Record<string, string> = {
+    'A+': 'A_PLUS', 'A-': 'A_MINUS',
+    'B+': 'B_PLUS', 'B-': 'B_MINUS',
+    'C+': 'C_PLUS', 'C-': 'C_MINUS',
+    'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'F': 'F',
+  };
+  return map[letter] || letter;
+}
+
 // Helper function to get grade letter and point from score
 function getGradeFromScore(score: number): { letter: string; point: number } {
   for (const [, data] of Object.entries(GRADE_POINTS)) {
@@ -868,7 +879,7 @@ export function registerAcademicRoutes(router: Router) {
         finalScore: body.finalScore,
         attendanceScore: body.attendanceScore,
         totalScore,
-        gradeLetter: letter as any,
+        gradeLetter: letterToEnum(letter) as any,
         gradePoint: point,
         feedback: body.feedback,
       },
@@ -879,7 +890,7 @@ export function registerAcademicRoutes(router: Router) {
         finalScore: body.finalScore,
         attendanceScore: body.attendanceScore,
         totalScore,
-        gradeLetter: letter as any,
+        gradeLetter: letterToEnum(letter) as any,
         gradePoint: point,
         feedback: body.feedback,
       },
@@ -1074,7 +1085,7 @@ export function registerAcademicRoutes(router: Router) {
           finalScore: finalMark,
           attendanceScore: attendanceMark,
           totalScore: totalGrade,
-          gradeLetter: letter as any,
+          gradeLetter: letterToEnum(letter) as any,
           gradePoint: point,
         },
         update: {
@@ -1084,7 +1095,7 @@ export function registerAcademicRoutes(router: Router) {
           finalScore: finalMark,
           attendanceScore: attendanceMark,
           totalScore: totalGrade,
-          gradeLetter: letter as any,
+          gradeLetter: letterToEnum(letter) as any,
           gradePoint: point,
         },
       });
