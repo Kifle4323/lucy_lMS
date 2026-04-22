@@ -787,12 +787,34 @@ export function registerAssessmentRoutes(router: Router) {
 
     const attempt = await prisma.attempt.findUnique({
       where: { id: params.attemptId },
-      include: { answers: true, assessment: { include: { questions: true } } },
+      include: { answers: true, assessment: { include: { questions: true } }, faceVerification: true },
     });
 
     if (!attempt || attempt.studentId !== req.user!.id || attempt.status !== 'IN_PROGRESS') {
       res.status(403).json({ error: 'forbidden' });
       return;
+    }
+
+    // Check if there's an unreviewed face mismatch - if so, submit without auto-grading
+    const hasPendingFaceMismatch = attempt.faceVerification && !attempt.faceVerification.matchResult && !attempt.faceVerification.adminReviewed;
+    const hasRejectedFace = attempt.faceVerification && !attempt.faceVerification.matchResult && attempt.faceVerification.adminReviewed && !attempt.faceVerification.adminApproved;
+
+    if (hasPendingFaceMismatch) {
+      // Submit without grading - will be auto-graded when admin approves
+      await prisma.attempt.update({
+        where: { id: params.attemptId },
+        data: { status: 'SUBMITTED', submittedAt: new Date() },
+      });
+      return res.json({ message: 'Submitted pending face verification review', status: 'SUBMITTED', hasPendingFaceMismatch: true });
+    }
+
+    if (hasRejectedFace) {
+      // Face was rejected - submit but mark as rejected
+      await prisma.attempt.update({
+        where: { id: params.attemptId },
+        data: { status: 'REJECTED', submittedAt: new Date() },
+      });
+      return res.json({ message: 'Submitted but face verification was rejected', status: 'REJECTED', hasRejectedFace: true });
     }
 
     // Build question map with all needed fields
@@ -809,38 +831,51 @@ export function registerAssessmentRoutes(router: Router) {
     let autoScore = 0;
     let hasManualGrading = false;
 
+    // Auto-grade all answers and update Answer records
     for (const ans of attempt.answers) {
       const q = questionMap.get(ans.questionId);
       if (!q) continue;
 
+      let score = 0;
+      let isCorrect = false;
+
       if (q.type === 'MCQ') {
         // Auto-grade MCQ
-        if (ans.selected === q.correct) {
-          autoScore += q.points;
-        }
+        isCorrect = ans.selected === q.correct;
+        score = isCorrect ? q.points : 0;
+        autoScore += score;
       } else if (q.type === 'FITB') {
         // Auto-grade FITB (case-insensitive, trimmed)
         if (ans.textAnswer && q.correctAnswer) {
           const studentAns = ans.textAnswer.trim().toLowerCase();
           const correctAns = q.correctAnswer.trim().toLowerCase();
-          if (studentAns === correctAns) {
-            autoScore += q.points;
-          }
+          isCorrect = studentAns === correctAns;
+          score = isCorrect ? q.points : 0;
+          autoScore += score;
         }
+      } else if (q.type === 'TRUE_FALSE') {
+        // Auto-grade TRUE_FALSE
+        isCorrect = ans.selected === q.correct;
+        score = isCorrect ? q.points : 0;
+        autoScore += score;
       } else if (q.type === 'SHORT_ANSWER') {
-        // Needs manual grading
+        // Needs manual grading - give 0 initially, teacher can update later
         hasManualGrading = true;
+        score = 0;
       }
+
+      // Update answer with score
+      await prisma.answer.update({
+        where: { id: ans.id },
+        data: { score, isCorrect },
+      });
     }
 
-    // If there are short answer questions, status remains SUBMITTED until teacher grades
-    // Otherwise, mark as GRADED
-    const status = hasManualGrading ? 'SUBMITTED' : 'GRADED';
-    const score = hasManualGrading ? autoScore : autoScore; // Will be updated after manual grading
-
+    // Always mark as GRADED so it appears in gradebook immediately
+    // Teacher can still manually grade SHORT_ANSWER questions to update the score
     const updated = await prisma.attempt.update({
       where: { id: params.attemptId },
-      data: { status, submittedAt: new Date(), score },
+      data: { status: 'GRADED', submittedAt: new Date(), score: autoScore },
     });
 
     res.json({ ...updated, hasManualGrading, autoScore });

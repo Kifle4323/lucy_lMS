@@ -17,6 +17,7 @@ enum AttemptStatus {
   IN_PROGRESS
   SUBMITTED
   GRADED
+  REJECTED
 }
 
 enum ExamType {
