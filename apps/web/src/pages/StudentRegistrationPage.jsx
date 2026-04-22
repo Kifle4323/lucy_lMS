@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getAvailableCourses, registerForSemester, getStudentProfile, initializePayment, verifyPayment, getPaymentStatus } from '../api.js';
+import { getAvailableCourses, registerForSemester, getStudentProfile, initializePayment, verifyPayment, getPaymentStatus, getStudentRegistrationFee } from '../api.js';
 import Layout from '../components/Layout';
 import { AlertCircle, FileText, CreditCard, CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import { useToast } from '../ToastContext';
@@ -19,6 +19,7 @@ export default function StudentRegistrationPage() {
   const [paymentStatus, setPaymentStatus] = useState(null); // { isPaid, status, payment }
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [autoFee, setAutoFee] = useState(null); // { fee, department, semesterCreditHours, pricePerCreditHour }
 
   useEffect(() => {
     loadData();
@@ -42,13 +43,34 @@ export default function StudentRegistrationPage() {
       setProfileStatus(profile?.status || null);
 
       // Check payment status if semester has a fee
-      if (result?.semester?.registrationFee > 0) {
+      const hasManualFee = result?.semester?.registrationFee > 0;
+      if (hasManualFee) {
         try {
           const payment = await getPaymentStatus(result.semester.id);
           setPaymentStatus(payment);
         } catch (err) {
           console.error('Failed to check payment status:', err);
         }
+      }
+
+      // Also check auto-calculated fee from department
+      try {
+        const feeInfo = await getStudentRegistrationFee();
+        if (feeInfo?.hasDepartment && feeInfo?.fee > 0) {
+          setAutoFee(feeInfo);
+          // If no manual fee, also check payment status for auto fee
+          if (!hasManualFee && result?.semester?.id) {
+            try {
+              const payment = await getPaymentStatus(result.semester.id);
+              setPaymentStatus(payment);
+            } catch (err) {
+              console.error('Failed to check payment status:', err);
+            }
+          }
+        }
+      } catch (err) {
+        // No department assigned - that's ok
+        console.log('No department fee info:', err.message);
       }
     } catch (err) {
       setError(err.message);
@@ -255,6 +277,12 @@ export default function StudentRegistrationPage() {
   const allEnrolled = courses.every(c => c.isEnrolled);
   const someEnrolled = courses.some(c => c.isEnrolled);
 
+  // Effective fee: manual semester fee takes priority, otherwise auto-calculate from department
+  const effectiveFee = semester.registrationFee > 0
+    ? semester.registrationFee
+    : (autoFee?.fee > 0 ? autoFee.fee : 0);
+  const feeSource = semester.registrationFee > 0 ? 'semester' : (autoFee?.fee > 0 ? 'department' : null);
+
   return (
     <Layout>
       <div className="p-6 max-w-4xl mx-auto">
@@ -307,12 +335,15 @@ export default function StudentRegistrationPage() {
         </div>
 
         {/* Registration Fee & Payment Status */}
-        {semester.registrationFee > 0 && (
+        {effectiveFee > 0 && (
           <div className="mt-4 border-t pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Registration Fee</p>
-                <p className="text-2xl font-bold text-gray-900">ETB {semester.registrationFee?.toLocaleString()}</p>
+                <p className="text-sm text-gray-500">Registration Fee {feeSource === 'department' && <span className="text-xs">(auto-calculated)</span>}</p>
+                <p className="text-2xl font-bold text-gray-900">ETB {effectiveFee?.toLocaleString()}</p>
+                {feeSource === 'department' && autoFee && (
+                  <p className="text-xs text-gray-400">{autoFee.semesterCreditHours} CH × ETB {autoFee.pricePerCreditHour}/CH</p>
+                )}
               </div>
               <div>
                 {paymentStatus?.isPaid ? (
@@ -381,14 +412,17 @@ export default function StudentRegistrationPage() {
       {!allEnrolled && courses.length > 0 && (
         <div className="space-y-4">
           {/* Step 1: Payment (if fee is set) */}
-          {semester.registrationFee > 0 && !paymentStatus?.isPaid && (
+          {effectiveFee > 0 && !paymentStatus?.isPaid && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
               <div className="flex items-start gap-4">
                 <CreditCard className="w-8 h-8 text-orange-600 flex-shrink-0" />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-orange-800 mb-1">Step 1: Pay Registration Fee</h3>
                   <p className="text-orange-700 text-sm mb-3">
-                    You must pay the registration fee of <strong>ETB {semester.registrationFee?.toLocaleString()}</strong> before you can register for courses.
+                    You must pay the registration fee of <strong>ETB {effectiveFee?.toLocaleString()}</strong> before you can register for courses.
+                    {feeSource === 'department' && autoFee && (
+                      <span className="block text-xs mt-1">{autoFee.semesterCreditHours} credit hours × ETB {autoFee.pricePerCreditHour}/credit hour</span>
+                    )}
                   </p>
                   {verifyingPayment ? (
                     <div className="flex items-center gap-2 text-orange-600">
@@ -431,7 +465,7 @@ export default function StudentRegistrationPage() {
                       ) : (
                         <>
                           <CreditCard className="w-5 h-5" />
-                          Pay ETB {semester.registrationFee?.toLocaleString()} with Chapa
+                          Pay ETB {effectiveFee?.toLocaleString()} with Chapa
                         </>
                       )}
                     </button>
@@ -442,7 +476,7 @@ export default function StudentRegistrationPage() {
           )}
 
           {/* Step 2: Register (only if paid or no fee) */}
-          {(!semester.registrationFee || semester.registrationFee <= 0 || paymentStatus?.isPaid) && (
+          {(effectiveFee <= 0 || paymentStatus?.isPaid) && (
             <div className="flex justify-center">
               <button
                 onClick={handleRegister}
@@ -455,7 +489,7 @@ export default function StudentRegistrationPage() {
           )}
 
           {/* Payment completed message */}
-          {semester.registrationFee > 0 && paymentStatus?.isPaid && (
+          {effectiveFee > 0 && paymentStatus?.isPaid && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
               <CheckCircle className="w-6 h-6 text-green-600" />
               <div>

@@ -795,3 +795,56 @@ export async function setRegistrationFee(semesterId, registrationFee) {
     body: JSON.stringify({ registrationFee }),
   });
 }
+
+// ==================== DEPARTMENTS ====================
+
+export async function getDepartments() {
+  return apiFetch('/departments');
+}
+
+export async function getDepartment(id) {
+  return apiFetch(`/departments/${id}`);
+}
+
+export async function createDepartment(data) {
+  return apiFetch('/admin/departments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateDepartment(id, data) {
+  return apiFetch(`/admin/departments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDepartment(id) {
+  return apiFetch(`/admin/departments/${id}`, { method: 'DELETE' });
+}
+
+// ==================== CERTIFICATES ====================
+
+export async function getStudentGraduationStatus() {
+  return apiFetch('/student/graduation-status');
+}
+
+export async function getStudentCertificates() {
+  return apiFetch('/student/certificates');
+}
+
+export async function generateCertificate(studentId) {
+  return apiFetch('/admin/certificates/generate', {
+    method: 'POST',
+    body: JSON.stringify({ studentId }),
+  });
+}
+
+export async function getAdminCertificates() {
+  return apiFetch('/admin/certificates');
+}
+
+export async function getStudentRegistrationFee() {
+  return apiFetch('/student/registration-fee');
+}

@@ -26,8 +26,48 @@ export function registerPaymentRoutes(router: Router) {
         return res.status(404).json({ error: 'Semester not found' });
       }
 
-      if (!semester.registrationFee || semester.registrationFee <= 0) {
-        return res.status(400).json({ error: 'No registration fee set for this semester' });
+      // Calculate fee: either from semester registrationFee or auto-calculate from department
+      let registrationFee = semester.registrationFee || 0;
+
+      // Auto-calculate from department if no manual fee set
+      if (!registrationFee || registrationFee <= 0) {
+        const classStudent = await prisma.classStudent.findFirst({
+          where: { studentId: user.id },
+          include: {
+            class: { include: { department: true } },
+          },
+        });
+
+        if (classStudent?.class?.department) {
+          const dept = classStudent.class.department;
+          // Get credit hours for this semester's courses
+          const studentProfile = await prisma.studentProfile.findUnique({
+            where: { userId: user.id },
+          });
+
+          const courseSectionsWhere: any = {
+            semesterId: body.semesterId,
+            classId: classStudent.classId,
+          };
+
+          if (studentProfile?.stream) {
+            courseSectionsWhere.course = {
+              OR: [{ stream: studentProfile.stream }, { stream: null }]
+            };
+          }
+
+          const courseSections = await prisma.courseSection.findMany({
+            where: courseSectionsWhere,
+            include: { course: true },
+          });
+
+          const semesterCreditHours = courseSections.reduce((sum, cs) => sum + (cs.course?.creditHours || 3), 0);
+          registrationFee = semesterCreditHours * dept.pricePerCreditHour;
+        }
+      }
+
+      if (!registrationFee || registrationFee <= 0) {
+        return res.status(400).json({ error: 'No registration fee available. Contact admin.' });
       }
 
       // Check if already paid
@@ -79,7 +119,7 @@ export function registerPaymentRoutes(router: Router) {
 
       // Initialize Chapa transaction
       const chapaPayload = {
-        amount: semester.registrationFee.toString(),
+        amount: registrationFee.toString(),
         currency: 'ETB',
         email: validEmail,
         first_name: firstName,
@@ -117,7 +157,7 @@ export function registerPaymentRoutes(router: Router) {
         data: {
           studentId: user.id,
           semesterId: body.semesterId,
-          amount: semester.registrationFee,
+          amount: registrationFee,
           currency: 'ETB',
           txRef,
           checkoutUrl: chapaData.data.checkout_url,

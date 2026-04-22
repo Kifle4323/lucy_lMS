@@ -21,7 +21,8 @@ import {
   Calendar,
   ClipboardList,
   Award,
-  CalendarClock
+  CalendarClock,
+  Building2
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import lucyLogo from '../assets/lucy_logobg.png';
@@ -127,6 +128,7 @@ export default function Layout({ children }) {
       { path: '/admin/users', label: 'Users', icon: UserCircle },
       { path: '/admin/courses', label: 'Courses', icon: BookOpen },
       { path: '/admin/academic', label: 'Academic', icon: Calendar },
+      { path: '/admin/departments', label: 'Departments', icon: Building2 },
       { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
       { path: '/admin/student-profiles', label: 'Student Profiles', icon: FileText },
       { path: '/admin/add-drop-requests', label: 'Add/Drop Requests', icon: ClipboardList },

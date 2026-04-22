@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
-import { getClasses, createClass, updateClass, deleteClass, getUsers, addStudentToClass, addTeacherToClass, removeStudentFromClass, removeTeacherFromClass, getCourses, assignCourseToClass, removeCourseFromClass } from '../api';
+import { getClasses, createClass, updateClass, deleteClass, getUsers, addStudentToClass, addTeacherToClass, removeStudentFromClass, removeTeacherFromClass, getCourses, assignCourseToClass, removeCourseFromClass, getDepartments } from '../api';
 import Layout from '../components/Layout';
 import { 
   Plus, 
@@ -29,17 +29,19 @@ export default function AdminClassesPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
-  const [newClass, setNewClass] = useState({ name: '', code: '', year: '', section: '' });
+  const [newClass, setNewClass] = useState({ name: '', code: '', year: '', section: '', departmentId: '' });
+  const [departments, setDepartments] = useState([]);
   const [editingClass, setEditingClass] = useState(null);
   const [addModal, setAddModal] = useState({ type: null, classId: null });
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') return;
-    Promise.all([getClasses(), getUsers(), getCourses()])
-      .then(([classesData, usersData, coursesData]) => {
+    Promise.all([getClasses(), getUsers(), getCourses(), getDepartments()])
+      .then(([classesData, usersData, coursesData, deptsData]) => {
         setClasses(classesData);
         setUsers(usersData);
         setCourses(coursesData);
+        setDepartments(deptsData);
       })
       .finally(() => setLoading(false));
   }, [user]);
@@ -55,6 +57,7 @@ export default function AdminClassesPage() {
         code: newClass.code,
         year: newClass.year ? parseInt(newClass.year) : undefined,
         section: newClass.section || undefined,
+        departmentId: newClass.departmentId || undefined,
       });
       setClasses([created, ...classes]);
       setShowCreateModal(false);
@@ -391,6 +394,19 @@ export default function AdminClassesPage() {
               </button>
             </div>
             <form onSubmit={handleCreateClass} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select
+                  value={newClass.departmentId}
+                  onChange={(e) => setNewClass({ ...newClass, departmentId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">-- Select Department --</option>
+                  {departments.map(dept => (
+                    <option key={dept.id} value={dept.id}>{dept.name} ({dept.code}) - ETB {dept.pricePerCreditHour}/CH</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
                 <input

@@ -12,6 +12,7 @@ export function registerClassRoutes(router: Router) {
       code: z.string().min(2),
       year: z.number().int().optional(),
       section: z.string().optional(),
+      departmentId: z.string().optional(),
     }).parse(req.body);
 
     const newClass = await prisma.class.create({
@@ -20,7 +21,9 @@ export function registerClassRoutes(router: Router) {
         code: body.code,
         year: body.year,
         section: body.section,
+        departmentId: body.departmentId || null,
       },
+      include: { department: true },
     });
 
     res.json(newClass);

@@ -108,6 +108,7 @@ model User {
   materialViews MaterialView[]
   readingProgress MaterialReadingProgress[]
   semesterPayments SemesterPayment[] @relation("StudentPayments")
+  certificates    Certificate[] @relation("StudentCertificates")
 }
 
 model StudentProfile {
@@ -193,15 +194,33 @@ model StudentDocument {
   studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
 }
 
-model Class {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique
-  year        Int?
-  section     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Department {
+  id                    String   @id @default(cuid())
+  name                  String   @unique  // e.g., "Computer Science", "Information Technology"
+  code                  String   @unique  // e.g., "CS", "IT"
+  description           String?
+  pricePerCreditHour    Float              // Fee per credit hour in ETB
+  totalCreditHours      Int                // Total credit hours required for the program
+  minCreditHoursToGraduate Int            // Minimum credit hours needed to graduate
+  durationYears         Int      @default(4) // Duration of the program in years
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
+  classes    Class[]
+  certificates Certificate[]
+}
+
+model Class {
+  id            String   @id @default(cuid())
+  name          String
+  code          String   @unique
+  year          Int?
+  section       String?
+  departmentId  String?             // Reference to Department
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  department    Department? @relation(fields: [departmentId], references: [id])
   students       ClassStudent[]
   teachers       ClassTeacher[]
   courses        CourseClass[]
@@ -823,4 +842,21 @@ model SemesterPayment {
 
   @@index([studentId, semesterId])
   @@index([txRef])
+}
+
+model Certificate {
+  id                String   @id @default(cuid())
+  studentId         String
+  departmentId      String
+  certificateNumber String   @unique  // Auto-generated cert number
+  cgpa              Float              // Cumulative Grade Point Average
+  totalCreditHours  Int                // Total credit hours completed
+  issuedAt          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  student           User         @relation("StudentCertificates", fields: [studentId], references: [id])
+  department        Department   @relation(fields: [departmentId], references: [id])
+
+  @@index([studentId, departmentId])
 }

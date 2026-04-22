@@ -9,6 +9,7 @@ import AdminClassesPage from './pages/AdminClassesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminCoursesPage from './pages/AdminCoursesPage';
 import AdminAcademicPage from './pages/AdminAcademicPage';
+import AdminDepartmentsPage from './pages/AdminDepartmentsPage';
 import MyClassesPage from './pages/MyClassesPage';
 import LiveSessionsPage from './pages/LiveSessionsPage';
 import LiveMeetingPage from './pages/LiveMeetingPage';
@@ -170,6 +171,14 @@ export default function App() {
         element={
           <PrivateRoute>
             <AdminAcademicPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin/departments"
+        element={
+          <PrivateRoute>
+            <AdminDepartmentsPage />
           </PrivateRoute>
         }
       />
