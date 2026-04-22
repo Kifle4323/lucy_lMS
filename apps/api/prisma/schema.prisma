@@ -691,11 +691,12 @@ model StudentEnrollment {
 model StudentGrade {
   id              String     @id @default(cuid())
   enrollmentId    String     @unique
-  quizScore       Int?       // Score out of 100
-  midtermScore    Int?       // Score out of 100
-  finalScore      Int?       // Score out of 100
-  attendanceScore Int?       // Score out of 100
-  totalScore      Int?       // Calculated total score out of 100
+  quizScore       Float?     // Weighted mark out of quiz weight
+  assignmentScore Float?     // Weighted mark out of assignment weight
+  midtermScore    Float?     // Weighted mark out of midterm weight
+  finalScore      Float?     // Weighted mark out of final weight
+  attendanceScore Float?     // Weighted mark out of attendance weight
+  totalScore      Float?     // Calculated total out of 100
   gradeLetter     GradeLetter?
   gradePoint      Float?     // 4.0, 3.75, 3.5, etc.
   isSubmitted     Boolean    @default(false) // Teacher has submitted final grade

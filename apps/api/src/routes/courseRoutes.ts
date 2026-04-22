@@ -243,12 +243,8 @@ export function registerCourseRoutes(router: Router) {
         studentId: user.id,
         assessmentId: { in: assessmentIds },
       },
-      select: {
-        id: true,
-        assessmentId: true,
-        status: true,
-        score: true,
-        submittedAt: true,
+      include: {
+        assessment: { select: { id: true, maxScore: true, title: true } },
       },
     });
 

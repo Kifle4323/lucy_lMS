@@ -45,9 +45,8 @@ export default function GradebookPage() {
           const attMap = {};
           data.gradebook.forEach(g => {
             const attComponent = (data.components || []).find(c => c.name === 'Attendance');
-            const mark = attComponent && g.componentMarks ? g.componentMarks[attComponent.id] || 0 : 0;
-            // Convert mark back to percentage: score = (mark / weight) * 100
-            attMap[g.student.id] = attComponent ? Math.round((mark / attComponent.weight) * 100) : 0;
+            const percent = attComponent && g.componentPercentages ? g.componentPercentages[attComponent.id] || 0 : 0;
+            attMap[g.student.id] = percent;
           });
           setAttendance(attMap);
         }),
@@ -151,7 +150,7 @@ export default function GradebookPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-primary-100 text-sm font-medium">Total Grade</p>
-                <p className="text-5xl font-bold mt-2">{myGrades.totalGrade > 0 ? `${myGrades.totalGrade}%` : 'Not graded'}</p>
+                <p className="text-5xl font-bold mt-2">{myGrades.totalGrade > 0 ? `${myGrades.totalGrade}/100` : 'Not graded'}</p>
               </div>
               <Award className="w-16 h-16 text-primary-200" />
             </div>
@@ -188,7 +187,7 @@ export default function GradebookPage() {
                       {details.map((d, i) => (
                         <div key={i} className="flex justify-between text-sm">
                           <span className="text-gray-600">{d.title}</span>
-                          <span className="font-medium">{d.score}/{d.maxScore} ({d.percent}%)</span>
+                          <span className="font-medium">{d.score}/{d.maxScore}</span>
                         </div>
                       ))}
                     </div>
@@ -496,7 +495,7 @@ export default function GradebookPage() {
                               return (
                                 <td key={comp.id} className="px-4 py-4 text-center">
                                   <span className={`font-medium ${mark > 0 ? (mark / comp.weight * 100 >= 60 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
-                                    {mark > 0 ? mark : '-'}
+                                    {mark > 0 ? `${mark}/${comp.weight}` : '-'}
                                   </span>
                                 </td>
                               );

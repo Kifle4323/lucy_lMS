@@ -229,11 +229,13 @@ export function registerFaceVerificationRoutes(router: Router) {
           });
         }
 
-        // Always mark as GRADED with the auto-score
+        // Always mark as GRADED with the auto-score, clamped to maxScore
         // Teacher can still manually grade SHORT_ANSWER questions to update the score
+        const maxScore = attempt.assessment?.maxScore ?? 0;
+        const clampedScore = maxScore > 0 ? Math.min(totalScore, maxScore) : totalScore;
         await prisma.attempt.update({
           where: { id: verification.attemptId },
-          data: { status: 'GRADED', score: totalScore },
+          data: { status: 'GRADED', score: clampedScore },
         });
       }
     }

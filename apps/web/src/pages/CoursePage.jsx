@@ -1680,7 +1680,7 @@ export default function CoursePage() {
                       )}
                       {user?.role === 'STUDENT' && (
                         (() => {
-                          const existingAttempt = studentAttempts.find(att => att.assessmentId === a.id && att.status === 'SUBMITTED');
+                          const existingAttempt = studentAttempts.find(att => att.assessmentId === a.id && (att.status === 'SUBMITTED' || att.status === 'GRADED'));
                           return existingAttempt ? (
                             <div className="space-y-2">
                               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
@@ -1688,9 +1688,9 @@ export default function CoursePage() {
                                   <CheckCircle className="w-4 h-4" />
                                   <span className="text-sm font-medium">Completed</span>
                                 </div>
-                                {existingAttempt.score !== null && (
+                                {existingAttempt.score !== null && existingAttempt.assessment?.maxScore && (
                                   <span className="text-sm font-bold text-green-700">
-                                    Score: {existingAttempt.score}%
+                                    Score: {existingAttempt.score}/{existingAttempt.assessment.maxScore}
                                   </span>
                                 )}
                               </div>
@@ -2109,7 +2109,7 @@ export default function CoursePage() {
                           <span className={`px-2 py-1 rounded text-sm font-medium ${
                             attempt.score !== null ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                           }`}>
-                            {attempt.score !== null ? `${attempt.score}%` : 'Pending'}
+                            {attempt.score !== null && submissionsAssessment?.maxScore ? `${attempt.score}/${submissionsAssessment.maxScore}` : attempt.score !== null ? `${attempt.score}` : 'Pending'}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">

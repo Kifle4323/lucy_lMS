@@ -785,6 +785,7 @@ export function registerAcademicRoutes(router: Router) {
     const body = z.object({
       enrollmentId: z.string(),
       quizScore: z.number().min(0).optional(),
+      assignmentScore: z.number().min(0).optional(),
       midtermScore: z.number().min(0).optional(),
       finalScore: z.number().min(0).optional(),
       attendanceScore: z.number().min(0).optional(),
@@ -828,8 +829,12 @@ export function registerAcademicRoutes(router: Router) {
     }
 
     // Validate scores don't exceed weights
+    const assignmentWeight = getWeight('Assignment', 0);
     if (body.quizScore !== undefined && body.quizScore > config.quizWeight) {
       return res.status(400).json({ error: `Quiz score cannot exceed ${config.quizWeight}` });
+    }
+    if (body.assignmentScore !== undefined && body.assignmentScore > assignmentWeight) {
+      return res.status(400).json({ error: `Assignment score cannot exceed ${assignmentWeight}` });
     }
     if (body.midtermScore !== undefined && body.midtermScore > config.midtermWeight) {
       return res.status(400).json({ error: `Midterm score cannot exceed ${config.midtermWeight}` });
@@ -841,13 +846,14 @@ export function registerAcademicRoutes(router: Router) {
       return res.status(400).json({ error: `Attendance score cannot exceed ${config.attendanceWeight}` });
     }
 
-    // Calculate total score (sum of raw marks, out of 100)
+    // Calculate total score (sum of weighted marks, out of 100)
     const quiz = body.quizScore ?? 0;
+    const assignment = body.assignmentScore ?? 0;
     const midterm = body.midtermScore ?? 0;
     const final = body.finalScore ?? 0;
     const attendance = body.attendanceScore ?? 0;
 
-    const totalScore = Math.round((quiz + midterm + final + attendance) * 10) / 10;
+    const totalScore = Math.round(Math.min(quiz + assignment + midterm + final + attendance, 100) * 10) / 10;
 
     const { letter, point } = getGradeFromScore(totalScore);
 
@@ -857,6 +863,7 @@ export function registerAcademicRoutes(router: Router) {
       create: {
         enrollmentId: body.enrollmentId,
         quizScore: body.quizScore,
+        assignmentScore: body.assignmentScore,
         midtermScore: body.midtermScore,
         finalScore: body.finalScore,
         attendanceScore: body.attendanceScore,
@@ -867,6 +874,7 @@ export function registerAcademicRoutes(router: Router) {
       },
       update: {
         quizScore: body.quizScore,
+        assignmentScore: body.assignmentScore,
         midtermScore: body.midtermScore,
         finalScore: body.finalScore,
         attendanceScore: body.attendanceScore,
@@ -917,7 +925,7 @@ export function registerAcademicRoutes(router: Router) {
     const section = await prisma.courseSection.findFirst({
       where: { id: params.id, teacherId: user.id },
       include: { 
-        course: { include: { gradeConfig: true, assessments: true } },
+        course: { include: { gradeConfig: true, gradeComponents: { orderBy: { sortOrder: 'asc' } } } },
         enrollments: { 
           where: { status: 'ENROLLED' },
           include: { student: true, grade: true }
@@ -930,18 +938,24 @@ export function registerAcademicRoutes(router: Router) {
     }
 
     const courseId = section.courseId;
-    const config = section.course.gradeConfig || {
-      quizWeight: 25,
-      midtermWeight: 25,
-      finalWeight: 40,
-      attendanceWeight: 10,
-    };
 
-    // Get all assessments for this course
+    // Get dynamic grade components
+    let components = section.course.gradeComponents;
+    if (components.length === 0) {
+      // Seed defaults if none exist
+      const config = section.course.gradeConfig || { quizWeight: 25, midtermWeight: 25, finalWeight: 40, attendanceWeight: 10 };
+      components = [
+        { id: '__quiz__', name: 'Quiz', weight: config.quizWeight },
+        { id: '__midterm__', name: 'Midterm', weight: config.midtermWeight },
+        { id: '__final__', name: 'Final', weight: config.finalWeight },
+        { id: '__attendance__', name: 'Attendance', weight: config.attendanceWeight },
+      ] as any[];
+    }
+
+    // Get all assessments for this course with GRADED attempts
     const assessments = await prisma.assessment.findMany({
       where: { courseId },
       include: {
-        questions: true,
         attempts: {
           where: { status: 'GRADED' },
         },
@@ -958,52 +972,96 @@ export function registerAcademicRoutes(router: Router) {
     for (const enrollment of section.enrollments) {
       const studentId = enrollment.studentId;
 
-      // Calculate quiz/assignment average from QUIZ and ASSIGNMENT assessments
-      const quizzes = assessments.filter(a => a.examType === 'QUIZ' || a.examType === 'ASSIGNMENT');
-      let quizScore = 0;
-      let quizCount = 0;
-      for (const quiz of quizzes) {
-        const attempt = quiz.attempts.find(at => at.studentId === studentId);
-        if (attempt && attempt.score !== null && quiz.maxScore) {
-          quizScore += (attempt.score / quiz.maxScore) * 100;
-          quizCount++;
+      // Calculate per-component scores using same logic as gradebook
+      const componentScores: Record<string, number> = {};
+      let totalGrade = 0;
+
+      for (const component of components) {
+        if (component.name === 'Attendance') {
+          // Attendance is stored as percentage (0-100)
+          const attendance = attendanceRecords.find(a => a.studentId === studentId);
+          const attendancePercent = Math.round((attendance?.score || 0) * 10) / 10;
+          const weightedMark = Math.round(attendancePercent * component.weight / 100 * 10) / 10;
+          componentScores[component.id] = weightedMark;
+          totalGrade += weightedMark;
+        } else {
+          // Get assessments linked to this component
+          const componentAssessments = assessments.filter(a => a.componentId === component.id);
+
+          if (componentAssessments.length > 0) {
+            // Average of all assessments in this component
+            let score = 0;
+            let count = 0;
+            for (const assessment of componentAssessments) {
+              const attempt = assessment.attempts.find(at => at.studentId === studentId);
+              if (attempt && attempt.score !== null && assessment.maxScore) {
+                // attempt.score is raw points, convert to percentage
+                score += (attempt.score / assessment.maxScore) * 100;
+                count++;
+              }
+            }
+            const avg = count > 0 ? score / count : 0;
+            const weightedMark = Math.round(avg * component.weight / 100 * 10) / 10;
+            // Clamp to not exceed weight
+            componentScores[component.id] = Math.min(weightedMark, component.weight);
+            totalGrade += Math.min(weightedMark, component.weight);
+          } else {
+            // Legacy: match by examType to component name
+            // Map component names to examTypes
+            const examTypeMap: Record<string, string[]> = {
+              'Quiz': ['QUIZ'],
+              'Assignment': ['ASSIGNMENT'],
+              'Midterm': ['MIDTERM'],
+              'Final': ['FINAL'],
+              'Class Activity': ['CLASS_ACTIVITY'],
+              'Lab': ['LAB'],
+              'Project': ['PROJECT'],
+              'Presentation': ['PRESENTATION'],
+            };
+            const matchingTypes = examTypeMap[component.name] || [];
+            // Also try matching by component name = examType (case-insensitive)
+            const nameMatch = assessments.filter(a => 
+              a.examType === component.name.toUpperCase().replace(/\s+/g, '_') ||
+              matchingTypes.includes(a.examType)
+            );
+
+            if (nameMatch.length > 0) {
+              let score = 0;
+              let count = 0;
+              for (const assessment of nameMatch) {
+                const attempt = assessment.attempts.find(at => at.studentId === studentId);
+                if (attempt && attempt.score !== null && assessment.maxScore) {
+                  score += (attempt.score / assessment.maxScore) * 100;
+                  count++;
+                }
+              }
+              const avg = count > 0 ? score / count : 0;
+              const weightedMark = Math.round(avg * component.weight / 100 * 10) / 10;
+              componentScores[component.id] = Math.min(weightedMark, component.weight);
+              totalGrade += Math.min(weightedMark, component.weight);
+            } else {
+              // No matching assessments - score is 0
+              componentScores[component.id] = 0;
+            }
+          }
         }
       }
-      const quizAverage = quizCount > 0 ? Math.round((quizScore / quizCount) * 10) / 10 : 0;
 
-      // Calculate midterm score
-      const midterm = assessments.find(a => a.examType === 'MIDTERM');
-      let midtermScore = 0;
-      if (midterm) {
-        const attempt = midterm.attempts.find(at => at.studentId === studentId);
-        if (attempt && attempt.score !== null && midterm.maxScore) {
-          midtermScore = Math.round(((attempt.score / midterm.maxScore) * 100) * 10) / 10;
-        }
-      }
+      totalGrade = Math.round(Math.min(totalGrade, 100) * 10) / 10;
+      const { letter, point } = getGradeFromScore(totalGrade);
 
-      // Calculate final score
-      const final = assessments.find(a => a.examType === 'FINAL');
-      let finalScore = 0;
-      if (final) {
-        const attempt = final.attempts.find(at => at.studentId === studentId);
-        if (attempt && attempt.score !== null && final.maxScore) {
-          finalScore = Math.round(((attempt.score / final.maxScore) * 100) * 10) / 10;
-        }
-      }
+      // Map component scores to legacy grade fields for backward compat
+      const quizComp = components.find(c => c.name === 'Quiz');
+      const assignmentComp = components.find(c => c.name === 'Assignment');
+      const midtermComp = components.find(c => c.name === 'Midterm');
+      const finalComp = components.find(c => c.name === 'Final');
+      const attendanceComp = components.find(c => c.name === 'Attendance');
 
-      // Get attendance score (already stored as weighted mark)
-      const attendance = attendanceRecords.find(a => a.studentId === studentId);
-      const attendanceScore = attendance?.score || 0;
-
-      // Calculate weighted marks (each out of its weight)
-      const quizMark = Math.round(quizAverage * config.quizWeight / 100 * 10) / 10;
-      const midtermMark = Math.round(midtermScore * config.midtermWeight / 100 * 10) / 10;
-      const finalMark = Math.round(finalScore * config.finalWeight / 100 * 10) / 10;
-
-      // Total = sum of weighted marks (out of 100)
-      const totalScore = Math.round((quizMark + midtermMark + finalMark + attendanceScore) * 10) / 10;
-
-      const { letter, point } = getGradeFromScore(totalScore);
+      const quizMark = quizComp ? (componentScores[quizComp.id] || 0) : 0;
+      const assignmentMark = assignmentComp ? (componentScores[assignmentComp.id] || 0) : 0;
+      const midtermMark = midtermComp ? (componentScores[midtermComp.id] || 0) : 0;
+      const finalMark = finalComp ? (componentScores[finalComp.id] || 0) : 0;
+      const attendanceMark = attendanceComp ? (componentScores[attendanceComp.id] || 0) : 0;
 
       // Upsert grade - store weighted marks (out of weight)
       const grade = await prisma.studentGrade.upsert({
@@ -1011,19 +1069,21 @@ export function registerAcademicRoutes(router: Router) {
         create: {
           enrollmentId: enrollment.id,
           quizScore: quizMark,
+          assignmentScore: assignmentMark,
           midtermScore: midtermMark,
           finalScore: finalMark,
-          attendanceScore,
-          totalScore,
+          attendanceScore: attendanceMark,
+          totalScore: totalGrade,
           gradeLetter: letter as any,
           gradePoint: point,
         },
         update: {
           quizScore: quizMark,
+          assignmentScore: assignmentMark,
           midtermScore: midtermMark,
           finalScore: finalMark,
-          attendanceScore,
-          totalScore,
+          attendanceScore: attendanceMark,
+          totalScore: totalGrade,
           gradeLetter: letter as any,
           gradePoint: point,
         },
@@ -1033,10 +1093,11 @@ export function registerAcademicRoutes(router: Router) {
         studentId,
         studentName: enrollment.student.fullName,
         quizScore: quizMark,
+        assignmentScore: assignmentMark,
         midtermScore: midtermMark,
         finalScore: finalMark,
-        attendanceScore,
-        totalScore,
+        attendanceScore: attendanceMark,
+        totalScore: totalGrade,
         gradeLetter: letter,
       });
     }

@@ -362,15 +362,18 @@ export function registerGradebookRoutes(router: Router) {
     const gradebook = uniqueStudents.map(student => {
       // Calculate per-component scores
       const componentMarks: Record<string, number> = {};
+      const componentPercentages: Record<string, number> = {};
       let totalGrade = 0;
 
       for (const component of components) {
         if (component.name === 'Attendance') {
-          // Attendance is stored as weighted mark (out of component.weight), use directly
+          // Attendance is stored as percentage (0-100)
           const studentAttendance = typedAttendance.find(a => a.studentId === student.id);
-          const attendanceMark = Math.round((studentAttendance?.score || 0) * 10) / 10;
-          componentMarks[component.id] = attendanceMark;
-          totalGrade += attendanceMark;
+          const attendancePercent = Math.round((studentAttendance?.score || 0) * 10) / 10;
+          const weightedMark = Math.round(attendancePercent * component.weight / 100 * 10) / 10;
+          componentMarks[component.id] = weightedMark;
+          componentPercentages[component.id] = attendancePercent;
+          totalGrade += weightedMark;
         } else {
           // Get assessments linked to this component
           const componentAssessments = typedAssessments.filter(a =>
@@ -389,42 +392,45 @@ export function registerGradebookRoutes(router: Router) {
               }
             }
             const avg = count > 0 ? score / count : 0;
+            const percent = Math.round(avg * 10) / 10;
             const mark = Math.round(avg * component.weight / 100 * 10) / 10;
             componentMarks[component.id] = mark;
+            componentPercentages[component.id] = percent;
             totalGrade += mark;
           } else {
-            // No assessments linked yet - check legacy examType matching
+            // No assessments linked yet - match by examType to component name
+            const examTypeMap: Record<string, string[]> = {
+              'Quiz': ['QUIZ'],
+              'Assignment': ['ASSIGNMENT'],
+              'Midterm': ['MIDTERM'],
+              'Final': ['FINAL'],
+              'Class Activity': ['CLASS_ACTIVITY'],
+              'Lab': ['LAB'],
+              'Project': ['PROJECT'],
+              'Presentation': ['PRESENTATION'],
+            };
+            const matchingTypes = examTypeMap[component.name] || [];
+            const nameMatch = typedAssessments.filter(a => 
+              a.examType === component.name.toUpperCase().replace(/\s+/g, '_') ||
+              matchingTypes.includes(a.examType)
+            );
+
             let legacyScore = 0;
-            if (component.name === 'Quiz') {
-              const quizzes = typedAssessments.filter(a => a.examType === 'QUIZ' || a.examType === 'ASSIGNMENT');
-              let qs = 0, qc = 0;
-              for (const q of quizzes) {
-                const attempt = q.attempts.find(at => at.studentId === student.id && at.status === 'GRADED');
-                if (attempt && attempt.score !== null && q.maxScore) {
-                  qs += (attempt.score / q.maxScore) * 100;
-                  qc++;
+            if (nameMatch.length > 0) {
+              let score = 0, count = 0;
+              for (const assessment of nameMatch) {
+                const attempt = assessment.attempts.find(at => at.studentId === student.id && at.status === 'GRADED');
+                if (attempt && attempt.score !== null && assessment.maxScore) {
+                  score += (attempt.score / assessment.maxScore) * 100;
+                  count++;
                 }
               }
-              legacyScore = qc > 0 ? qs / qc : 0;
-            } else if (component.name === 'Midterm') {
-              const midterm = typedAssessments.find(a => a.examType === 'MIDTERM');
-              if (midterm) {
-                const attempt = midterm.attempts.find(at => at.studentId === student.id && at.status === 'GRADED');
-                if (attempt && attempt.score !== null && midterm.maxScore) {
-                  legacyScore = (attempt.score / midterm.maxScore) * 100;
-                }
-              }
-            } else if (component.name === 'Final') {
-              const final = typedAssessments.find(a => a.examType === 'FINAL');
-              if (final) {
-                const attempt = final.attempts.find(at => at.studentId === student.id && at.status === 'GRADED');
-                if (attempt && attempt.score !== null && final.maxScore) {
-                  legacyScore = (attempt.score / final.maxScore) * 100;
-                }
-              }
+              legacyScore = count > 0 ? score / count : 0;
             }
+            const percent = Math.round(legacyScore * 10) / 10;
             const mark = Math.round(legacyScore * component.weight / 100 * 10) / 10;
             componentMarks[component.id] = mark;
+            componentPercentages[component.id] = percent;
             totalGrade += mark;
           }
         }
@@ -433,6 +439,7 @@ export function registerGradebookRoutes(router: Router) {
       return {
         student,
         componentMarks,
+        componentPercentages,
         totalGrade: Math.round(totalGrade * 10) / 10,
       };
     });
@@ -502,7 +509,9 @@ export function registerGradebookRoutes(router: Router) {
 
     for (const component of components) {
       if (component.name === 'Attendance') {
-        const mark = Math.round(((attendance?.score || 0) / 100) * component.weight * 10) / 10;
+        // Attendance score is stored as percentage (0-100)
+        const attendancePercent = Math.round((attendance?.score || 0) * 10) / 10;
+        const mark = Math.round(attendancePercent * component.weight / 100 * 10) / 10;
         componentMarks[component.id] = mark;
         totalGrade += mark;
       } else {
@@ -727,10 +736,8 @@ export function registerGradebookRoutes(router: Router) {
 
         const totalPoints = livePoints + manualPoints;
         const percentage = Math.round(totalPoints / totalSessions);
-        // Convert percentage to weighted mark (out of attendance component weight)
-        const attendanceComponent = section.course.gradeComponents?.find((c: any) => c.name === 'Attendance');
-        const attendanceWeight = attendanceComponent?.weight || section.course.gradeConfig?.attendanceWeight || 10;
-        const score = Math.round(Math.min(100, Math.max(0, percentage)) * attendanceWeight / 100 * 10) / 10;
+        // Store attendance as percentage (0-100) - gradebook will apply weight
+        const score = Math.round(Math.min(100, Math.max(0, percentage)) * 10) / 10;
 
         const record = await prisma.attendance.upsert({
           where: {

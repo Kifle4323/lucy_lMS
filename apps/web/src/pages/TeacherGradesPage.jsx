@@ -133,6 +133,7 @@ export default function TeacherGradesPage() {
       const gradeData = {
         enrollmentId: student.id,
         quizScore: student.grade?.quizScore,
+        assignmentScore: student.grade?.assignmentScore,
         midtermScore: student.grade?.midtermScore,
         finalScore: student.grade?.finalScore,
         attendanceScore: student.grade?.attendanceScore,
@@ -574,6 +575,7 @@ export default function TeacherGradesPage() {
                           const comps = Array.isArray(gradeConfig) ? gradeConfig : [];
                           const getCompField = (name) => {
                             if (name === 'Quiz') return 'quizScore';
+                            if (name === 'Assignment') return 'assignmentScore';
                             if (name === 'Midterm') return 'midtermScore';
                             if (name === 'Final') return 'finalScore';
                             if (name === 'Attendance') return 'attendanceScore';

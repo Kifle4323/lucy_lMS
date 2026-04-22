@@ -4,6 +4,38 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
+// Simple text similarity helpers (Levenshtein distance based)
+function normalizeText(s: string | null | undefined) {
+  if (!s) return '';
+  return s.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function levenshtein(a: string, b: string) {
+  const na = a.length, nb = b.length;
+  if (na === 0) return nb;
+  if (nb === 0) return na;
+  const v0 = new Array(nb + 1).fill(0);
+  const v1 = new Array(nb + 1).fill(0);
+  for (let j = 0; j <= nb; j++) v0[j] = j;
+  for (let i = 0; i < na; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < nb; j++) {
+      const cost = a[i] === b[j] ? 0 : 1;
+      v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+    }
+    for (let j = 0; j <= nb; j++) v0[j] = v1[j];
+  }
+  return v1[nb];
+}
+
+function similarityScore(a: string | null | undefined, b: string | null | undefined) {
+  const na = normalizeText(a);
+  const nb = normalizeText(b);
+  if (!na && !nb) return 1;
+  if (!na || !nb) return 0;
+  const dist = levenshtein(na, nb);
+  return Math.max(0, 1 - dist / Math.max(na.length, nb.length));
+}
 export function registerAssessmentRoutes(router: Router) {
   router.post(
     '/courses/:courseId/assessments',
@@ -845,12 +877,23 @@ export function registerAssessmentRoutes(router: Router) {
         score = isCorrect ? q.points : 0;
         autoScore += score;
       } else if (q.type === 'FITB') {
-        // Auto-grade FITB (case-insensitive, trimmed)
+        // Auto-grade FITB using fuzzy similarity to allow minor typos and alternatives
         if (ans.textAnswer && q.correctAnswer) {
-          const studentAns = ans.textAnswer.trim().toLowerCase();
-          const correctAns = q.correctAnswer.trim().toLowerCase();
-          isCorrect = studentAns === correctAns;
-          score = isCorrect ? q.points : 0;
+          const studentAns = ans.textAnswer;
+          // support multiple acceptable answers separated by '||'
+          const alternatives = String(q.correctAnswer).split('||').map(s => s.trim()).filter(Boolean);
+          const bestSim = alternatives.length > 0
+            ? Math.max(...alternatives.map(a => similarityScore(studentAns, a)))
+            : similarityScore(studentAns, q.correctAnswer as string);
+          // full credit threshold; below that award proportional score
+          const fullThreshold = 0.9;
+          if (bestSim >= fullThreshold) {
+            isCorrect = true;
+            score = q.points;
+          } else {
+            isCorrect = false;
+            score = Math.round(bestSim * q.points);
+          }
           autoScore += score;
         }
       } else if (q.type === 'TRUE_FALSE') {
@@ -859,11 +902,26 @@ export function registerAssessmentRoutes(router: Router) {
         score = isCorrect ? q.points : 0;
         autoScore += score;
       } else if (q.type === 'SHORT_ANSWER') {
-        // Auto-grade SHORT_ANSWER: give full points if student provided an answer
-        // Simple approach: if student wrote something, give them points
+        // Auto-grade SHORT_ANSWER using similarity to the modelAnswer when available
         if (ans.textAnswer && ans.textAnswer.trim().length > 0) {
-          isCorrect = true;
-          score = q.points;
+          if (q.modelAnswer) {
+            const sim = similarityScore(ans.textAnswer, q.modelAnswer);
+            const fullThreshold = 0.85;
+            if (sim >= fullThreshold) {
+              isCorrect = true;
+              score = q.points;
+            } else if (sim >= 0.25) {
+              isCorrect = false;
+              score = Math.round(sim * q.points);
+            } else {
+              isCorrect = false;
+              score = 0;
+            }
+          } else {
+            // no model answer provided - award full points for any substantive response
+            isCorrect = true;
+            score = q.points;
+          }
           autoScore += score;
         } else {
           isCorrect = false;
@@ -879,10 +937,12 @@ export function registerAssessmentRoutes(router: Router) {
     }
 
     // Always mark as GRADED so it appears in gradebook immediately
-    // Teacher can still manually grade SHORT_ANSWER questions to update the score
+    // Store score as raw points out of maxScore, clamp to not exceed maxScore
+    const maxScore = attempt.assessment?.maxScore ?? Array.from(questionMap.values()).reduce((s, q) => s + q.points, 0);
+    const clampedScore = Math.min(autoScore, maxScore);
     const updated = await prisma.attempt.update({
       where: { id: params.attemptId },
-      data: { status: 'GRADED', submittedAt: new Date(), score: autoScore },
+      data: { status: 'GRADED', submittedAt: new Date(), score: clampedScore },
     });
 
     res.json({ ...updated, hasManualGrading, autoScore });
@@ -945,21 +1005,29 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Update each answer's score and feedback
+    // Update each answer's score and feedback, clamp to question points
     for (const a of body.answers) {
+      const answer = await prisma.answer.findUnique({
+        where: { id: a.answerId },
+        include: { question: { select: { points: true } } },
+      });
+      const maxPoints = answer?.question?.points ?? 0;
+      const clampedAnswerScore = Math.min(Math.max(0, a.score), maxPoints);
       await prisma.answer.update({
         where: { id: a.answerId },
-        data: { score: a.score, feedback: a.feedback },
+        data: { score: clampedAnswerScore, feedback: a.feedback },
       });
     }
 
-    // Recalculate total score
+    // Recalculate total score, clamp to maxScore
     const answers = await prisma.answer.findMany({ where: { attemptId: params.attemptId } });
     const totalScore = answers.reduce((sum: number, a: { score: number | null }) => sum + (a.score ?? 0), 0);
+    const maxScore = attempt.assessment?.maxScore ?? 0;
+    const clampedScore = maxScore > 0 ? Math.min(totalScore, maxScore) : totalScore;
 
     const updated = await prisma.attempt.update({
       where: { id: params.attemptId },
-      data: { status: 'GRADED', score: totalScore },
+      data: { status: 'GRADED', score: clampedScore },
     });
 
     res.json(updated);
