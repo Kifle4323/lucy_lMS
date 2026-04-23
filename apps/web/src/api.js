@@ -845,6 +845,10 @@ export async function getAdminCertificates() {
   return apiFetch('/admin/certificates');
 }
 
+export async function getCertificateById(id) {
+  return apiFetch(`/certificates/${id}`);
+}
+
 export async function getStudentRegistrationFee() {
   return apiFetch('/student/registration-fee');
 }

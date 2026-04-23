@@ -248,6 +248,21 @@ export function registerDepartmentRoutes(router: Router) {
 
       const eligible = totalCreditHours >= dept.minCreditHoursToGraduate && cgpa >= dept.minGradeToGraduate;
 
+      // Auto-generate certificate if eligible and doesn't already exist
+      let certificate = existingCert;
+      if (eligible && !existingCert) {
+        const certNumber = `LUCY-${dept.code}-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        certificate = await prisma.certificate.create({
+          data: {
+            studentId: user.id,
+            departmentId: dept.id,
+            certificateNumber: certNumber,
+            cgpa: Math.round(cgpa * 100) / 100,
+            totalCreditHours,
+          },
+        });
+      }
+
       res.json({
         eligible,
         department: dept,
@@ -257,7 +272,7 @@ export function registerDepartmentRoutes(router: Router) {
         minGradeRequired: dept.minGradeToGraduate,
         gradeMet: cgpa >= dept.minGradeToGraduate,
         creditHoursMet: totalCreditHours >= dept.minCreditHoursToGraduate,
-        certificate: existingCert,
+        certificate,
         enrollments: enrollments.length,
       });
     } catch (err) {
@@ -371,6 +386,31 @@ export function registerDepartmentRoutes(router: Router) {
     });
 
     res.json(certificates);
+  });
+
+  // Get certificate by ID (for viewing/printing)
+  router.get('/certificates/:id', authRequired, async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ id: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    const certificate = await prisma.certificate.findUnique({
+      where: { id: params.id },
+      include: {
+        student: { select: { id: true, fullName: true, email: true } },
+        department: true,
+      },
+    });
+
+    if (!certificate) {
+      return res.status(404).json({ error: 'Certificate not found' });
+    }
+
+    // Only allow the student themselves, or admin, to view
+    if (certificate.studentId !== user.id && user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+
+    res.json(certificate);
   });
 
   // Admin: Get all certificates

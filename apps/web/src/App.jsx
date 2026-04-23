@@ -27,6 +27,7 @@ import AddDropPage from './pages/AddDropPage';
 import AdminAddDropRequestsPage from './pages/AdminAddDropRequestsPage';
 import TeacherQuestionReportsPage from './pages/TeacherQuestionReportsPage';
 import StudentMyReportsPage from './pages/StudentMyReportsPage';
+import CertificatePage from './pages/CertificatePage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -251,6 +252,14 @@ export default function App() {
         element={
           <PrivateRoute>
             <StudentMyReportsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/certificates/:id"
+        element={
+          <PrivateRoute>
+            <CertificatePage />
           </PrivateRoute>
         }
       />

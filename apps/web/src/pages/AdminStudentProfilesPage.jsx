@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
-import { getAllStudentProfiles, approveStudentProfile, rejectStudentProfile } from '../api';
+import { getAllStudentProfiles, approveStudentProfile, rejectStudentProfile, generateCertificate, getStudentGraduationStatus } from '../api';
 import Layout from '../components/Layout';
 import { 
   User, Clock, CheckCircle, XCircle, Search, Eye, X, 
@@ -48,6 +48,20 @@ export default function AdminStudentProfilesPage() {
       }
     } catch (err) {
       toast.error('Failed to approve profile');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleGenerateCertificate = async (studentId) => {
+    setProcessing(true);
+    try {
+      const cert = await generateCertificate(studentId);
+      toast.success(`Certificate generated! #: ${cert.certificateNumber}`);
+      setSelectedProfile(null);
+      loadProfiles();
+    } catch (err) {
+      toast.error(err.message || 'Failed to generate certificate');
     } finally {
       setProcessing(false);
     }
@@ -350,6 +364,20 @@ export default function AdminStudentProfilesPage() {
                     >
                       <XCircle className="w-5 h-5" />
                       Reject
+                    </button>
+                  </div>
+                )}
+
+                {/* Generate Certificate */}
+                {selectedProfile.status === 'APPROVED' && (
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={() => handleGenerateCertificate(selectedProfile.userId)}
+                      disabled={processing}
+                      className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <GraduationCap className="w-5 h-5" />
+                      Generate Certificate
                     </button>
                   </div>
                 )}
