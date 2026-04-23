@@ -122,7 +122,8 @@ export default function FaceTracker({ active, attemptId, profileImage, onMismatc
     
     try {
       // Create face verification record for every capture
-      await createFaceVerification(attemptId, capturedImage, isMismatch);
+      // matchResult = true means face matched, false means mismatch
+      await createFaceVerification(attemptId, capturedImage, !isMismatch);
       setVerificationCreated(true);
       
       if (isMismatch && onMismatch) {

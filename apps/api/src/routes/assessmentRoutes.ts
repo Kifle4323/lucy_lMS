@@ -827,27 +827,11 @@ export function registerAssessmentRoutes(router: Router) {
       return;
     }
 
-    // Check if there's an unreviewed face mismatch - if so, submit without auto-grading
+    // Check if there's an unreviewed face mismatch or rejected face
     const hasPendingFaceMismatch = attempt.faceVerification && !attempt.faceVerification.matchResult && !attempt.faceVerification.adminReviewed;
     const hasRejectedFace = attempt.faceVerification && !attempt.faceVerification.matchResult && attempt.faceVerification.adminReviewed && !attempt.faceVerification.adminApproved;
 
-    if (hasPendingFaceMismatch) {
-      // Submit without grading - will be auto-graded when admin approves
-      await prisma.attempt.update({
-        where: { id: params.attemptId },
-        data: { status: 'SUBMITTED', submittedAt: new Date() },
-      });
-      return res.json({ message: 'Submitted pending face verification review', status: 'SUBMITTED', hasPendingFaceMismatch: true });
-    }
-
-    if (hasRejectedFace) {
-      // Face was rejected - submit but mark as rejected
-      await prisma.attempt.update({
-        where: { id: params.attemptId },
-        data: { status: 'REJECTED', submittedAt: new Date() },
-      });
-      return res.json({ message: 'Submitted but face verification was rejected', status: 'REJECTED', hasRejectedFace: true });
-    }
+    // Always auto-grade regardless of face verification status
 
     // Build question map with all needed fields
     const questionMap = new Map<string, { id: string; type: string; correct: string | null; correctAnswer: string | null; points: number }>(
@@ -936,16 +920,17 @@ export function registerAssessmentRoutes(router: Router) {
       });
     }
 
-    // Always mark as GRADED so it appears in gradebook immediately
+    // Mark as GRADED so score appears immediately, unless face verification issue
     // Store score as raw points out of maxScore, clamp to not exceed maxScore
     const maxScore = attempt.assessment?.maxScore ?? Array.from(questionMap.values()).reduce((s, q) => s + q.points, 0);
     const clampedScore = Math.min(autoScore, maxScore);
+    const status = hasRejectedFace ? 'REJECTED' : hasPendingFaceMismatch ? 'SUBMITTED' : 'GRADED';
     const updated = await prisma.attempt.update({
       where: { id: params.attemptId },
-      data: { status: 'GRADED', submittedAt: new Date(), score: clampedScore },
+      data: { status, submittedAt: new Date(), score: clampedScore },
     });
 
-    res.json({ ...updated, hasManualGrading, autoScore });
+    res.json({ ...updated, hasManualGrading, autoScore, hasPendingFaceMismatch, hasRejectedFace });
   });
 
   // Teacher grades short answer questions

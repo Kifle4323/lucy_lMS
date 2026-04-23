@@ -112,6 +112,7 @@ export default function CoursePage() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [skippedQuestions, setSkippedQuestions] = useState(new Set());
   const [timeRemaining, setTimeRemaining] = useState(null); // in seconds
+  const [examSubmitted, setExamSubmitted] = useState(false); // prevent double submit
 
   // Report question state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -170,14 +171,14 @@ export default function CoursePage() {
 
   // Timer countdown effect
   useEffect(() => {
-    if (timeRemaining === null || timeRemaining <= 0) return;
+    if (timeRemaining === null || timeRemaining <= 0 || examSubmitted) return;
     
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
           // Auto-submit when time runs out
-          if (activeAttempt) {
+          if (activeAttempt && !examSubmitted) {
             handleSubmitAttempt(true);
           }
           return 0;
@@ -187,7 +188,7 @@ export default function CoursePage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining]);
+  }, [timeRemaining, examSubmitted]);
 
   // Format time for display
   const formatTime = (seconds) => {
@@ -641,6 +642,7 @@ export default function CoursePage() {
     setCurrentQuestionIdx(0);
     setSkippedQuestions(new Set());
     setTimeRemaining(null);
+    setExamSubmitted(false);
   };
 
   const handleSelectAnswer = async (questionId, selected) => {
@@ -654,6 +656,7 @@ export default function CoursePage() {
   };
 
   const handleSubmitAttempt = async (autoSubmit = false) => {
+    if (examSubmitted) return; // prevent double submit
     if (!autoSubmit) {
       const confirmed = await confirm({
         title: 'Submit Exam',
@@ -664,6 +667,7 @@ export default function CoursePage() {
       });
       if (!confirmed) return;
     }
+    setExamSubmitted(true); // mark as submitted immediately
     try {
       const result = await submitAttempt(activeAttempt.id);
       handleEndExam();
@@ -678,6 +682,7 @@ export default function CoursePage() {
       }
     } catch (err) {
       toast.error('Failed to submit: ' + err.message);
+      setExamSubmitted(false); // allow retry on error
     }
   };
 
@@ -1688,9 +1693,9 @@ export default function CoursePage() {
                                   <CheckCircle className="w-4 h-4" />
                                   <span className="text-sm font-medium">Completed</span>
                                 </div>
-                                {existingAttempt.score !== null && existingAttempt.assessment?.maxScore && (
+                                {existingAttempt.score !== null && (
                                   <span className="text-sm font-bold text-green-700">
-                                    Score: {existingAttempt.score}/{existingAttempt.assessment.maxScore}
+                                    Score: {existingAttempt.score}{existingAttempt.assessment?.maxScore ? `/${existingAttempt.assessment.maxScore}` : ' pts'}
                                   </span>
                                 )}
                               </div>
