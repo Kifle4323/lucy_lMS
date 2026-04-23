@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
@@ -113,6 +113,8 @@ export default function CoursePage() {
   const [skippedQuestions, setSkippedQuestions] = useState(new Set());
   const [timeRemaining, setTimeRemaining] = useState(null); // in seconds
   const [examSubmitted, setExamSubmitted] = useState(false); // prevent double submit
+  const examSubmittedRef = useRef(false); // ref to avoid stale closure in timer
+  const confirmingSubmitRef = useRef(false); // true while user is confirming manual submit
 
   // Report question state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -171,14 +173,14 @@ export default function CoursePage() {
 
   // Timer countdown effect
   useEffect(() => {
-    if (timeRemaining === null || timeRemaining <= 0 || examSubmitted) return;
-    
+    if (timeRemaining === null || timeRemaining <= 0 || examSubmittedRef.current || confirmingSubmitRef.current) return;
+
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Auto-submit when time runs out
-          if (activeAttempt && !examSubmitted) {
+          // Auto-submit when time runs out (only if not already submitted and not in manual-confirm flow)
+          if (activeAttempt && !examSubmittedRef.current && !confirmingSubmitRef.current) {
             handleSubmitAttempt(true);
           }
           return 0;
@@ -188,7 +190,7 @@ export default function CoursePage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining, examSubmitted]);
+  }, [timeRemaining]);
 
   // Format time for display
   const formatTime = (seconds) => {
@@ -643,6 +645,7 @@ export default function CoursePage() {
     setSkippedQuestions(new Set());
     setTimeRemaining(null);
     setExamSubmitted(false);
+    examSubmittedRef.current = false;
   };
 
   const handleSelectAnswer = async (questionId, selected) => {
@@ -656,8 +659,10 @@ export default function CoursePage() {
   };
 
   const handleSubmitAttempt = async (autoSubmit = false) => {
-    if (examSubmitted) return; // prevent double submit
+    if (examSubmittedRef.current) return; // prevent double submit
     if (!autoSubmit) {
+      // mark that user is in the manual confirmation flow to avoid race with auto-submit
+      confirmingSubmitRef.current = true;
       const confirmed = await confirm({
         title: 'Submit Exam',
         message: 'Are you sure you want to submit this attempt? You cannot change your answers after submission.',
@@ -665,25 +670,28 @@ export default function CoursePage() {
         cancelText: 'Cancel',
         type: 'info',
       });
+      // leave confirmation flow
+      confirmingSubmitRef.current = false;
       if (!confirmed) return;
     }
-    setExamSubmitted(true); // mark as submitted immediately
+    setExamSubmitted(true);
+    examSubmittedRef.current = true; // set ref immediately to block timer
+    setTimeRemaining(null); // stop timer immediately
     try {
       const result = await submitAttempt(activeAttempt.id);
-      handleEndExam();
       // Refresh attempts list
       getStudentAttempts(courseId).then(setStudentAttempts);
       if (autoSubmit) {
         toast.success('Time is up! Your answers have been submitted automatically.');
-      } else if (result.hasManualGrading) {
-        toast.success('Exam submitted! Some questions require manual grading.');
       } else {
         toast.success('Exam submitted successfully!');
       }
     } catch (err) {
       toast.error('Failed to submit: ' + err.message);
-      setExamSubmitted(false); // allow retry on error
+      setExamSubmitted(false);
+      examSubmittedRef.current = false; // allow retry on error
     }
+    handleEndExam();
   };
 
   const handleOpenGrading = async (attempt) => {
@@ -1052,7 +1060,7 @@ export default function CoursePage() {
                         </button>
                       ) : (
                         <button
-                          onClick={handleSubmitAttempt}
+                          onClick={() => handleSubmitAttempt(false)}
                           className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
                         >
                           <Flag className="w-4 h-4" />

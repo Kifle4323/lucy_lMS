@@ -817,6 +817,7 @@ export function registerAssessmentRoutes(router: Router) {
   router.post('/attempts/:attemptId/submit', authRequired, requireRole(['STUDENT']), async (req: AuthedRequest, res: Response) => {
     const params = z.object({ attemptId: z.string() }).parse(req.params);
 
+    try {
     const attempt = await prisma.attempt.findUnique({
       where: { id: params.attemptId },
       include: { answers: true, assessment: { include: { questions: true } }, faceVerification: true },
@@ -834,12 +835,13 @@ export function registerAssessmentRoutes(router: Router) {
     // Always auto-grade regardless of face verification status
 
     // Build question map with all needed fields
-    const questionMap = new Map<string, { id: string; type: string; correct: string | null; correctAnswer: string | null; points: number }>(
-      attempt.assessment.questions.map((q: { id: string; type: string; correct: string | null; correctAnswer: string | null; points: number }) => [q.id, {
+    const questionMap = new Map<string, { id: string; type: string; correct: string | null; correctAnswer: string | null; modelAnswer: string | null; points: number }>(
+      attempt.assessment.questions.map((q: { id: string; type: string; correct: string | null; correctAnswer: string | null; modelAnswer: string | null; points: number }) => [q.id, {
         id: q.id,
         type: q.type,
         correct: q.correct,
         correctAnswer: q.correctAnswer,
+        modelAnswer: q.modelAnswer,
         points: q.points,
       }]),
     );
@@ -931,6 +933,10 @@ export function registerAssessmentRoutes(router: Router) {
     });
 
     res.json({ ...updated, hasManualGrading, autoScore, hasPendingFaceMismatch, hasRejectedFace });
+    } catch (err) {
+      console.error('Submit attempt error:', err);
+      res.status(500).json({ error: 'internal_error', message: err instanceof Error ? err.message : 'Unknown error' });
+    }
   });
 
   // Teacher grades short answer questions

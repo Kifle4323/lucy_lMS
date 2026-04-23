@@ -539,11 +539,12 @@ model Answer {
   id         String   @id @default(cuid())
   attemptId  String
   questionId String
-  selected   String?  // For MCQ: A, B, C, or D
-  textAnswer String?  // For FITB and SHORT_ANSWER
-  score      Int?     // For teacher-graded questions
-  feedback   String?  // Teacher feedback
-  createdAt  DateTime @default(now())
+  selected   String?   // For MCQ: A, B, C, or D
+  textAnswer String?   // For FITB and SHORT_ANSWER
+  isCorrect  Boolean?  // Auto-grading result
+  score      Int?      // For teacher-graded questions
+  feedback   String?   // Teacher feedback
+  createdAt  DateTime  @default(now())
 
   attempt  Attempt  @relation(fields: [attemptId], references: [id])
   question Question @relation(fields: [questionId], references: [id])

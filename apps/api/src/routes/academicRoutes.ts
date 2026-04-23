@@ -1003,9 +1003,68 @@ export function registerAcademicRoutes(router: Router) {
     });
 
     // Get attendance for this course
-    const attendanceRecords = await prisma.attendance.findMany({
+    let attendanceRecords = await prisma.attendance.findMany({
       where: { courseId },
     });
+
+    // If no attendance records exist, calculate from sessions
+    if (attendanceRecords.length === 0) {
+      // Get live session attendance
+      const liveSessions = await prisma.liveSession.findMany({
+        where: { courseSectionId: params.id, status: 'ENDED' },
+        include: { attendance: true },
+      });
+
+      // Get manual attendance sessions
+      const manualSessions = await prisma.manualAttendanceSession.findMany({
+        where: { courseId, classId: section.classId },
+        include: { records: true },
+      });
+
+      const totalSessions = liveSessions.length + manualSessions.length;
+
+      if (totalSessions > 0) {
+        for (const enrollment of section.enrollments) {
+          const studentId = enrollment.studentId;
+
+          // Live session points
+          let livePoints = 0;
+          for (const ls of liveSessions) {
+            const att = ls.attendance.find(a => a.studentId === studentId);
+            if (att) {
+              if (att.status === 'ATTENDED') livePoints += 100;
+              else if (att.status === 'PARTIAL') livePoints += 50;
+            }
+          }
+
+          // Manual session points
+          let manualPoints = 0;
+          for (const ms of manualSessions) {
+            const record = ms.records.find(r => r.studentId === studentId);
+            if (record) {
+              if (record.status === 'PRESENT') manualPoints += 100;
+              else if (record.status === 'LATE') manualPoints += 75;
+              else if (record.status === 'EXCUSED') manualPoints += 50;
+            }
+          }
+
+          const totalPoints = livePoints + manualPoints;
+          const percentage = Math.round(totalPoints / totalSessions);
+          const score = Math.round(Math.min(100, Math.max(0, percentage)) * 10) / 10;
+
+          await prisma.attendance.upsert({
+            where: { courseId_studentId: { courseId, studentId } },
+            update: { score },
+            create: { courseId, studentId, score },
+          });
+        }
+
+        // Re-fetch attendance records after calculation
+        attendanceRecords = await prisma.attendance.findMany({
+          where: { courseId },
+        });
+      }
+    }
 
     // Process each enrolled student
     const results = [];
