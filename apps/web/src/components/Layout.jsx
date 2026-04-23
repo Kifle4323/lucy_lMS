@@ -25,8 +25,10 @@ import {
   Building2
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import lucyLogo from '../assets/lucy_logobg.png';
 import { getAdminNotifications, getNotifications, markAllNotificationsRead, getTeacherQuestionReportsCount } from '../api';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -35,6 +37,7 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState({
     faceVerifications: 0,
     studentProfiles: 0,
@@ -122,34 +125,34 @@ export default function Layout({ children }) {
   };
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: Home },
+    { path: '/', label: t('nav.dashboard'), icon: Home },
     ...(user?.role === 'ADMIN' ? [
-      { path: '/admin/classes', label: 'Classes', icon: Users },
-      { path: '/admin/users', label: 'Users', icon: UserCircle },
-      { path: '/admin/courses', label: 'Courses', icon: BookOpen },
-      { path: '/admin/academic', label: 'Academic', icon: Calendar },
-      { path: '/admin/departments', label: 'Departments', icon: Building2 },
+      { path: '/admin/classes', label: t('nav.courses'), icon: Users },
+      { path: '/admin/users', label: t('nav.students'), icon: UserCircle },
+      { path: '/admin/courses', label: t('nav.courses'), icon: BookOpen },
+      { path: '/admin/academic', label: t('nav.assessments'), icon: Calendar },
+      { path: '/admin/departments', label: t('nav.departments'), icon: Building2 },
       { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
-      { path: '/admin/student-profiles', label: 'Student Profiles', icon: FileText },
+      { path: '/admin/student-profiles', label: t('nav.students'), icon: FileText },
       { path: '/admin/add-drop-requests', label: 'Add/Drop Requests', icon: ClipboardList },
     ] : []),
     ...(user?.role === 'TEACHER' ? [
-      { path: '/my-classes', label: 'My Classes', icon: Users },
-      { path: '/teacher/grades', label: 'Grade Management', icon: ClipboardList },
+      { path: '/my-classes', label: t('nav.myCourses'), icon: Users },
+      { path: '/teacher/grades', label: t('nav.gradebook'), icon: ClipboardList },
       { path: '/teacher/question-reports', label: 'Question Reports', icon: FileText },
-      { path: '/live-sessions', label: 'Live Classes', icon: Video },
+      { path: '/live-sessions', label: t('nav.liveSessions'), icon: Video },
     ] : []),
     ...(user?.role === 'STUDENT' ? [
-      { path: '/my-classes', label: 'My Classes', icon: GraduationCap },
-      { path: '/student/registration', label: 'Semester Registration', icon: ClipboardList },
-      { path: '/student/add-drop', label: 'Add/Drop Courses', icon: ClipboardList },
+      { path: '/my-classes', label: t('nav.myCourses'), icon: GraduationCap },
+      { path: '/student/registration', label: 'Registration', icon: ClipboardList },
+      { path: '/student/add-drop', label: 'Add/Drop', icon: ClipboardList },
       { path: '/student/exams', label: 'Exam Schedule', icon: CalendarClock },
-      { path: '/student/results', label: 'My Results', icon: Award },
-      { path: '/student/my-reports', label: 'My Reports', icon: FileText },
-      { path: '/live-sessions', label: 'Live Classes', icon: Video },
-      { path: '/student-profile', label: 'My Profile', icon: User },
+      { path: '/student/results', label: t('nav.results'), icon: Award },
+      { path: '/student/my-reports', label: 'Reports', icon: FileText },
+      { path: '/live-sessions', label: t('nav.liveSessions'), icon: Video },
+      { path: '/student-profile', label: t('nav.profile'), icon: User },
     ] : []),
-    { path: '/settings', label: 'Settings', icon: Settings },
+    { path: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
   return (
@@ -394,6 +397,9 @@ export default function Layout({ children }) {
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
+
+            {/* Language switcher */}
+            <LanguageSwitcher />
 
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.fullName}</p>

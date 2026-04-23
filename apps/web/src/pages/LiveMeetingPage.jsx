@@ -42,9 +42,13 @@ export default function LiveMeetingPage() {
     getLiveSession(sessionId)
       .then(s => {
         setSession(s);
-        // Auto-start if teacher
+        // Auto-start if teacher and session is at/past scheduled time
         if (user?.role === 'TEACHER' && s.teacherId === user.id && s.status !== 'LIVE') {
-          updateLiveSession(s.id, { status: 'LIVE' });
+          updateLiveSession(s.id, { status: 'LIVE' })
+            .then(updated => setSession(updated))
+            .catch(err => {
+              toast.error(err.message || 'Cannot start session yet');
+            });
         }
         // Fetch JaaS token
         getJaasToken(sessionId)
@@ -59,8 +63,10 @@ export default function LiveMeetingPage() {
   useEffect(() => {
     if (!joined || !session || !jaasConfig) return;
 
-    const roomName = jaasConfig.roomName || session.meetingUrl?.split('/').pop() || 'edulms-default';
+    const rawRoomName = jaasConfig.roomName || session.meetingUrl?.split('/').pop() || 'edulms-default';
     const domain = jaasConfig.domain || 'meet.jit.si';
+    // For JaaS, roomName must include appId prefix: appId/roomName
+    const roomName = jaasConfig.appId ? `${jaasConfig.appId}/${rawRoomName}` : rawRoomName;
 
     // Load Jitsi External API script
     const script = document.createElement('script');

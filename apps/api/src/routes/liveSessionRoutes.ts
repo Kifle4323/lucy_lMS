@@ -2,6 +2,9 @@
 import type { Request, Response, Router } from 'express';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { prisma } from '../db';
 import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
@@ -14,12 +17,23 @@ function generateMeetingRoom(title: string): string {
 
 // JaaS config
 const JITSI_APP_ID = process.env.JITSI_APP_ID || '';
-const JITSI_API_KEY = process.env.JITSI_API_KEY || '';
+const JITSI_KID = process.env.JITSI_KID || '';
 const JITSI_DOMAIN = JITSI_APP_ID ? `${JITSI_APP_ID}.8x8.vc` : 'meet.jit.si';
+
+// Load RSA private key
+let privateKey = '';
+try {
+  const keyPath = path.join(process.cwd(), 'jaas-private.key');
+  if (fs.existsSync(keyPath)) {
+    privateKey = fs.readFileSync(keyPath, 'utf8');
+  }
+} catch (e) {
+  console.warn('Could not load JaaS private key:', e.message);
+}
 
 // Generate JaaS JWT token for a user
 function generateJaasToken(roomName: string, user: { id: string; fullName: string; email: string; role: string }): string {
-  if (!JITSI_APP_ID || !JITSI_API_KEY) {
+  if (!JITSI_APP_ID || !privateKey) {
     // Fallback: no token needed for meet.jit.si
     return '';
   }
@@ -28,10 +42,11 @@ function generateJaasToken(roomName: string, user: { id: string; fullName: strin
 
   const payload = {
     aud: 'jitsi',
-    iss: JITSI_API_KEY,
+    iss: 'chat',
     sub: JITSI_APP_ID,
     room: roomName,
-    exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
+    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 5), // 5 hours
+    nbf: Math.floor(Date.now() / 1000) - 10,
     context: {
       user: {
         id: user.id,
@@ -48,7 +63,13 @@ function generateJaasToken(roomName: string, user: { id: string; fullName: strin
     },
   };
 
-  return jwt.sign(payload, JITSI_API_KEY, { algorithm: 'HS256', header: { kid: JITSI_API_KEY, typ: 'JWT', alg: 'HS256' } });
+  const header = {
+    kid: JITSI_KID,
+    typ: 'JWT',
+    alg: 'RS256',
+  };
+
+  return jwt.sign(payload, privateKey, { algorithm: 'RS256', header });
 }
 
 export function registerLiveSessionRoutes(router: Router) {
@@ -65,6 +86,8 @@ export function registerLiveSessionRoutes(router: Router) {
 
     const roomName = session.meetingUrl?.split('/').pop() || 'edulms-default';
     const token = generateJaasToken(roomName, user);
+
+    console.log('JaaS token generated for room:', roomName, 'domain:', JITSI_DOMAIN, 'hasKey:', !!privateKey, 'tokenLen:', token.length);
 
     res.json({
       token,
