@@ -1693,8 +1693,18 @@ export default function CoursePage() {
                       )}
                       {user?.role === 'STUDENT' && (
                         (() => {
+                          const rejectedAttempt = studentAttempts.find(att => att.assessmentId === a.id && att.status === 'REJECTED');
                           const existingAttempt = studentAttempts.find(att => att.assessmentId === a.id && (att.status === 'SUBMITTED' || att.status === 'GRADED'));
-                          return existingAttempt ? (
+                          return rejectedAttempt ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                                <div className="flex items-center gap-2 text-red-700">
+                                  <AlertTriangle className="w-4 h-4" />
+                                  <span className="text-sm font-medium">Rejected - Face verification failed</span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : existingAttempt ? (
                             <div className="space-y-2">
                               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                                 <div className="flex items-center gap-2 text-green-700">
@@ -2119,11 +2129,17 @@ export default function CoursePage() {
                           {attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString() : '-'}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className={`px-2 py-1 rounded text-sm font-medium ${
-                            attempt.score !== null ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {attempt.score !== null && submissionsAssessment?.maxScore ? `${attempt.score}/${submissionsAssessment.maxScore}` : attempt.score !== null ? `${attempt.score}` : 'Pending'}
-                          </span>
+                          {attempt.status === 'REJECTED' ? (
+                            <span className="px-2 py-1 rounded text-sm font-medium bg-red-100 text-red-700">
+                              Rejected (0)
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-1 rounded text-sm font-medium ${
+                              attempt.score !== null ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {attempt.score !== null && submissionsAssessment?.maxScore ? `${attempt.score}/${submissionsAssessment.maxScore}` : attempt.score !== null ? `${attempt.score}` : 'Pending'}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           {attempt.faceVerification ? (

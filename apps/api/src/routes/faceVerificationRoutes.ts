@@ -174,9 +174,95 @@ export function registerFaceVerificationRoutes(router: Router) {
         data: {
           faceVerified: body.approved,
           faceVerifiedAt: body.approved ? new Date() : null,
+          ...(body.approved ? {} : { status: 'REJECTED', score: 0 }),
         },
       }),
     ]);
+
+    // If rejected, recalculate the student's grade to remove this attempt's contribution
+    if (!body.approved) {
+      const attempt = verification.attempt;
+      // Find the student's enrollment and recalculate grade
+      const enrollment = await prisma.studentEnrollment.findFirst({
+        where: { studentId: attempt.studentId, status: 'ENROLLED' },
+        include: { courseSection: { include: { course: { include: { gradeComponents: { orderBy: { sortOrder: 'asc' } } } } } } },
+      });
+      if (enrollment) {
+        const courseId = enrollment.courseSection.courseId;
+        const components = enrollment.courseSection.course.gradeComponents;
+
+        // Get all GRADED attempts for this student (excluding the rejected one)
+        const assessments = await prisma.assessment.findMany({
+          where: { courseId },
+          include: {
+            attempts: {
+              where: { studentId: attempt.studentId, status: 'GRADED' },
+            },
+          },
+        });
+
+        const componentScores: Record<string, number> = {};
+        let totalGrade = 0;
+
+        for (const comp of components) {
+          if (comp.name === 'Attendance') {
+            const att = await prisma.attendance.findUnique({
+              where: { courseId_studentId: { courseId, studentId: attempt.studentId } },
+            });
+            const pct = Math.round((att?.score || 0) * 10) / 10;
+            const weighted = Math.round(pct * comp.weight / 100 * 10) / 10;
+            componentScores[comp.id] = weighted;
+            totalGrade += weighted;
+          } else {
+            const compAssessments = assessments.filter(a => a.componentId === comp.id);
+            if (compAssessments.length > 0) {
+              let score = 0, count = 0;
+              for (const a of compAssessments) {
+                const att = a.attempts.find(at => at.studentId === attempt.studentId);
+                if (att && att.score !== null && a.maxScore) {
+                  score += (att.score / a.maxScore) * 100;
+                  count++;
+                }
+              }
+              const avg = count > 0 ? score / count : 0;
+              const weighted = Math.round(avg * comp.weight / 100 * 10) / 10;
+              componentScores[comp.id] = Math.min(weighted, comp.weight);
+              totalGrade += Math.min(weighted, comp.weight);
+            }
+          }
+        }
+
+        totalGrade = Math.round(Math.min(totalGrade, 100) * 10) / 10;
+
+        // Map to legacy fields
+        const quizComp = components.find(c => c.name === 'Quiz');
+        const assignmentComp = components.find(c => c.name === 'Assignment');
+        const midtermComp = components.find(c => c.name === 'Midterm');
+        const finalComp = components.find(c => c.name === 'Final');
+        const attendanceComp = components.find(c => c.name === 'Attendance');
+
+        await prisma.studentGrade.upsert({
+          where: { enrollmentId: enrollment.id },
+          create: {
+            enrollmentId: enrollment.id,
+            quizScore: quizComp ? (componentScores[quizComp.id] || 0) : 0,
+            assignmentScore: assignmentComp ? (componentScores[assignmentComp.id] || 0) : 0,
+            midtermScore: midtermComp ? (componentScores[midtermComp.id] || 0) : 0,
+            finalScore: finalComp ? (componentScores[finalComp.id] || 0) : 0,
+            attendanceScore: attendanceComp ? (componentScores[attendanceComp.id] || 0) : 0,
+            totalScore: totalGrade,
+          },
+          update: {
+            quizScore: quizComp ? (componentScores[quizComp.id] || 0) : 0,
+            assignmentScore: assignmentComp ? (componentScores[assignmentComp.id] || 0) : 0,
+            midtermScore: midtermComp ? (componentScores[midtermComp.id] || 0) : 0,
+            finalScore: finalComp ? (componentScores[finalComp.id] || 0) : 0,
+            attendanceScore: attendanceComp ? (componentScores[attendanceComp.id] || 0) : 0,
+            totalScore: totalGrade,
+          },
+        });
+      }
+    }
 
     // If approved, auto-grade the attempt if it's still SUBMITTED (MCQ auto-grading)
     if (body.approved) {
@@ -265,7 +351,7 @@ export function registerFaceVerificationRoutes(router: Router) {
     }
 
     const attempts = await prisma.attempt.findMany({
-      where: { assessmentId: params.assessmentId, status: { in: ['SUBMITTED', 'GRADED'] } },
+      where: { assessmentId: params.assessmentId, status: { in: ['SUBMITTED', 'GRADED', 'REJECTED'] } },
       include: {
         student: { select: { id: true, fullName: true, email: true, profileImage: true } },
         faceVerification: true,

@@ -832,7 +832,16 @@ export function registerAssessmentRoutes(router: Router) {
     const hasPendingFaceMismatch = attempt.faceVerification && !attempt.faceVerification.matchResult && !attempt.faceVerification.adminReviewed;
     const hasRejectedFace = attempt.faceVerification && !attempt.faceVerification.matchResult && attempt.faceVerification.adminReviewed && !attempt.faceVerification.adminApproved;
 
-    // Always auto-grade regardless of face verification status
+    // If face was rejected, mark attempt as REJECTED with no score
+    if (hasRejectedFace) {
+      const updated = await prisma.attempt.update({
+        where: { id: params.attemptId },
+        data: { status: 'REJECTED', submittedAt: new Date(), score: 0 },
+      });
+      return res.json({ ...updated, hasRejectedFace: true });
+    }
+
+    // Auto-grade for matched faces and pending review
 
     // Build question map with all needed fields
     const questionMap = new Map<string, { id: string; type: string; correct: string | null; correctAnswer: string | null; modelAnswer: string | null; points: number }>(
@@ -926,7 +935,7 @@ export function registerAssessmentRoutes(router: Router) {
     // Store score as raw points out of maxScore, clamp to not exceed maxScore
     const maxScore = attempt.assessment?.maxScore ?? Array.from(questionMap.values()).reduce((s, q) => s + q.points, 0);
     const clampedScore = Math.min(autoScore, maxScore);
-    const status = hasRejectedFace ? 'REJECTED' : hasPendingFaceMismatch ? 'SUBMITTED' : 'GRADED';
+    const status = hasPendingFaceMismatch ? 'SUBMITTED' : 'GRADED';
     const updated = await prisma.attempt.update({
       where: { id: params.attemptId },
       data: { status, submittedAt: new Date(), score: clampedScore },
