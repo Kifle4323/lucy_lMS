@@ -58,6 +58,11 @@ export default function GradebookPage() {
 
   const handleAddComponent = async () => {
     if (!newComponent.name || !newComponent.weight) return;
+    const newTotal = components.reduce((s, c) => s + c.weight, 0) + parseInt(newComponent.weight);
+    if (newTotal > 100) {
+      toast.error(`Total weight would be ${newTotal}%. Must not exceed 100%.`);
+      return;
+    }
     try {
       const created = await addGradeComponent(courseId, newComponent.name, parseInt(newComponent.weight));
       setComponents([...components, created]);
@@ -68,13 +73,27 @@ export default function GradebookPage() {
     }
   };
 
-  const handleUpdateComponent = async (componentId, field, value) => {
+  const handleLocalUpdateComponent = (componentId, field, value) => {
+    setComponents(components.map(c => c.id === componentId ? { ...c, [field]: field === 'weight' ? parseInt(value) || 0 : value } : c));
+  };
+
+  const handleSaveComponents = async () => {
+    const totalWeight = components.reduce((s, c) => s + c.weight, 0);
+    if (totalWeight !== 100) {
+      toast.error(`Grade components must total 100%. Current total: ${totalWeight}%.`);
+      return;
+    }
+    setSaving(true);
     try {
-      const updated = await updateGradeComponent(courseId, componentId, { [field]: field === 'weight' ? parseInt(value) : value });
-      setComponents(components.map(c => c.id === componentId ? updated : c));
-      toast.success('Component updated!');
+      // Save each component
+      for (const comp of components) {
+        await updateGradeComponent(courseId, comp.id, { name: comp.name, weight: comp.weight });
+      }
+      toast.success('Components saved successfully!');
     } catch (err) {
-      toast.error('Failed to update: ' + err.message);
+      toast.error('Failed to save: ' + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -261,7 +280,7 @@ export default function GradebookPage() {
                   <input
                     type="text"
                     value={comp.name}
-                    onChange={(e) => handleUpdateComponent(comp.id, 'name', e.target.value)}
+                    onChange={(e) => handleLocalUpdateComponent(comp.id, 'name', e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
                     placeholder="Component name"
                   />
@@ -271,7 +290,7 @@ export default function GradebookPage() {
                       min="0"
                       max="100"
                       value={comp.weight}
-                      onChange={(e) => handleUpdateComponent(comp.id, 'weight', e.target.value)}
+                      onChange={(e) => handleLocalUpdateComponent(comp.id, 'weight', e.target.value)}
                       className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-center text-sm"
                     />
                     <span className="text-sm text-gray-500">%</span>
@@ -306,7 +325,7 @@ export default function GradebookPage() {
               />
               <button
                 onClick={handleAddComponent}
-                disabled={!newComponent.name || !newComponent.weight}
+                disabled={!newComponent.name || !newComponent.weight || components.reduce((s, c) => s + c.weight, 0) >= 100}
                 className="px-4 py-2 bg-primary-900 hover:bg-primary-800 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg inline-flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
@@ -315,11 +334,24 @@ export default function GradebookPage() {
             </div>
 
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">
-                Total: <span className={`font-bold ${components.reduce((s, c) => s + c.weight, 0) === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                  {components.reduce((s, c) => s + c.weight, 0)}%
-                </span>
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Total: <span className={`font-bold ${components.reduce((s, c) => s + c.weight, 0) === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                    {components.reduce((s, c) => s + c.weight, 0)}%
+                  </span>
+                </p>
+                <button
+                  onClick={handleSaveComponents}
+                  disabled={saving || components.reduce((s, c) => s + c.weight, 0) !== 100}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg inline-flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+              {components.reduce((s, c) => s + c.weight, 0) !== 100 && (
+                <p className="text-xs text-red-500 mt-2">Weights must total exactly 100% before you can save.</p>
+              )}
             </div>
           </div>
         )}

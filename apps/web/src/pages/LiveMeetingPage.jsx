@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
-import { getLiveSession, updateLiveSession, joinLiveSession, leaveLiveSession, endLiveSession, getLiveSessionAttendance } from '../api';
+import { getLiveSession, updateLiveSession, joinLiveSession, leaveLiveSession, endLiveSession, getLiveSessionAttendance, getJaasToken } from '../api';
 import Layout from '../components/Layout';
+import LiveFaceTracker from '../components/LiveFaceTracker';
 import {
   Video,
   Users,
@@ -31,6 +32,8 @@ export default function LiveMeetingPage() {
   const [attendanceData, setAttendanceData] = useState(null);
   const [showAttendance, setShowAttendance] = useState(false);
   const [endingSession, setEndingSession] = useState(false);
+  const [faceAlerts, setFaceAlerts] = useState(0);
+  const [jaasConfig, setJaasConfig] = useState(null);
   const jitsiRef = useRef(null);
   const jitsiContainerRef = useRef(null);
   const attendanceRecordedRef = useRef(false);
@@ -43,6 +46,10 @@ export default function LiveMeetingPage() {
         if (user?.role === 'TEACHER' && s.teacherId === user.id && s.status !== 'LIVE') {
           updateLiveSession(s.id, { status: 'LIVE' });
         }
+        // Fetch JaaS token
+        getJaasToken(sessionId)
+          .then(config => setJaasConfig(config))
+          .catch(err => console.error('Failed to get JaaS token:', err));
       })
       .catch(err => setError(err.message || 'Session not found'))
       .finally(() => setLoading(false));
@@ -50,23 +57,24 @@ export default function LiveMeetingPage() {
 
   // Initialize Jitsi External API when joined
   useEffect(() => {
-    if (!joined || !session) return;
+    if (!joined || !session || !jaasConfig) return;
 
-    const roomName = session.meetingUrl?.split('/').pop() || 'edulms-default';
+    const roomName = jaasConfig.roomName || session.meetingUrl?.split('/').pop() || 'edulms-default';
+    const domain = jaasConfig.domain || 'meet.jit.si';
 
     // Load Jitsi External API script
     const script = document.createElement('script');
-    script.src = 'https://meet.jit.si/external_api.js';
+    script.src = `https://${domain}/external_api.js`;
     script.async = true;
     script.onload = () => {
       if (!window.JitsiMeetExternalAPI) return;
 
-      const domain = 'meet.jit.si';
       const options = {
         roomName,
         width: '100%',
         height: '100%',
         parentNode: jitsiContainerRef.current,
+        jwt: jaasConfig.token || undefined,
         configOverwrite: {
           prejoinPageEnabled: false,
           startWithAudioMuted: false,
@@ -119,7 +127,7 @@ export default function LiveMeetingPage() {
         script.parentNode.removeChild(script);
       }
     };
-  }, [joined, session]);
+  }, [joined, session, jaasConfig]);
 
   const handleLeave = useCallback(async () => {
     // Student: record leave
@@ -329,12 +337,27 @@ export default function LiveMeetingPage() {
               Attendance tracked
             </span>
           )}
+          {user?.role === 'STUDENT' && faceAlerts > 0 && (
+            <span className="flex items-center gap-1 px-2 py-1 bg-red-600/20 text-red-400 text-xs font-medium rounded">
+              <AlertCircle className="w-3 h-3" />
+              {faceAlerts} face alert{faceAlerts !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       </header>
 
       {/* Jitsi Meeting Container */}
       <div className="flex-1 relative">
         <div ref={jitsiContainerRef} style={{ height: '100%', width: '100%' }} />
+        {/* Face tracker for students */}
+        {user?.role === 'STUDENT' && joined && (
+          <LiveFaceTracker
+            active={true}
+            sessionId={sessionId}
+            onMismatch={() => setFaceAlerts(prev => prev + 1)}
+            intervalMs={120000}
+          />
+        )}
       </div>
 
       {/* Attendance Sidebar for Teachers */}

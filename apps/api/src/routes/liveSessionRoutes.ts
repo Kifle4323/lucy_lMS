@@ -1,6 +1,7 @@
 // @ts-nocheck
 import type { Request, Response, Router } from 'express';
 import { z } from 'zod';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
@@ -11,7 +12,68 @@ function generateMeetingRoom(title: string): string {
   return `edulms-${sanitized}-${randomId}`;
 }
 
+// JaaS config
+const JITSI_APP_ID = process.env.JITSI_APP_ID || '';
+const JITSI_API_KEY = process.env.JITSI_API_KEY || '';
+const JITSI_DOMAIN = JITSI_APP_ID ? `${JITSI_APP_ID}.8x8.vc` : 'meet.jit.si';
+
+// Generate JaaS JWT token for a user
+function generateJaasToken(roomName: string, user: { id: string; fullName: string; email: string; role: string }): string {
+  if (!JITSI_APP_ID || !JITSI_API_KEY) {
+    // Fallback: no token needed for meet.jit.si
+    return '';
+  }
+
+  const isModerator = user.role === 'TEACHER' || user.role === 'ADMIN';
+
+  const payload = {
+    aud: 'jitsi',
+    iss: JITSI_API_KEY,
+    sub: JITSI_APP_ID,
+    room: roomName,
+    exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
+    context: {
+      user: {
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        affiliation: isModerator ? 'owner' : 'member',
+      },
+      features: {
+        'livestreaming': isModerator,
+        'recording': isModerator,
+        'transcription': false,
+        'outbound-call': false,
+      },
+    },
+  };
+
+  return jwt.sign(payload, JITSI_API_KEY, { algorithm: 'HS256', header: { kid: JITSI_API_KEY, typ: 'JWT', alg: 'HS256' } });
+}
+
 export function registerLiveSessionRoutes(router: Router) {
+  // Get JaaS JWT token for a session
+  router.post('/live-sessions/:sessionId/jaas-token', authRequired, async (req: AuthedRequest, res: Response) => {
+    const params = z.object({ sessionId: z.string() }).parse(req.params);
+    const user = req.user!;
+
+    const session = await prisma.liveSession.findUnique({ where: { id: params.sessionId } });
+    if (!session) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+
+    const roomName = session.meetingUrl?.split('/').pop() || 'edulms-default';
+    const token = generateJaasToken(roomName, user);
+
+    res.json({
+      token,
+      domain: JITSI_DOMAIN,
+      roomName,
+      appId: JITSI_APP_ID,
+    });
+  });
+
   // Get live sessions for a course
   router.get('/courses/:courseId/live-sessions', authRequired, async (req: AuthedRequest, res: Response) => {
     const params = z.object({ courseId: z.string() }).parse(req.params);
@@ -184,7 +246,7 @@ export function registerLiveSessionRoutes(router: Router) {
     }
 
     const meetingRoom = generateMeetingRoom(body.title);
-    const meetingUrl = `https://meet.jit.si/${meetingRoom}`;
+    const meetingUrl = `https://${JITSI_DOMAIN}/${meetingRoom}`;
 
     const session = await prisma.liveSession.create({
       data: {
@@ -227,6 +289,17 @@ export function registerLiveSessionRoutes(router: Router) {
     if (session.teacherId !== user.id) {
       res.status(403).json({ error: 'forbidden' });
       return;
+    }
+
+    // Prevent starting live session before scheduled time
+    if (body.status === 'LIVE' && session.scheduledAt) {
+      const now = new Date();
+      const scheduledTime = new Date(session.scheduledAt);
+      if (now < scheduledTime) {
+        const minutesEarly = Math.round((scheduledTime.getTime() - now.getTime()) / 60000);
+        res.status(400).json({ error: `Cannot start session before scheduled time. Session is scheduled to start in ${minutesEarly} minute${minutesEarly !== 1 ? 's' : ''}.` });
+        return;
+      }
     }
 
     const updated = await prisma.liveSession.update({

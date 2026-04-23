@@ -152,6 +152,12 @@ export default function TeacherGradesPage() {
   }
 
   async function submitAllGrades() {
+    const comps = Array.isArray(gradeConfig) ? gradeConfig : [];
+    const totalWeight = comps.reduce((s, c) => s + c.weight, 0);
+    if (totalWeight !== 100) {
+      toast.error(`Grade components must total 100%. Current total: ${totalWeight}%. Please adjust weights before submitting.`);
+      return;
+    }
     const confirmed = await confirm({
       title: 'Submit All Grades',
       message: 'Submit all grades? This will lock the grades and students will be able to see them once published by admin.',
@@ -172,6 +178,12 @@ export default function TeacherGradesPage() {
   }
 
   async function syncFromAssessments() {
+    const comps = Array.isArray(gradeConfig) ? gradeConfig : [];
+    const totalWeight = comps.reduce((s, c) => s + c.weight, 0);
+    if (totalWeight !== 100) {
+      toast.error(`Grade components must total 100%. Current total: ${totalWeight}%. Please adjust weights before syncing.`);
+      return;
+    }
     const confirmed = await confirm({
       title: 'Sync from Assessments',
       message: 'Sync assessment results to grades? This will overwrite existing quiz, midterm, and final scores with assessment data.',

@@ -142,8 +142,8 @@ export default function LiveSessionsPage() {
   };
 
   const canStartSession = (session) => {
-    // Teacher can start any scheduled session (even early)
-    return session.status === 'SCHEDULED';
+    // Teacher can only start at or after scheduled time
+    return session.status === 'SCHEDULED' && new Date() >= new Date(session.scheduledAt);
   };
 
   const isSessionReady = (session) => {
@@ -240,13 +240,23 @@ export default function LiveSessionsPage() {
                     <div className="flex items-center gap-2">
                       {user?.role === 'TEACHER' && session.teacherId === user.id && (
                         <>
+                          {session.status === 'SCHEDULED' && !canStartSession(session) && (
+                            <button
+                              disabled
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 font-medium rounded-lg cursor-not-allowed"
+                              title={`Session starts at ${new Date(session.scheduledAt).toLocaleTimeString()}`}
+                            >
+                              <Clock className="w-4 h-4" />
+                              Starts {new Date(session.scheduledAt).toLocaleTimeString()}
+                            </button>
+                          )}
                           {canStartSession(session) && (
                             <button
                               onClick={() => handleStartSession(session)}
                               className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
                             >
                               <Play className="w-4 h-4" />
-                              {isSessionReady(session) ? 'Start Now' : 'Start Early'}
+                              Start Now
                             </button>
                           )}
                           {session.status === 'LIVE' && (

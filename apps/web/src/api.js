@@ -849,6 +849,10 @@ export async function getCertificateById(id) {
   return apiFetch(`/certificates/${id}`);
 }
 
+export async function getJaasToken(sessionId) {
+  return apiFetch(`/live-sessions/${sessionId}/jaas-token`, { method: 'POST' });
+}
+
 export async function getStudentRegistrationFee() {
   return apiFetch('/student/registration-fee');
 }

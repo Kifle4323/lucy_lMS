@@ -992,6 +992,12 @@ export function registerAcademicRoutes(router: Router) {
       ] as any[];
     }
 
+    // Validate that grade components total 100%
+    const totalWeight = components.reduce((s: number, c: { weight: number }) => s + c.weight, 0);
+    if (totalWeight !== 100) {
+      return res.status(400).json({ error: `Grade components must total 100%. Current total: ${totalWeight}%` });
+    }
+
     // Get all assessments for this course with GRADED attempts
     const assessments = await prisma.assessment.findMany({
       where: { courseId },
