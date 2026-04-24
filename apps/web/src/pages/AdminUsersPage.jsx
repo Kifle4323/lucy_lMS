@@ -5,6 +5,7 @@ import { useConfirm } from '../ConfirmContext';
 import { getUsers, adminCreateUser, getPendingUsers, approveUser, deleteUser } from '../api';
 import Layout from '../components/Layout';
 import { UserCircle, GraduationCap, BookOpen, Shield, Search, Plus, X, AlertCircle, CheckCircle, Clock, Trash2, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // Password validation helper
 function validatePassword(password) {
@@ -34,6 +35,7 @@ export default function AdminUsersPage() {
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const { t } = useTranslation();
   const [users, setUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export default function AdminUsersPage() {
     setCreateSuccess('');
     
     if (!isValid) {
-      setCreateError('Password must include at least one uppercase letter, one lowercase letter, and one number');
+      setCreateError(t('admin.passwordRequirements'));
       return;
     }
     
@@ -86,14 +88,14 @@ export default function AdminUsersPage() {
     try {
       const created = await adminCreateUser(newUser);
       setUsers([...users, created]);
-      setCreateSuccess(`User "${created.fullName}" created successfully!`);
+      setCreateSuccess(t('admin.userCreatedSuccess', { name: created.fullName }));
       setNewUser({ email: '', password: '', fullName: '', role: 'STUDENT' });
       setTimeout(() => {
         setShowCreateModal(false);
         setCreateSuccess('');
       }, 2000);
     } catch (err) {
-      setCreateError(err.message || 'Failed to create user');
+      setCreateError(err.message || t('admin.failedCreateUser'));
     } finally {
       setCreateLoading(false);
     }
@@ -105,25 +107,25 @@ export default function AdminUsersPage() {
       setPendingUsers(pendingUsers.filter(u => u.id !== userId));
       loadData(); // Refresh all users
     } catch (err) {
-      toast.error('Failed to approve user');
+      toast.error(t('admin.failedApproveUser'));
     }
   };
 
   const handleRejectUser = async (userId) => {
     const confirmed = await confirm({
-      title: 'Reject User',
-      message: 'Are you sure you want to reject and delete this user?',
-      confirmText: 'Reject',
-      cancelText: 'Cancel',
+      title: t('admin.rejectUser'),
+      message: t('admin.confirmRejectUser'),
+      confirmText: t('reports.rejected'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
     try {
       await deleteUser(userId);
       setPendingUsers(pendingUsers.filter(u => u.id !== userId));
-      toast.success('User rejected and deleted');
+      toast.success(t('admin.userRejectedDeleted'));
     } catch (err) {
-      toast.error('Failed to reject user');
+      toast.error(t('admin.failedRejectUser'));
     }
   };
 
@@ -141,8 +143,8 @@ export default function AdminUsersPage() {
     PENDING: pendingUsers.length,
   };
 
-  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">Access denied</div>;
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">{t('common.accessDenied')}</div>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
@@ -150,15 +152,15 @@ export default function AdminUsersPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all users in the system</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.users')}</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">{t('admin.manageAllUsers')}</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
             className="px-4 py-2 bg-primary-900 hover:bg-primary-800 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            Create User
+            {t('admin.createUser')}
           </button>
         </div>
 
@@ -167,7 +169,7 @@ export default function AdminUsersPage() {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create New User</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('admin.createNewUser')}</h2>
                 <button
                   onClick={() => setShowCreateModal(false)}
                   className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
@@ -192,7 +194,7 @@ export default function AdminUsersPage() {
 
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('admin.fullName')}</label>
                   <input
                     type="text"
                     value={newUser.fullName}
@@ -204,7 +206,7 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('common.email')}</label>
                   <input
                     type="email"
                     value={newUser.email}
@@ -216,7 +218,7 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('auth.password')}</label>
                   <input
                     type="password"
                     value={newUser.password}
@@ -225,29 +227,29 @@ export default function AdminUsersPage() {
                     onBlur={() => setPasswordFocused(false)}
                     required
                     className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                    placeholder="Min 6 chars, uppercase, lowercase, number"
+                    placeholder={t('admin.passwordPlaceholder')}
                   />
                   {/* Password requirements */}
                   {passwordFocused && newUser.password && (
                     <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-0.5">
-                      <PasswordCheck valid={checks.length} text="At least 6 characters" />
-                      <PasswordCheck valid={checks.uppercase} text="At least one uppercase letter (A-Z)" />
-                      <PasswordCheck valid={checks.lowercase} text="At least one lowercase letter (a-z)" />
-                      <PasswordCheck valid={checks.number} text="At least one number (0-9)" />
+                      <PasswordCheck valid={checks.length} text={t('admin.atLeast6Chars')} />
+                      <PasswordCheck valid={checks.uppercase} text={t('admin.atLeastOneUppercase')} />
+                      <PasswordCheck valid={checks.lowercase} text={t('admin.atLeastOneLowercase')} />
+                      <PasswordCheck valid={checks.number} text={t('admin.atLeastOneNumber')} />
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('admin.role')}</label>
                   <select
                     value={newUser.role}
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                   >
-                    <option value="STUDENT">Student</option>
-                    <option value="TEACHER">Teacher</option>
-                    <option value="ADMIN">Admin</option>
+                    <option value="STUDENT">{t('nav.students')}</option>
+                    <option value="TEACHER">{t('nav.teachers')}</option>
+                    <option value="ADMIN">{t('admin.admins')}</option>
                   </select>
                 </div>
 
@@ -257,14 +259,14 @@ export default function AdminUsersPage() {
                     onClick={() => setShowCreateModal(false)}
                     className="flex-1 py-3 px-4 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     disabled={createLoading}
                     className="flex-1 py-3 px-4 bg-primary-900 hover:bg-primary-800 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {createLoading ? 'Creating...' : 'Create User'}
+                    {createLoading ? t('admin.creating') : t('admin.createUser')}
                   </button>
                 </div>
               </form>
@@ -281,7 +283,7 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{roleStats.STUDENT}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Students</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('nav.students')}</p>
               </div>
             </div>
           </div>
@@ -292,7 +294,7 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{roleStats.TEACHER}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Teachers</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('nav.teachers')}</p>
               </div>
             </div>
           </div>
@@ -303,7 +305,7 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{roleStats.ADMIN}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Admins</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('admin.admins')}</p>
               </div>
             </div>
           </div>
@@ -314,7 +316,7 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{roleStats.PENDING}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Pending</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('reports.pending')}</p>
               </div>
             </div>
           </div>
@@ -330,7 +332,7 @@ export default function AdminUsersPage() {
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
             }`}
           >
-            All Users
+            {t('admin.allUsers')}
           </button>
           <button
             onClick={() => setActiveTab('pending')}
@@ -341,7 +343,7 @@ export default function AdminUsersPage() {
             }`}
           >
             <Clock className="w-4 h-4" />
-            Pending Approval
+            {t('admin.pendingApproval')}
             {roleStats.PENDING > 0 && (
               <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'pending' ? 'bg-white/20' : 'bg-yellow-100 text-yellow-700'}`}>
                 {roleStats.PENDING}
@@ -355,16 +357,16 @@ export default function AdminUsersPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
             {pendingUsers.length === 0 ? (
               <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                No pending users
+                {t('admin.noPendingUsers')}
               </div>
             ) : (
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                   <tr>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">User</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Role</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Registered</th>
-                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('admin.user')}</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('admin.role')}</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('admin.registered')}</th>
+                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -400,14 +402,14 @@ export default function AdminUsersPage() {
                             className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            Approve
+                            {t('faceVerification.approve')}
                           </button>
                           <button
                             onClick={() => handleRejectUser(u.id)}
                             className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1"
                           >
                             <Trash2 className="w-4 h-4" />
-                            Reject
+                            {t('reports.rejected')}
                           </button>
                         </div>
                       </td>
@@ -429,7 +431,7 @@ export default function AdminUsersPage() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name or email..."
+                  placeholder={t('admin.searchByNameOrEmail')}
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -438,10 +440,10 @@ export default function AdminUsersPage() {
                 onChange={(e) => setRoleFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
               >
-                <option value="ALL">All Roles</option>
-                <option value="STUDENT">Students</option>
-                <option value="TEACHER">Teachers</option>
-                <option value="ADMIN">Admins</option>
+                <option value="ALL">{t('admin.allRoles')}</option>
+                <option value="STUDENT">{t('nav.students')}</option>
+                <option value="TEACHER">{t('nav.teachers')}</option>
+                <option value="ADMIN">{t('admin.admins')}</option>
               </select>
             </div>
           </div>
@@ -453,9 +455,9 @@ export default function AdminUsersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Joined</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('admin.user')}</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('admin.role')}</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('admin.joined')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -498,7 +500,7 @@ export default function AdminUsersPage() {
           </table>
           {filteredUsers.length === 0 && (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-              No users found
+              {t('admin.noUsersFound')}
             </div>
           )}
           </div>

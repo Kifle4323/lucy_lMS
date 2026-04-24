@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
+import { useTranslation } from 'react-i18next';
 import { getUpcomingLiveSessions, createLiveSession, updateLiveSession, deleteLiveSession, getClasses } from '../api';
 import Layout from '../components/Layout';
 import {
@@ -23,6 +24,7 @@ export default function LiveSessionsPage() {
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -111,16 +113,16 @@ export default function LiveSessionsPage() {
 
   const handleDeleteSession = async (sessionId) => {
     const confirmed = await confirm({
-      title: 'Delete Session',
-      message: 'Delete this session?',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('liveSession.deleteSession'),
+      message: t('liveSession.deleteConfirm'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
     await deleteLiveSession(sessionId);
     setSessions(sessions.filter(s => s.id !== sessionId));
-    toast.success('Session deleted!');
+    toast.success(t('liveSession.sessionDeleted'));
   };
 
   const getStatusBadge = (status, session) => {
@@ -130,14 +132,14 @@ export default function LiveSessionsPage() {
 
     switch (status) {
       case 'LIVE':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full animate-pulse"><Radio className="w-3 h-3" /> LIVE</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full animate-pulse"><Radio className="w-3 h-3" /> {t('liveSession.live')}</span>;
       case 'ENDED':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded"><CheckCircle className="w-3 h-3" /> Ended</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded"><CheckCircle className="w-3 h-3" /> {t('liveSession.ended')}</span>;
       default:
         if (canStart) {
-          return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded"><Clock className="w-3 h-3" /> Ready to Start</span>;
+          return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded"><Clock className="w-3 h-3" /> {t('liveSession.readyToStart')}</span>;
         }
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded"><Calendar className="w-3 h-3" /> Scheduled</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded"><Calendar className="w-3 h-3" /> {t('liveSession.scheduled')}</span>;
     }
   };
 
@@ -160,7 +162,7 @@ export default function LiveSessionsPage() {
     return now >= scheduled && now <= endTime;
   };
 
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
@@ -169,13 +171,13 @@ export default function LiveSessionsPage() {
         <div className="mb-8">
           <Link to="/my-classes" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
             <ChevronLeft className="w-5 h-5" />
-            Back to My Classes
+            {t('common.back')}
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Live Classes</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{t('nav.liveClasses')}</h1>
               <p className="text-gray-500 mt-1">
-                {user?.role === 'TEACHER' ? 'Schedule and manage your online classes' : 'Join your scheduled online classes'}
+                {user?.role === 'TEACHER' ? t('liveSession.scheduleManage') : t('liveSession.joinScheduled')}
               </p>
             </div>
             {user?.role === 'TEACHER' && (
@@ -184,7 +186,7 @@ export default function LiveSessionsPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                Schedule Class
+                {t('liveSession.scheduleClass')}
               </button>
             )}
           </div>
@@ -194,9 +196,9 @@ export default function LiveSessionsPage() {
         {sessions.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <Video className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No upcoming classes</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('liveSession.noUpcoming')}</h3>
             <p className="text-gray-500">
-              {user?.role === 'TEACHER' ? 'Schedule your first online class' : 'No live classes scheduled yet'}
+              {user?.role === 'TEACHER' ? t('liveSession.scheduleFirst') : t('liveSession.noLiveScheduled')}
             </p>
           </div>
         ) : (
@@ -233,7 +235,7 @@ export default function LiveSessionsPage() {
                         </div>
                       </div>
                       <p className="text-xs text-gray-400 mt-2">
-                        Teacher: {session.teacher?.fullName}
+                        {t('course.teacher')}: {session.teacher?.fullName}
                       </p>
                     </div>
 
@@ -247,7 +249,7 @@ export default function LiveSessionsPage() {
                               title={`Session starts at ${new Date(session.scheduledAt).toLocaleTimeString()}`}
                             >
                               <Clock className="w-4 h-4" />
-                              Starts {new Date(session.scheduledAt).toLocaleTimeString()}
+                              {t('liveSession.startsAt')} {new Date(session.scheduledAt).toLocaleTimeString()}
                             </button>
                           )}
                           {canStartSession(session) && (
@@ -256,7 +258,7 @@ export default function LiveSessionsPage() {
                               className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
                             >
                               <Play className="w-4 h-4" />
-                              Start Now
+                              {t('liveSession.startNow')}
                             </button>
                           )}
                           {session.status === 'LIVE' && (
@@ -265,11 +267,11 @@ export default function LiveSessionsPage() {
                               className="inline-flex items-center gap-2 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg transition-colors"
                             >
                               <Video className="w-4 h-4" />
-                              Rejoin
+                              {t('liveSession.rejoin')}
                             </button>
                           )}
                           {session.status === 'ENDED' && (
-                            <span className="text-sm text-gray-500">Class ended</span>
+                            <span className="text-sm text-gray-500">{t('liveSession.ended')}</span>
                           )}
                         </>
                       )}
@@ -280,12 +282,12 @@ export default function LiveSessionsPage() {
                           className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors animate-pulse"
                         >
                           <Play className="w-4 h-4" />
-                          Join Live Class
+                          {t('liveSession.joinMeeting')}
                         </button>
                       )}
 
                       {user?.role === 'STUDENT' && session.status === 'SCHEDULED' && isSessionInProgress(session) && (
-                        <span className="text-sm text-yellow-600">Waiting for teacher to start...</span>
+                        <span className="text-sm text-yellow-600">{t('liveSession.waitingForTeacher')}</span>
                       )}
                     </div>
                   </div>
@@ -300,14 +302,14 @@ export default function LiveSessionsPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Schedule Online Class</h2>
+                <h2 className="text-lg font-semibold">{t('liveSession.scheduleClass')}</h2>
                 <button onClick={() => setShowCreateModal(false)} className="p-1 hover:bg-gray-100 rounded">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleCreateSession} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Class & Course</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('liveSession.classAndCourse')}</label>
                   <select
                     value={`${newSession.classId}:${newSession.courseId}`}
                     onChange={(e) => {
@@ -317,7 +319,7 @@ export default function LiveSessionsPage() {
                     required
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                   >
-                    <option value="">Select a class and course</option>
+                    <option value="">{t('liveSession.selectClassCourse')}</option>
                     {teacherCourses.map(tc => (
                       <option key={`${tc.classId}:${tc.courseId}`} value={`${tc.classId}:${tc.courseId}`}>
                         {tc.className} - {tc.courseTitle}
@@ -326,7 +328,7 @@ export default function LiveSessionsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('liveSession.title')}</label>
                   <input
                     type="text"
                     value={newSession.title}
@@ -337,18 +339,18 @@ export default function LiveSessionsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('liveSession.descriptionOptional')}</label>
                   <textarea
                     value={newSession.description}
                     onChange={(e) => setNewSession({ ...newSession, description: e.target.value })}
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="What will be covered in this class?"
+                    placeholder={t('liveSession.whatWillBeCovered')}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('liveSession.dateTime')}</label>
                     <input
                       type="datetime-local"
                       value={newSession.scheduledAt}
@@ -358,7 +360,7 @@ export default function LiveSessionsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('liveSession.durationMin')}</label>
                     <select
                       value={newSession.duration}
                       onChange={(e) => setNewSession({ ...newSession, duration: parseInt(e.target.value) })}
@@ -377,14 +379,14 @@ export default function LiveSessionsPage() {
                     type="submit"
                     className="flex-1 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                   >
-                    Schedule Class
+                    {t('liveSession.scheduleClass')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </form>

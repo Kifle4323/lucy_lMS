@@ -257,6 +257,12 @@ export function registerAnalyticsRoutes(router: Router) {
         isPublished: e.grade?.isPublished ?? false,
         materials: e.courseSection.course.materials.length,
         assessments: e.courseSection.course.assessments.length,
+        quizScore: e.grade?.quizScore ?? null,
+        assignmentScore: e.grade?.assignmentScore ?? null,
+        midtermScore: e.grade?.midtermScore ?? null,
+        finalScore: e.grade?.finalScore ?? null,
+        attendanceScore: e.grade?.attendanceScore ?? null,
+        deliveryMode: e.courseSection.deliveryMode || 'ONLINE',
       }));
 
       // Upcoming exams
@@ -273,6 +279,43 @@ export function registerAnalyticsRoutes(router: Router) {
         take: 5,
       });
 
+      // Video watch data for ML features
+      const videoViews = await prisma.materialView.findMany({
+        where: { studentId: user.id },
+        include: { material: { select: { courseId: true } } },
+      });
+      const totalVideoSeconds = videoViews.reduce((sum, v) => sum + (v.durationSec || 0), 0);
+      const avgVideoWatchPct = videoViews.length > 0
+        ? Math.min(100, Math.round(totalVideoSeconds / videoViews.length / 3.6)) // rough: 360s avg full video → 100%
+        : 0;
+      // Per-course video watch percentage
+      const courseVideoMap: Record<string, number> = {};
+      for (const v of videoViews) {
+        const cid = v.material?.courseId;
+        if (cid) {
+          courseVideoMap[cid] = (courseVideoMap[cid] || 0) + (v.durationSec || 0);
+        }
+      }
+      // Per-course reading progress percentage
+      const courseReadingMap: Record<string, number> = {};
+      for (const r of readingProgress) {
+        const mat = await prisma.material.findUnique({ where: { id: r.materialId }, select: { courseId: true } });
+        if (mat?.courseId) {
+          const pct = r.totalSlides > 0 ? Math.round(r.completedSlides / r.totalSlides * 100) : 0;
+          courseReadingMap[mat.courseId] = Math.max(courseReadingMap[mat.courseId] || 0, pct);
+        }
+      }
+
+      // Add video/reading data to courseStats
+      const courseStatsWithEngagement = courseStats.map(cs => {
+        const courseId = enrollments.find(e => e.courseSection.course.title === cs.courseTitle)?.courseSection?.courseId;
+        return {
+          ...cs,
+          videoWatchPct: courseId ? (courseVideoMap[courseId] ? Math.min(100, Math.round(courseVideoMap[courseId] / 3.6)) : 0) : 0,
+          readingPct: courseId ? (courseReadingMap[courseId] || 0) : 0,
+        };
+      });
+
       res.json({
         totalCourses: enrollments.length,
         gpa,
@@ -280,7 +323,9 @@ export function registerAnalyticsRoutes(router: Router) {
         avgAssessmentScore: avgAttemptScore,
         readingProgress: { completed: completedMaterials, total: totalReadingMaterials },
         totalAttempts: attempts.length,
-        courses: courseStats,
+        avgVideoWatchPct,
+        totalVideoSeconds,
+        courses: courseStatsWithEngagement,
         upcomingExams: upcomingExams.map(e => ({
           id: e.id,
           title: e.courseSection.course.title,

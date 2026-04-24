@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { getAdminAddDropRequests, approveAddDropRequest, rejectAddDropRequest, getSemestersAddDrop, updateSemesterAddDrop } from '../api';
 import Layout from '../components/Layout';
 import { Plus, Minus, Clock, CheckCircle, XCircle, Filter, Calendar, Settings, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminAddDropRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { t } = useTranslation();
   const [requests, setRequests] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [filters, setFilters] = useState({ status: 'PENDING', type: '', semesterId: '' });
@@ -42,7 +44,7 @@ export default function AdminAddDropRequestsPage() {
     setError('');
     try {
       await approveAddDropRequest(requestId, adminNotes);
-      setSuccess('Request approved successfully');
+      setSuccess(t('admin.requestApproved'));
       setShowActionModal(null);
       setAdminNotes('');
       loadData();
@@ -58,7 +60,7 @@ export default function AdminAddDropRequestsPage() {
     setError('');
     try {
       await rejectAddDropRequest(requestId, adminNotes);
-      setSuccess('Request rejected');
+      setSuccess(t('admin.requestRejected'));
       setShowActionModal(null);
       setAdminNotes('');
       loadData();
@@ -76,7 +78,7 @@ export default function AdminAddDropRequestsPage() {
     setError('');
     try {
       await updateSemesterAddDrop(selectedSemester.id, addDropStart || null, addDropEnd || null);
-      setSuccess('Add/Drop period updated');
+      setSuccess(t('admin.addDropPeriodUpdated'));
       setShowSettingsModal(false);
       loadData();
     } catch (err) {
@@ -93,19 +95,19 @@ export default function AdminAddDropRequestsPage() {
     setShowSettingsModal(true);
   }
 
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Add/Drop Requests</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.addDropRequests')}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-200"
           >
             <Settings className="w-4 h-4" />
-            Settings
+            {t('settings.settings')}
           </button>
         </div>
 
@@ -132,26 +134,26 @@ export default function AdminAddDropRequestsPage() {
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
             >
-              <option value="">All Status</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
+              <option value="">{t('admin.allStatus')}</option>
+              <option value="PENDING">{t('reports.pending')}</option>
+              <option value="APPROVED">{t('studentProfile.approved')}</option>
+              <option value="REJECTED">{t('reports.rejected')}</option>
             </select>
             <select
               value={filters.type}
               onChange={(e) => setFilters({ ...filters, type: e.target.value })}
               className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
             >
-              <option value="">All Types</option>
-              <option value="ADD">Add</option>
-              <option value="DROP">Drop</option>
+              <option value="">{t('admin.allTypes')}</option>
+              <option value="ADD">{t('addDrop.add')}</option>
+              <option value="DROP">{t('addDrop.drop')}</option>
             </select>
             <select
               value={filters.semesterId}
               onChange={(e) => setFilters({ ...filters, semesterId: e.target.value })}
               className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
             >
-              <option value="">All Semesters</option>
+              <option value="">{t('admin.allSemesters')}</option>
               {semesters.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -178,32 +180,32 @@ export default function AdminAddDropRequestsPage() {
                       </div>
                       <div>
                         <div className="font-medium text-gray-900 dark:text-white">
-                          {request.type === 'ADD' ? 'Add' : 'Drop'}: {request.course?.title} ({request.course?.code})
+                          {request.type === 'ADD' ? t('addDrop.add') : t('addDrop.drop')}: {request.course?.title} ({request.course?.code})
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          Student: {request.student?.fullName} ({request.student?.studentId || request.student?.email})
+                          {t('gradebook.student')}: {request.student?.fullName} ({request.student?.studentId || request.student?.email})
                         </div>
                         {request.courseSection && (
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Section: {request.courseSection.sectionCode} | Teacher: {request.courseSection.teacher?.fullName}
-                            {request.courseSection.class && ` | Class: ${request.courseSection.class.name}`}
+                            {t('admin.section')}: {request.courseSection.sectionCode} | {t('admin.teacher')}: {request.courseSection.teacher?.fullName}
+                            {request.courseSection.class && ` | ${t('admin.class')}: ${request.courseSection.class.name}`}
                           </div>
                         )}
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Semester: {request.semester?.name}
+                          {t('admin.semester')}: {request.semester?.name}
                         </div>
                         {request.reason && (
                           <div className="text-sm text-gray-600 dark:text-gray-300 mt-2 bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                            Reason: {request.reason}
+                            {t('questionReports.reason')}: {request.reason}
                           </div>
                         )}
                         {request.adminNotes && (
                           <div className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                            Admin Notes: {request.adminNotes}
+                            {t('questionReports.adminNotes')}: {request.adminNotes}
                           </div>
                         )}
                         <div className="text-xs text-gray-400 mt-2">
-                          Submitted: {new Date(request.createdAt).toLocaleString()}
+                          {t('admin.submitted')}: {new Date(request.createdAt).toLocaleString()}
                         </div>
                       </div>
                     </div>
@@ -227,7 +229,7 @@ export default function AdminAddDropRequestsPage() {
                             }}
                             className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
                           >
-                            Approve
+                            {t('faceVerification.approve')}
                           </button>
                           <button
                             onClick={() => {
@@ -236,7 +238,7 @@ export default function AdminAddDropRequestsPage() {
                             }}
                             className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
                           >
-                            Reject
+                            {t('reports.rejected')}
                           </button>
                         </div>
                       )}
@@ -246,7 +248,7 @@ export default function AdminAddDropRequestsPage() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No requests found</p>
+            <p className="text-gray-500 text-center py-8">{t('admin.noRequestsFound')}</p>
           )}
         </div>
 
@@ -254,7 +256,7 @@ export default function AdminAddDropRequestsPage() {
         {showSettingsModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
-              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Add/Drop Period Settings</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('admin.addDropPeriodSettings')}</h3>
               
               <div className="space-y-4">
                 {semesters.map(semester => (
@@ -263,17 +265,17 @@ export default function AdminAddDropRequestsPage() {
                       <div>
                         <span className="font-medium text-gray-900 dark:text-white">{semester.name}</span>
                         {semester.isCurrent && (
-                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">Current</span>
+                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">{t('admin.current')}</span>
                         )}
                         <span className="ml-2 text-sm text-gray-500">
-                          {semester._count?.addDropRequests || 0} requests
+                          {semester._count?.addDropRequests || 0} {t('admin.requests')}
                         </span>
                       </div>
                       <button
                         onClick={() => openSettingsModal(semester)}
                         className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded text-sm"
                       >
-                        Configure
+                        {t('admin.configure')}
                       </button>
                     </div>
                     {semester.addDropStart && semester.addDropEnd && (
@@ -291,7 +293,7 @@ export default function AdminAddDropRequestsPage() {
                   onClick={() => setShowSettingsModal(false)}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 rounded-lg"
                 >
-                  Close
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -303,13 +305,13 @@ export default function AdminAddDropRequestsPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
               <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                Configure Add/Drop Period for {selectedSemester.name}
+                {t('admin.configureAddDropFor')} {selectedSemester.name}
               </h3>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Start Date & Time
+                    {t('admin.startDateTime')}
                   </label>
                   <input
                     type="datetime-local"
@@ -320,7 +322,7 @@ export default function AdminAddDropRequestsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    End Date & Time
+                    {t('admin.endDateTime')}
                   </label>
                   <input
                     type="datetime-local"
@@ -337,13 +339,13 @@ export default function AdminAddDropRequestsPage() {
                   disabled={submitting}
                   className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
                 >
-                  {submitting ? 'Saving...' : 'Save'}
+                  {submitting ? t('admin.saving') : t('gradebook.saveChanges')}
                 </button>
                 <button
                   onClick={() => setSelectedSemester(null)}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -355,19 +357,19 @@ export default function AdminAddDropRequestsPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
               <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                {showActionModal.action === 'approve' ? 'Approve' : 'Reject'} Request
+                {showActionModal.action === 'approve' ? t('faceVerification.approve') : t('reports.rejected')} {t('admin.request')}
               </h3>
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Admin Notes (optional)
+                  {t('questionReports.adminNotes')} ({t('common.optional')})
                 </label>
                 <textarea
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                  placeholder="Add any notes or instructions"
+                  placeholder={t('admin.addNotesPlaceholder')}
                 />
               </div>
 
@@ -384,7 +386,7 @@ export default function AdminAddDropRequestsPage() {
                       : 'bg-red-600 hover:bg-red-700'
                   }`}
                 >
-                  {submitting ? 'Processing...' : showActionModal.action === 'approve' ? 'Approve' : 'Reject'}
+                  {submitting ? t('admin.processing') : showActionModal.action === 'approve' ? t('faceVerification.approve') : t('reports.rejected')}
                 </button>
                 <button
                   onClick={() => {
@@ -393,7 +395,7 @@ export default function AdminAddDropRequestsPage() {
                   }}
                   className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>

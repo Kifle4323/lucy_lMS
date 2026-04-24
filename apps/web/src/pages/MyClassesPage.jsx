@@ -14,9 +14,11 @@ import {
   Calendar,
   MapPin
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function MyClassesPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [classes, setClasses] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,16 +45,16 @@ export default function MyClassesPage() {
     }));
   };
 
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Classes</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('nav.myClasses')}</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">
-            {user?.role === 'TEACHER' ? 'Classes you are teaching' : 'Classes you are enrolled in'}
+            {user?.role === 'TEACHER' ? t('myClasses.classesTeaching') : t('myClasses.classesEnrolled')}
           </p>
         </div>
 
@@ -61,9 +63,9 @@ export default function MyClassesPage() {
         {user?.role === 'TEACHER' && sections.length === 0 && classes.length === 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No classes assigned</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('myClasses.noClassesAssigned')}</h3>
             <p className="text-gray-500 dark:text-gray-400">
-              You haven't been assigned to any classes or course sections yet
+              {t('myClasses.noClassesAssignedDesc')}
             </p>
           </div>
         )}
@@ -109,7 +111,7 @@ export default function MyClassesPage() {
                                   <>
                                     <span>·</span>
                                     <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium rounded">
-                                      Year {cls.year}
+                                      {t('myClasses.year')} {cls.year}
                                     </span>
                                   </>
                                 )}
@@ -117,7 +119,7 @@ export default function MyClassesPage() {
                             </div>
                           </div>
                           <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full">
-                            {classSections.length} course{classSections.length !== 1 ? 's' : ''}
+                            {classSections.length} {classSections.length !== 1 ? t('addDrop.courses') : t('myClasses.course')}
                           </span>
                         </div>
                       </div>
@@ -154,7 +156,7 @@ export default function MyClassesPage() {
                                 )}
                                 <div className="flex items-center gap-1">
                                   <GraduationCap className="w-3 h-3" />
-                                  <span>{section._count?.enrollments || 0} students</span>
+                                  <span>{section._count?.enrollments || 0} {t('nav.students').toLowerCase()}</span>
                                 </div>
                               </div>
 
@@ -164,14 +166,14 @@ export default function MyClassesPage() {
                                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
                                 >
                                   <FileText className="w-3 h-3" />
-                                  Assessments
+                                  {t('nav.assessments')}
                                 </Link>
                                 <Link
                                   to={`/teacher/grades?section=${section.id}`}
                                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
                                 >
                                   <FileText className="w-3 h-3" />
-                                  Grades
+                                  {t('nav.gradebook')}
                                 </Link>
                               </div>
                             </div>
@@ -186,7 +188,7 @@ export default function MyClassesPage() {
                     <div className="mb-6">
                       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                         <Calendar className="w-5 h-5" />
-                        Other Course Sections
+                        {t('myClasses.otherCourseSections')}
                       </h2>
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {sectionsWithoutClass.map((section) => (
@@ -223,7 +225,7 @@ export default function MyClassesPage() {
                               )}
                               <div className="flex items-center gap-2">
                                 <GraduationCap className="w-4 h-4" />
-                                <span>{section._count?.enrollments || 0} students</span>
+                                <span>{section._count?.enrollments || 0} {t('nav.students').toLowerCase()}</span>
                               </div>
                             </div>
 
@@ -233,14 +235,14 @@ export default function MyClassesPage() {
                                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
                               >
                                 <BookOpen className="w-3 h-3" />
-                                Assessments
+                                {t('nav.assessments')}
                               </Link>
                               <Link
                                 to={`/teacher/grades?section=${section.id}`}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
                               >
                                 <FileText className="w-3 h-3" />
-                                Grades
+                                {t('nav.gradebook')}
                               </Link>
                             </div>
                           </div>
@@ -258,9 +260,9 @@ export default function MyClassesPage() {
         {user?.role === 'STUDENT' && sections.length === 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No courses enrolled</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('myClasses.noCoursesEnrolled')}</h3>
             <p className="text-gray-500 dark:text-gray-400">
-              You haven't been enrolled in any courses yet
+              {t('myClasses.noCoursesEnrolledDesc')}
             </p>
           </div>
         )}
@@ -307,7 +309,7 @@ export default function MyClassesPage() {
                                   <>
                                     <span>·</span>
                                     <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium rounded">
-                                      Year {cls.year}
+                                      {t('myClasses.year')} {cls.year}
                                     </span>
                                   </>
                                 )}
@@ -315,7 +317,7 @@ export default function MyClassesPage() {
                             </div>
                           </div>
                           <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-sm font-medium rounded-full">
-                            {classEnrollments.length} course{classEnrollments.length !== 1 ? 's' : ''}
+                            {classEnrollments.length} {classEnrollments.length !== 1 ? t('addDrop.courses') : t('myClasses.course')}
                           </span>
                         </div>
                       </div>
@@ -364,14 +366,14 @@ export default function MyClassesPage() {
                                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
                                 >
                                   <FileText className="w-3 h-3" />
-                                  View Results
+                                  {t('myClasses.viewResults')}
                                 </Link>
                                 <Link
                                   to={`/courses/${enrollment.courseSection?.courseId}`}
                                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
                                 >
                                   <BookOpen className="w-3 h-3" />
-                                  Take Assessments
+                                  {t('myClasses.takeAssessments')}
                                 </Link>
                               </div>
                             </div>
@@ -386,7 +388,7 @@ export default function MyClassesPage() {
                     <div className="mb-6">
                       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                         <Calendar className="w-5 h-5" />
-                        Other Courses
+                        {t('myClasses.otherCourses')}
                       </h2>
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {sectionsWithoutClass.map((enrollment) => (
@@ -429,14 +431,14 @@ export default function MyClassesPage() {
                                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700 transition-colors"
                               >
                                 <FileText className="w-3 h-3" />
-                                View Results
+                                {t('myClasses.viewResults')}
                               </Link>
                               <Link
                                 to={`/courses/${enrollment.courseSection?.courseId}`}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
                               >
                                 <BookOpen className="w-3 h-3" />
-                                Take Assessments
+                                {t('myClasses.takeAssessments')}
                               </Link>
                             </div>
                           </div>

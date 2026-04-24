@@ -19,11 +19,13 @@ import {
   Trash2,
   X
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function GradebookPage() {
   const { courseId } = useParams();
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [components, setComponents] = useState([]);
   const [gradebook, setGradebook] = useState(null);
@@ -60,16 +62,16 @@ export default function GradebookPage() {
     if (!newComponent.name || !newComponent.weight) return;
     const newTotal = components.reduce((s, c) => s + c.weight, 0) + parseInt(newComponent.weight);
     if (newTotal > 100) {
-      toast.error(`Total weight would be ${newTotal}%. Must not exceed 100%.`);
+      toast.error(t('gradebook.totalWeightExceed', { total: newTotal }));
       return;
     }
     try {
       const created = await addGradeComponent(courseId, newComponent.name, parseInt(newComponent.weight));
       setComponents([...components, created]);
       setNewComponent({ name: '', weight: '' });
-      toast.success('Component added!');
+      toast.success(t('gradebook.componentAdded'));
     } catch (err) {
-      toast.error('Failed to add: ' + err.message);
+      toast.error(t('gradebook.failedAdd') + ': ' + err.message);
     }
   };
 
@@ -80,7 +82,7 @@ export default function GradebookPage() {
   const handleSaveComponents = async () => {
     const totalWeight = components.reduce((s, c) => s + c.weight, 0);
     if (totalWeight !== 100) {
-      toast.error(`Grade components must total 100%. Current total: ${totalWeight}%.`);
+      toast.error(t('gradebook.mustTotal100', { total: totalWeight }));
       return;
     }
     setSaving(true);
@@ -89,9 +91,9 @@ export default function GradebookPage() {
       for (const comp of components) {
         await updateGradeComponent(courseId, comp.id, { name: comp.name, weight: comp.weight });
       }
-      toast.success('Components saved successfully!');
+      toast.success(t('gradebook.componentsSaved'));
     } catch (err) {
-      toast.error('Failed to save: ' + err.message);
+      toast.error(t('gradebook.failedSave') + ': ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -101,9 +103,9 @@ export default function GradebookPage() {
     try {
       await deleteGradeComponent(courseId, componentId);
       setComponents(components.filter(c => c.id !== componentId));
-      toast.success('Component deleted!');
+      toast.success(t('gradebook.componentDeleted'));
     } catch (err) {
-      toast.error('Failed to delete: ' + err.message);
+      toast.error(t('gradebook.failedDelete') + ': ' + err.message);
     }
   };
 
@@ -113,14 +115,14 @@ export default function GradebookPage() {
 
   const handleSaveAttendance = async (studentId) => {
     if (attendance[studentId] === undefined) {
-      toast.error('Attendance data not loaded yet');
+      toast.error(t('gradebook.attendanceNotLoaded'));
       return;
     }
     try {
       await setAttendance(courseId, studentId, attendance[studentId]);
-      toast.success('Attendance saved!');
+      toast.success(t('gradebook.attendanceSaved'));
     } catch (err) {
-      toast.error('Failed to save: ' + err.message);
+      toast.error(t('gradebook.failedSave') + ': ' + err.message);
     }
   };
 
@@ -132,9 +134,9 @@ export default function GradebookPage() {
         return setAttendance(courseId, studentId, score);
       });
       await Promise.all(promises);
-      toast.success('All attendance saved!');
+      toast.success(t('gradebook.allAttendanceSaved'));
     } catch (err) {
-      toast.error('Failed to save some: ' + err.message);
+      toast.error(t('gradebook.failedSaveSome') + ': ' + err.message);
     }
     setSaving(false);
   };
@@ -156,20 +158,20 @@ export default function GradebookPage() {
         <div className="max-w-4xl mx-auto">
           <Link to={`/course/${courseId}`} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
             <ChevronLeft className="w-5 h-5" />
-            Back to Course
+            {t('gradebook.backToCourse')}
           </Link>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">My Grades</h1>
-            <p className="text-gray-500">Your overall performance in this course</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('gradebook.myGrades')}</h1>
+            <p className="text-gray-500">{t('gradebook.overallPerformance')}</p>
           </div>
 
           {/* Total Grade Card */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-8 text-white mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-primary-100 text-sm font-medium">Total Grade</p>
-                <p className="text-5xl font-bold mt-2">{myGrades.totalGrade > 0 ? `${myGrades.totalGrade}/100` : 'Not graded'}</p>
+                <p className="text-primary-100 text-sm font-medium">{t('gradebook.totalGrade')}</p>
+                <p className="text-5xl font-bold mt-2">{myGrades.totalGrade > 0 ? `${myGrades.totalGrade}/100` : t('gradebook.notGraded')}</p>
               </div>
               <Award className="w-16 h-16 text-primary-200" />
             </div>
@@ -197,10 +199,10 @@ export default function GradebookPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900">{comp.name}</h3>
-                      <p className="text-sm text-gray-500">{comp.weight}% weight</p>
+                      <p className="text-sm text-gray-500">{comp.weight}% {t('gradebook.weight')}</p>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-gray-900">{mark > 0 ? `${mark}/${comp.weight}` : 'Not graded'}</p>
+                  <p className="text-3xl font-bold text-gray-900">{mark > 0 ? `${mark}/${comp.weight}` : t('gradebook.notGraded')}</p>
                   {details.length > 0 && (
                     <div className="mt-4 space-y-2">
                       {details.map((d, i) => (
@@ -226,13 +228,13 @@ export default function GradebookPage() {
       <div className="max-w-7xl mx-auto">
         <Link to={`/course/${courseId}`} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
           <ChevronLeft className="w-5 h-5" />
-          Back to Course
+          {t('gradebook.backToCourse')}
         </Link>
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gradebook</h1>
-            <p className="text-gray-500">Manage grades and attendance</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('nav.gradebook')}</h1>
+            <p className="text-gray-500">{t('gradebook.manageGradesAttendance')}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <button
@@ -240,21 +242,21 @@ export default function GradebookPage() {
               className={`px-4 py-2 font-medium rounded-lg ${activeView === 'gradebook' ? 'bg-primary-900 text-white' : 'bg-gray-100 text-gray-700'}`}
             >
               <Calculator className="w-4 h-4 inline mr-2" />
-              Gradebook
+              {t('nav.gradebook')}
             </button>
             <button
               onClick={() => setActiveView('config')}
               className={`px-4 py-2 font-medium rounded-lg ${activeView === 'config' ? 'bg-primary-900 text-white' : 'bg-gray-100 text-gray-700'}`}
             >
               <Settings className="w-4 h-4 inline mr-2" />
-              Weights
+              {t('gradebook.weights')}
             </button>
             <button
               onClick={() => setActiveView('attendance')}
               className={`px-4 py-2 font-medium rounded-lg ${activeView === 'attendance' ? 'bg-primary-900 text-white' : 'bg-gray-100 text-gray-700'}`}
             >
               <UserCheck className="w-4 h-4 inline mr-2" />
-              Attendance
+              {t('nav.attendance')}
             </button>
             {user?.role === 'TEACHER' && (
               <Link
@@ -262,7 +264,7 @@ export default function GradebookPage() {
                 className="px-4 py-2 font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
               >
                 <TrendingUp className="w-4 h-4" />
-                Semester Grades
+                {t('gradebook.semesterGrades')}
               </Link>
             )}
           </div>
@@ -271,8 +273,8 @@ export default function GradebookPage() {
         {/* Weight Configuration - Dynamic Components */}
         {activeView === 'config' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Grade Components & Weights</h2>
-            <p className="text-sm text-gray-500 mb-6">Add, edit, or remove grade components. Weights must sum to 100%. When you create an assessment linked to a component, its max score auto-fills from the weight.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">{t('gradebook.gradeComponentsWeights')}</h2>
+            <p className="text-sm text-gray-500 mb-6">{t('gradebook.componentsDesc')}</p>
 
             <div className="space-y-3">
               {components.map(comp => (
@@ -282,7 +284,7 @@ export default function GradebookPage() {
                     value={comp.name}
                     onChange={(e) => handleLocalUpdateComponent(comp.id, 'name', e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                    placeholder="Component name"
+                    placeholder={t('gradebook.componentName')}
                   />
                   <div className="flex items-center gap-2">
                     <input
@@ -312,7 +314,7 @@ export default function GradebookPage() {
                 value={newComponent.name}
                 onChange={(e) => setNewComponent({ ...newComponent, name: e.target.value })}
                 className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                placeholder="New component name (e.g., Class Activity)"
+                placeholder={t('gradebook.newComponentPlaceholder')}
               />
               <input
                 type="number"
@@ -329,14 +331,14 @@ export default function GradebookPage() {
                 className="px-4 py-2 bg-primary-900 hover:bg-primary-800 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg inline-flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
-                Add
+                {t('common.add')}
               </button>
             </div>
 
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                  Total: <span className={`font-bold ${components.reduce((s, c) => s + c.weight, 0) === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                  {t('common.total')}: <span className={`font-bold ${components.reduce((s, c) => s + c.weight, 0) === 100 ? 'text-green-600' : 'text-red-600'}`}>
                     {components.reduce((s, c) => s + c.weight, 0)}%
                   </span>
                 </p>
@@ -346,11 +348,11 @@ export default function GradebookPage() {
                   className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg inline-flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? t('settings.saving') : t('gradebook.saveChanges')}
                 </button>
               </div>
               {components.reduce((s, c) => s + c.weight, 0) !== 100 && (
-                <p className="text-xs text-red-500 mt-2">Weights must total exactly 100% before you can save.</p>
+                <p className="text-xs text-red-500 mt-2">{t('gradebook.weightsMustTotal100')}</p>
               )}
             </div>
           </div>
@@ -393,7 +395,7 @@ export default function GradebookPage() {
                         className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg inline-flex items-center gap-1"
                       >
                         <Save className="w-3.5 h-3.5" />
-                        Save Class
+                        {t('gradebook.saveClass')}
                       </button>
                     </div>
                   </div>
@@ -401,9 +403,9 @@ export default function GradebookPage() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Score</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">Action</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('gradebook.student')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">{t('gradebook.score')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">{t('common.actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -441,7 +443,7 @@ export default function GradebookPage() {
                               onClick={() => handleSaveAttendance(g.student.id)}
                               className="px-3 py-1 bg-primary-900 hover:bg-primary-800 text-white text-sm font-medium rounded"
                             >
-                              Save
+                              {t('common.save')}
                             </button>
                           </td>
                         </tr>
@@ -458,7 +460,7 @@ export default function GradebookPage() {
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium rounded-lg inline-flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  Save All Attendance
+                  {t('gradebook.saveAllAttendance')}
                 </button>
               </div>
             </div>
@@ -497,7 +499,7 @@ export default function GradebookPage() {
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('gradebook.student')}</th>
                           {allComponents.map(comp => (
                             <th key={comp.id} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                               {comp.name}<br/><span className="text-gray-400">/{comp.weight}</span>

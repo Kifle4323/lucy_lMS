@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { updateMyProfile, changePassword } from '../api';
 import Layout from '../components/Layout';
 import { Camera, User, Lock, AlertCircle, CheckCircle, Save, Upload, Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // Password validation helper
 function validatePassword(password) {
@@ -30,6 +31,7 @@ function PasswordCheck({ valid, text }) {
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
+  const { t } = useTranslation();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [stream, setStream] = useState(null);
@@ -76,7 +78,7 @@ export default function SettingsPage() {
         }
       }, 100);
     } catch (err) {
-      setProfileError('Could not access camera. Please allow camera permissions.');
+      setProfileError(t('settings.cameraAccessError'));
     }
   };
 
@@ -106,11 +108,11 @@ export default function SettingsPage() {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setProfileError('Please select an image file');
+      setProfileError(t('settings.selectImageFile'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setProfileError('Image must be less than 5MB');
+      setProfileError(t('settings.imageSizeLimit'));
       return;
     }
     const reader = new FileReader();
@@ -134,10 +136,10 @@ export default function SettingsPage() {
         profileImage: capturedImage || profileImage,
       });
       await refreshUser();
-      setProfileSuccess('Profile updated successfully!');
+      setProfileSuccess(t('settings.profileUpdated'));
       setCapturedImage(null);
     } catch (err) {
-      setProfileError(err.message || 'Failed to update profile');
+      setProfileError(err.message || t('settings.failedUpdateProfile'));
     } finally {
       setProfileLoading(false);
     }
@@ -149,12 +151,12 @@ export default function SettingsPage() {
     setPasswordSuccess('');
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match');
+      setPasswordError(t('settings.passwordsDoNotMatch'));
       return;
     }
 
     if (!isValid) {
-      setPasswordError('Password must include at least one uppercase letter, one lowercase letter, and one number');
+      setPasswordError(t('settings.passwordRequirements'));
       return;
     }
 
@@ -162,12 +164,12 @@ export default function SettingsPage() {
 
     try {
       await changePassword(currentPassword, newPassword);
-      setPasswordSuccess('Password changed successfully!');
+      setPasswordSuccess(t('settings.passwordChanged'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      setPasswordError(err.message || 'Failed to change password');
+      setPasswordError(err.message || t('settings.failedChangePassword'));
     } finally {
       setPasswordLoading(false);
     }
@@ -176,13 +178,13 @@ export default function SettingsPage() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('nav.settings')}</h1>
 
         {/* Profile Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <User className="w-5 h-5" />
-            Profile Information
+            {t('settings.profileInformation')}
           </h2>
 
           {profileError && (
@@ -203,7 +205,7 @@ export default function SettingsPage() {
             {/* Profile Picture */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Profile Picture
+                {t('settings.profilePicture')}
               </label>
               <div className="flex items-center gap-4">
                 {profileImage ? (
@@ -226,11 +228,11 @@ export default function SettingsPage() {
                     className="px-4 py-2 bg-primary-900 hover:bg-primary-800 dark:bg-primary-700 dark:hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                   >
                     <Camera className="w-4 h-4" />
-                    {cameraActive ? 'Stop Camera' : 'Take Photo'}
+                    {cameraActive ? t('settings.stopCamera') : t('settings.takePhoto')}
                   </button>
                   <label className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer">
                     <Upload className="w-4 h-4" />
-                    Upload Image
+                    {t('settings.uploadImage')}
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -248,7 +250,7 @@ export default function SettingsPage() {
                       }}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
                     >
-                      Remove
+                      {t('settings.remove')}
                     </button>
                   )}
                 </div>
@@ -264,7 +266,7 @@ export default function SettingsPage() {
                   onClick={capturePhoto}
                   className="absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-white text-primary-900 font-medium rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
                 >
-                  Capture
+                  {t('settings.capture')}
                 </button>
               </div>
             )}
@@ -273,21 +275,21 @@ export default function SettingsPage() {
             {/* Full Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Full Name
+                {t('register.fullName')}
               </label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                placeholder="Enter your full name"
+                placeholder={t('settings.enterFullName')}
               />
             </div>
 
             {/* Email (read-only) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
+                {t('auth.email')}
               </label>
               <input
                 type="email"
@@ -295,7 +297,7 @@ export default function SettingsPage() {
                 disabled
                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-400 rounded-lg cursor-not-allowed"
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Email cannot be changed</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('settings.emailCannotChange')}</p>
             </div>
 
             <button
@@ -304,7 +306,7 @@ export default function SettingsPage() {
               className="w-full py-3 px-4 bg-primary-900 hover:bg-primary-800 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Save className="w-5 h-5" />
-              {profileLoading ? 'Saving...' : 'Save Profile'}
+              {profileLoading ? t('settings.saving') : t('settings.saveProfile')}
             </button>
           </form>
         </div>
@@ -313,7 +315,7 @@ export default function SettingsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <Lock className="w-5 h-5" />
-            Change Password
+            {t('settings.changePassword')}
           </h2>
 
           {passwordError && (
@@ -333,7 +335,7 @@ export default function SettingsPage() {
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Current Password
+                {t('settings.currentPassword')}
               </label>
               <input
                 type="password"
@@ -341,13 +343,13 @@ export default function SettingsPage() {
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                placeholder="Enter current password"
+                placeholder={t('settings.enterCurrentPassword')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                New Password
+                {t('settings.newPassword')}
               </label>
               <input
                 type="password"
@@ -357,22 +359,22 @@ export default function SettingsPage() {
                 onBlur={() => setPasswordFocused(false)}
                 required
                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                placeholder="Enter new password"
+                placeholder={t('settings.enterNewPassword')}
               />
               {/* Password requirements */}
               {passwordFocused && newPassword && (
                 <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-1">
-                  <PasswordCheck valid={checks.length} text="At least 6 characters" />
-                  <PasswordCheck valid={checks.uppercase} text="At least one uppercase letter (A-Z)" />
-                  <PasswordCheck valid={checks.lowercase} text="At least one lowercase letter (a-z)" />
-                  <PasswordCheck valid={checks.number} text="At least one number (0-9)" />
+                  <PasswordCheck valid={checks.length} text={t('register.atLeast6Chars')} />
+                  <PasswordCheck valid={checks.uppercase} text={t('register.atLeastOneUppercase')} />
+                  <PasswordCheck valid={checks.lowercase} text={t('register.atLeastOneLowercase')} />
+                  <PasswordCheck valid={checks.number} text={t('register.atLeastOneNumber')} />
                 </div>
               )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Confirm New Password
+                {t('settings.confirmNewPassword')}
               </label>
               <input
                 type="password"
@@ -380,7 +382,7 @@ export default function SettingsPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                placeholder="Confirm new password"
+                placeholder={t('settings.confirmNewPasswordPlaceholder')}
               />
             </div>
 
@@ -390,7 +392,7 @@ export default function SettingsPage() {
               className="w-full py-3 px-4 bg-primary-900 hover:bg-primary-800 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Lock className="w-5 h-5" />
-              {passwordLoading ? 'Changing...' : 'Change Password'}
+              {passwordLoading ? t('settings.changing') : t('settings.changePassword')}
             </button>
           </form>
         </div>

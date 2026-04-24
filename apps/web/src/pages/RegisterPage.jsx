@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../api';
 import { useTheme } from '../ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { GraduationCap, Mail, Lock, User, AlertCircle, Users, Sun, Moon, CheckCircle, Check, X } from 'lucide-react';
 import lucyLogo from '../assets/lucy_logobg.png';
 
@@ -44,6 +45,7 @@ export default function RegisterPage() {
   const [confirmFocused, setConfirmFocused] = useState(false);
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { checks, isValid } = validatePassword(form.password);
   const passwordsMatch = form.password === form.confirmPassword && form.confirmPassword.length > 0;
@@ -54,22 +56,22 @@ export default function RegisterPage() {
     setSuccess('');
     
     if (!isValid) {
-      setError('Password does not meet all requirements');
+      setError(t('register.passwordRequirements'));
       return;
     }
     
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('register.passwordsDoNotMatch'));
       return;
     }
     
     setLoading(true);
     try {
       const result = await register(form);
-      setSuccess('Account created successfully! Please wait for admin approval before you can login.');
+      setSuccess(t('register.accountCreatedApproval'));
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || t('register.registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ export default function RegisterPage() {
       <button
         onClick={toggleDarkMode}
         className="absolute top-4 right-4 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all"
-        title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        title={darkMode ? t('register.switchToLight') : t('register.switchToDark')}
       >
         {darkMode ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-gray-600" />}
       </button>
@@ -92,8 +94,8 @@ export default function RegisterPage() {
           <div className="inline-flex items-center justify-center w-24 h-24 bg-white dark:bg-gray-800 rounded-2xl shadow-lg mb-4 p-2">
             <img src={lucyLogo} alt="Lucy College" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-primary-900 dark:text-white">Lucy College</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">Create your account</p>
+          <h1 className="text-3xl font-bold text-primary-900 dark:text-white">{t('register.lucyCollege')}</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">{t('auth.registerTitle')}</p>
         </div>
 
         {/* Card */}
@@ -114,7 +116,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('register.fullName')}</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
@@ -123,13 +125,13 @@ export default function RegisterPage() {
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   required
                   className="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                  placeholder="abebe bekele"
+                  placeholder={t('register.fullNamePlaceholder')}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('auth.email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
@@ -138,13 +140,13 @@ export default function RegisterPage() {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   required
                   className="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                  placeholder="you@Lucy.edu"
+                  placeholder={t('register.emailPlaceholder')}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('auth.password')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
@@ -155,22 +157,22 @@ export default function RegisterPage() {
                   onBlur={() => setPasswordFocused(false)}
                   required
                   className="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                  placeholder="Create a password"
+                  placeholder={t('register.createPassword')}
                 />
               </div>
               {/* Password requirements */}
               {passwordFocused && (
                 <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-1">
-                  <PasswordCheck valid={checks.length} text="At least 6 characters" />
-                  <PasswordCheck valid={checks.uppercase} text="At least one uppercase letter (A-Z)" />
-                  <PasswordCheck valid={checks.lowercase} text="At least one lowercase letter (a-z)" />
-                  <PasswordCheck valid={checks.number} text="At least one number (0-9)" />
+                  <PasswordCheck valid={checks.length} text={t('register.atLeast6Chars')} />
+                  <PasswordCheck valid={checks.uppercase} text={t('register.atLeastOneUppercase')} />
+                  <PasswordCheck valid={checks.lowercase} text={t('register.atLeastOneLowercase')} />
+                  <PasswordCheck valid={checks.number} text={t('register.atLeastOneNumber')} />
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('auth.confirmPassword')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
@@ -186,7 +188,7 @@ export default function RegisterPage() {
                       : 'border-red-500 dark:border-red-400 focus:ring-red-500')
                     } border-gray-200 dark:border-gray-600 focus:ring-primary-500`
                   }
-                  placeholder="Confirm your password"
+                  placeholder={t('register.confirmYourPassword')}
                 />
                 {form.confirmPassword && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -198,12 +200,12 @@ export default function RegisterPage() {
                 )}
               </div>
               {form.confirmPassword && !passwordsMatch && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">Passwords do not match</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{t('register.passwordsDoNotMatch')}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">I am a</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('register.iAmA')}</label>
               <div className="relative">
                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <select
@@ -211,8 +213,8 @@ export default function RegisterPage() {
                   onChange={(e) => setForm({ ...form, role: e.target.value })}
                   className="w-full pl-11 pr-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all appearance-none"
                 >
-                  <option value="STUDENT">Student</option>
-                  <option value="TEACHER">Teacher</option>
+                  <option value="STUDENT">{t('register.student')}</option>
+                  <option value="TEACHER">{t('register.teacher')}</option>
                 </select>
               </div>
             </div>
@@ -222,14 +224,14 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full py-3 px-4 bg-primary-900 hover:bg-primary-800 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? t('register.creatingAccount') : t('register.createAccount')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-gray-600 dark:text-gray-400">
-            Already have an account?{' '}
+            {t('auth.hasAccount')}{' '}
             <Link to="/login" className="text-primary-900 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">
-              Sign In
+              {t('auth.login')}
             </Link>
           </p>
         </div>

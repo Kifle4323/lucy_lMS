@@ -18,11 +18,13 @@ import {
   UserCircle,
   ChevronRight
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminClassesPage() {
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const { t } = useTranslation();
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -62,7 +64,7 @@ export default function AdminClassesPage() {
       setClasses([created, ...classes]);
       setShowCreateModal(false);
       setNewClass({ name: '', code: '', year: '', section: '' });
-      toast.success('Class created!');
+      toast.success(t('admin.classCreated'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -79,7 +81,7 @@ export default function AdminClassesPage() {
       });
       setClasses(classes.map(c => c.id === updated.id ? { ...c, ...updated } : c));
       setEditingClass(null);
-      toast.success('Class updated!');
+      toast.success(t('admin.classUpdated'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -87,17 +89,17 @@ export default function AdminClassesPage() {
 
   const handleDeleteClass = async (classId) => {
     const confirmed = await confirm({
-      title: 'Delete Class',
-      message: 'Are you sure you want to delete this class? This will remove all students, teachers, and course assignments.',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('admin.deleteClass'),
+      message: t('admin.confirmDeleteClass'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
     try {
       await deleteClass(classId);
       setClasses(classes.filter(c => c.id !== classId));
-      toast.success('Class deleted!');
+      toast.success(t('admin.classDeleted'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -111,7 +113,7 @@ export default function AdminClassesPage() {
           ? { ...c, students: [...(c.students || []), result] }
           : c
       ));
-      toast.success('Student added to class!');
+      toast.success(t('admin.studentAddedToClass'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -119,10 +121,10 @@ export default function AdminClassesPage() {
 
   const handleRemoveStudent = async (classId, studentId) => {
     const confirmed = await confirm({
-      title: 'Remove Student',
-      message: 'Remove this student from class?',
-      confirmText: 'Remove',
-      cancelText: 'Cancel',
+      title: t('admin.removeStudent'),
+      message: t('admin.confirmRemoveStudent'),
+      confirmText: t('admin.remove'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
@@ -133,7 +135,7 @@ export default function AdminClassesPage() {
           ? { ...c, students: c.students.filter(s => s.studentId !== studentId) }
           : c
       ));
-      toast.success('Student removed from class!');
+      toast.success(t('admin.studentRemovedFromClass'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -147,7 +149,7 @@ export default function AdminClassesPage() {
           ? { ...c, teachers: [...(c.teachers || []), result] }
           : c
       ));
-      toast.success('Teacher added to class!');
+      toast.success(t('admin.teacherAddedToClass'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -155,10 +157,10 @@ export default function AdminClassesPage() {
 
   const handleRemoveTeacher = async (classId, teacherId) => {
     const confirmed = await confirm({
-      title: 'Remove Teacher',
-      message: 'Remove this teacher from class?',
-      confirmText: 'Remove',
-      cancelText: 'Cancel',
+      title: t('admin.removeTeacher'),
+      message: t('admin.confirmRemoveTeacher'),
+      confirmText: t('admin.remove'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
@@ -169,7 +171,7 @@ export default function AdminClassesPage() {
           ? { ...c, teachers: c.teachers.filter(t => t.teacherId !== teacherId) }
           : c
       ));
-      toast.success('Teacher removed from class!');
+      toast.success(t('admin.teacherRemovedFromClass'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -183,7 +185,7 @@ export default function AdminClassesPage() {
           ? { ...c, courses: [...(c.courses || []), result] }
           : c
       ));
-      toast.success('Course assigned to class!');
+      toast.success(t('admin.courseAssignedToClass'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -191,10 +193,10 @@ export default function AdminClassesPage() {
 
   const handleRemoveCourse = async (classId, courseId) => {
     const confirmed = await confirm({
-      title: 'Remove Course',
-      message: 'Remove this course from class?',
-      confirmText: 'Remove',
-      cancelText: 'Cancel',
+      title: t('admin.removeCourse'),
+      message: t('admin.confirmRemoveCourse'),
+      confirmText: t('admin.remove'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
@@ -205,14 +207,14 @@ export default function AdminClassesPage() {
           ? { ...c, courses: c.courses.filter(c => c.courseId !== courseId) }
           : c
       ));
-      toast.success('Course removed from class!');
+      toast.success(t('admin.courseRemovedFromClass'));
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">Access denied</div>;
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">{t('common.accessDenied')}</div>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
@@ -220,15 +222,15 @@ export default function AdminClassesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Classes</h1>
-            <p className="text-gray-500 mt-1">Manage classes, students, and teachers</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('admin.classes')}</h1>
+            <p className="text-gray-500 mt-1">{t('admin.manageClassesDesc')}</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Create Class
+            {t('admin.createClass')}
           </button>
         </div>
 
@@ -236,14 +238,14 @@ export default function AdminClassesPage() {
         {classes.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No classes yet</h3>
-            <p className="text-gray-500 mb-4">Create your first class to get started</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('admin.noClassesYet')}</h3>
+            <p className="text-gray-500 mb-4">{t('admin.createFirstClassDesc')}</p>
             <button
               onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg transition-colors"
             >
               <Plus className="w-5 h-5" />
-              Create Class
+              {t('admin.createClass')}
             </button>
           </div>
         ) : (
@@ -258,19 +260,19 @@ export default function AdminClassesPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded">
-                        {cls.year ? `Year ${cls.year}` : 'No Year'}
+                        {cls.year ? t('admin.yearNum', { num: cls.year }) : t('admin.noYear')}
                       </span>
                       <button
                         onClick={() => setEditingClass(cls)}
                         className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-primary-600"
-                        title="Edit class"
+                        title={t('admin.editClass')}
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteClass(cls.id)}
                         className="p-1 hover:bg-gray-100 rounded text-gray-500 hover:text-red-600"
-                        title="Delete class"
+                        title={t('admin.deleteClass')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -282,7 +284,7 @@ export default function AdminClassesPage() {
                   {/* Students */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Students ({cls.students?.length || 0})</span>
+                      <span className="text-sm font-medium text-gray-700">{t('nav.students')} ({cls.students?.length || 0})</span>
                       <button
                         onClick={() => setAddModal({ type: 'student', classId: cls.id })}
                         className="p-1 hover:bg-gray-100 rounded text-primary-600"
@@ -301,7 +303,7 @@ export default function AdminClassesPage() {
                       ))}
                       {cls.students?.length > 3 && (
                         <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded">
-                          +{cls.students.length - 3} more
+                          +{cls.students.length - 3} {t('admin.more')}
                         </span>
                       )}
                     </div>
@@ -310,7 +312,7 @@ export default function AdminClassesPage() {
                   {/* Teachers */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Teachers ({cls.teachers?.length || 0})</span>
+                      <span className="text-sm font-medium text-gray-700">{t('nav.teachers')} ({cls.teachers?.length || 0})</span>
                       <button
                         onClick={() => setAddModal({ type: 'teacher', classId: cls.id })}
                         className="p-1 hover:bg-gray-100 rounded text-primary-600"
@@ -333,7 +335,7 @@ export default function AdminClassesPage() {
                   {/* Courses */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Courses ({cls.courses?.length || 0})</span>
+                      <span className="text-sm font-medium text-gray-700">{t('nav.courses')} ({cls.courses?.length || 0})</span>
                       <button
                         onClick={() => setAddModal({ type: 'course', classId: cls.id })}
                         className="p-1 hover:bg-gray-100 rounded text-primary-600"
@@ -353,7 +355,7 @@ export default function AdminClassesPage() {
                                 <p className="font-medium text-green-800 text-sm">{c.course.title}</p>
                                 <div className="flex items-center gap-2 text-xs text-green-600">
                                   <span className="px-1.5 py-0.5 bg-green-100 rounded">{c.course.code}</span>
-                                  <span>{c.course.creditHours} cr</span>
+                                  <span>{c.course.creditHours} {t('admin.cr')}</span>
                                   {c.teacher && (
                                     <span className="flex items-center gap-1">
                                       <UserCircle className="w-3 h-3" />
@@ -373,7 +375,7 @@ export default function AdminClassesPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400 italic">No courses assigned yet</p>
+                      <p className="text-sm text-gray-400 italic">{t('admin.noCoursesAssignedYet')}</p>
                     )}
                   </div>
                 </div>
@@ -388,66 +390,66 @@ export default function AdminClassesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Create New Class</h2>
+              <h2 className="text-lg font-semibold">{t('admin.createNewClass')}</h2>
               <button onClick={() => setShowCreateModal(false)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateClass} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.department')}</label>
                 <select
                   value={newClass.departmentId}
                   onChange={(e) => setNewClass({ ...newClass, departmentId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
-                  <option value="">-- Select Department --</option>
+                  <option value="">-- {t('admin.selectDepartment')} --</option>
                   {departments.map(dept => (
                     <option key={dept.id} value={dept.id}>{dept.name} ({dept.code}) - ETB {dept.pricePerCreditHour}/CH</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.className')}</label>
                 <input
                   type="text"
                   value={newClass.name}
                   onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
                   required
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="e.g., Computer Science 2024"
+                  placeholder={t('admin.classNamePlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Class Code</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.classCode')}</label>
                 <input
                   type="text"
                   value={newClass.code}
                   onChange={(e) => setNewClass({ ...newClass, code: e.target.value })}
                   required
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="e.g., CS2024"
+                  placeholder={t('admin.classCodePlaceholder')}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.year')}</label>
                   <input
                     type="number"
                     value={newClass.year}
                     onChange={(e) => setNewClass({ ...newClass, year: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="e.g., 1"
+                    placeholder={t('admin.yearPlaceholder')}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.section')}</label>
                   <input
                     type="text"
                     value={newClass.section}
                     onChange={(e) => setNewClass({ ...newClass, section: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder="e.g., A"
+                    placeholder={t('admin.sectionPlaceholder')}
                   />
                 </div>
               </div>
@@ -457,13 +459,13 @@ export default function AdminClassesPage() {
                   onClick={() => setShowCreateModal(false)}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                 >
-                  Create
+                  {t('common.create')}
                 </button>
               </div>
             </form>
@@ -476,14 +478,14 @@ export default function AdminClassesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Edit Class</h2>
+              <h2 className="text-lg font-semibold">{t('admin.editClass')}</h2>
               <button onClick={() => setEditingClass(null)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleUpdateClass} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.className')}</label>
                 <input
                   type="text"
                   value={editingClass.name}
@@ -493,7 +495,7 @@ export default function AdminClassesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Class Code</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.classCode')}</label>
                 <input
                   type="text"
                   value={editingClass.code}
@@ -504,7 +506,7 @@ export default function AdminClassesPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.year')}</label>
                   <input
                     type="number"
                     value={editingClass.year || ''}
@@ -513,7 +515,7 @@ export default function AdminClassesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.section')}</label>
                   <input
                     type="text"
                     value={editingClass.section || ''}
@@ -528,13 +530,13 @@ export default function AdminClassesPage() {
                   onClick={() => setEditingClass(null)}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                 >
-                  Update
+                  {t('common.update')}
                 </button>
               </div>
             </form>
@@ -548,7 +550,7 @@ export default function AdminClassesPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">
-                Add {addModal.type === 'student' ? 'Student' : addModal.type === 'teacher' ? 'Teacher' : 'Course'}
+                {t('admin.add')} {addModal.type === 'student' ? t('nav.students') : addModal.type === 'teacher' ? t('nav.teachers') : t('nav.courses')}
               </h2>
               <button onClick={() => setAddModal({ type: null, classId: null })} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
@@ -611,7 +613,7 @@ export default function AdminClassesPage() {
                           }
                         }}
                       >
-                        <option value="">Select Teacher (optional)</option>
+                        <option value="">{t('admin.selectTeacherOptional')}</option>
                         {teachers.map((t) => (
                           <option key={t.id} value={t.id}>{t.fullName}</option>
                         ))}
@@ -620,7 +622,7 @@ export default function AdminClassesPage() {
                         onClick={() => { handleAssignCourse(c.id, null); setAddModal({ type: null, classId: null }); }}
                         className="mt-2 w-full py-2 bg-primary-900 hover:bg-primary-800 text-white text-sm font-medium rounded-lg"
                       >
-                        Assign without teacher
+                        {t('admin.assignWithoutTeacher')}
                       </button>
                     </div>
                   ))}

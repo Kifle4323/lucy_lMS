@@ -1,2 +1,7 @@
 node_modules
 jaas-private.key
+__pycache__
+*.pyc
+apps/ml/models/*.joblib
+apps/ml/models/*.json
+.env

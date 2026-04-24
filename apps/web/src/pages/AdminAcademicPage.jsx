@@ -8,10 +8,12 @@ import {
 import Layout from '../components/Layout';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminAcademicPage() {
   const toast = useToast();
   const confirm = useConfirm();
+  const { t } = useTranslation();
   const [academicYears, setAcademicYears] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -88,10 +90,10 @@ export default function AdminAcademicPage() {
 
   async function handleDeleteYear(id) {
     const confirmed = await confirm({
-      title: 'Delete Academic Year',
-      message: 'Delete this academic year?',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('admin.deleteAcademicYear'),
+      message: t('admin.confirmDeleteAcademicYear'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
@@ -146,10 +148,10 @@ export default function AdminAcademicPage() {
 
   async function handleDeleteSemester(id) {
     const confirmed = await confirm({
-      title: 'Delete Semester',
-      message: 'Delete this semester?',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('admin.deleteSemester'),
+      message: t('admin.confirmDeleteSemester'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
@@ -163,16 +165,16 @@ export default function AdminAcademicPage() {
 
   async function handlePublishGrades(semesterId) {
     const confirmed = await confirm({
-      title: 'Publish Grades',
-      message: 'Publish all submitted grades for this semester?',
-      confirmText: 'Publish',
-      cancelText: 'Cancel',
+      title: t('admin.publishGrades'),
+      message: t('admin.confirmPublishGrades'),
+      confirmText: t('admin.publish'),
+      cancelText: t('common.cancel'),
       type: 'success',
     });
     if (!confirmed) return;
     try {
       await publishSemesterGrades(semesterId);
-      toast.success('Grades published successfully!');
+      toast.success(t('admin.gradesPublishedSuccess'));
       loadData();
     } catch (err) {
       setError(err.message);
@@ -181,22 +183,22 @@ export default function AdminAcademicPage() {
 
   async function handleChangeSemesterStatus(semesterId, newStatus) {
     const statusLabels = {
-      'REGISTRATION_OPEN': 'open registration',
-      'IN_PROGRESS': 'start the semester',
-      'GRADING': 'start grading period',
-      'COMPLETED': 'complete the semester'
+      'REGISTRATION_OPEN': t('admin.openRegistrationAction'),
+      'IN_PROGRESS': t('admin.startSemesterAction'),
+      'GRADING': t('admin.startGradingAction'),
+      'COMPLETED': t('admin.completeSemesterAction')
     };
     const confirmed = await confirm({
-      title: 'Change Semester Status',
-      message: `Are you sure you want to ${statusLabels[newStatus]}?`,
-      confirmText: 'Confirm',
-      cancelText: 'Cancel',
+      title: t('admin.changeSemesterStatus'),
+      message: t('admin.confirmChangeStatus', { action: statusLabels[newStatus] }),
+      confirmText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       type: 'warning',
     });
     if (!confirmed) return;
     try {
       await updateSemester(semesterId, { status: newStatus });
-      toast.success('Semester status updated!');
+      toast.success(t('admin.semesterStatusUpdated'));
       loadData();
     } catch (err) {
       setError(err.message);
@@ -298,17 +300,17 @@ export default function AdminAcademicPage() {
 
   async function handleDeleteCourseSection(id) {
     const confirmed = await confirm({
-      title: 'Delete Course Section',
-      message: 'Delete this course section?',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('admin.deleteCourseSection'),
+      message: t('admin.confirmDeleteCourseSection'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
     try {
       await deleteCourseSection(id);
       setCourseSections(courseSections.filter(s => s.id !== id));
-      toast.success('Course section deleted!');
+      toast.success(t('admin.courseSectionDeleted'));
     } catch (err) {
       setError(err.message);
     }
@@ -325,12 +327,12 @@ export default function AdminAcademicPage() {
     });
   }
 
-  if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
+  if (loading) return <Layout><div className="p-8">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
       <div className="p-6 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Academic Management</h1>
+        <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{t('admin.academicManagement')}</h1>
 
       {error && <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4">{error}</div>}
 
@@ -340,19 +342,19 @@ export default function AdminAcademicPage() {
           onClick={() => setActiveTab('years')}
           className={`pb-2 px-4 ${activeTab === 'years' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
         >
-          Academic Years
+          {t('admin.academicYears')}
         </button>
         <button
           onClick={() => setActiveTab('semesters')}
           className={`pb-2 px-4 ${activeTab === 'semesters' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
         >
-          Semesters
+          {t('admin.semesters')}
         </button>
         <button
           onClick={() => setActiveTab('sections')}
           className={`pb-2 px-4 ${activeTab === 'sections' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
         >
-          Course Sections
+          {t('admin.courseSections')}
         </button>
       </div>
 
@@ -362,11 +364,11 @@ export default function AdminAcademicPage() {
           {/* Form */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-              {editingYear ? 'Edit Academic Year' : 'Create Academic Year'}
+              {editingYear ? t('admin.editAcademicYear') : t('admin.createAcademicYear')}
             </h2>
             <form onSubmit={editingYear ? handleUpdateYear : handleCreateYear} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Name (e.g., 2024-2025)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.nameExample')}</label>
                 <input
                   type="text"
                   value={yearForm.name}
@@ -376,7 +378,7 @@ export default function AdminAcademicPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Start Date</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.startDate')}</label>
                 <input
                   type="date"
                   value={yearForm.startDate}
@@ -386,7 +388,7 @@ export default function AdminAcademicPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">End Date</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.endDate')}</label>
                 <input
                   type="date"
                   value={yearForm.endDate}
@@ -397,11 +399,11 @@ export default function AdminAcademicPage() {
               </div>
               <div className="flex gap-2">
                 <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  {editingYear ? 'Update' : 'Create'}
+                  {editingYear ? t('common.update') : t('common.create')}
                 </button>
                 {editingYear && (
                   <button type="button" onClick={() => { setEditingYear(null); setYearForm({ name: '', startDate: '', endDate: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 )}
               </div>
@@ -410,7 +412,7 @@ export default function AdminAcademicPage() {
 
           {/* List */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Academic Years</h2>
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('admin.academicYears')}</h2>
             <div className="space-y-3">
               {academicYears.map(year => (
                 <div key={year.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 flex justify-between items-center bg-gray-50 dark:bg-gray-700">
@@ -419,15 +421,15 @@ export default function AdminAcademicPage() {
                     <div className="text-sm text-gray-500 dark:text-gray-400">
                       {new Date(year.startDate).toLocaleDateString()} - {new Date(year.endDate).toLocaleDateString()}
                     </div>
-                    {year.isActive && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-1 rounded">Active</span>}
+                    {year.isActive && <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-1 rounded">{t('admin.active')}</span>}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => startEditYear(year)} className="text-blue-600 hover:underline">Edit</button>
-                    <button onClick={() => handleDeleteYear(year.id)} className="text-red-600 hover:underline">Delete</button>
+                    <button onClick={() => startEditYear(year)} className="text-blue-600 hover:underline">{t('common.edit')}</button>
+                    <button onClick={() => handleDeleteYear(year.id)} className="text-red-600 hover:underline">{t('common.delete')}</button>
                   </div>
                 </div>
               ))}
-              {academicYears.length === 0 && <p className="text-gray-500">No academic years yet.</p>}
+              {academicYears.length === 0 && <p className="text-gray-500">{t('admin.noAcademicYearsYet')}</p>}
             </div>
           </div>
         </div>
@@ -439,39 +441,39 @@ export default function AdminAcademicPage() {
           {/* Form */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-              {editingSemester ? 'Edit Semester' : 'Create Semester'}
+              {editingSemester ? t('admin.editSemester') : t('admin.createSemester')}
             </h2>
             <form onSubmit={editingSemester ? handleUpdateSemester : handleCreateSemester} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Academic Year</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.academicYear')}</label>
                   <select
                     value={semesterForm.academicYearId}
                     onChange={e => setSemesterForm({ ...semesterForm, academicYearId: e.target.value })}
                     className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     required
                   >
-                    <option value="">Select Year</option>
+                    <option value="">{t('admin.selectYear')}</option>
                     {academicYears.map(y => (
                       <option key={y.id} value={y.id}>{y.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Type</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.type')}</label>
                   <select
                     value={semesterForm.type}
                     onChange={e => setSemesterForm({ ...semesterForm, type: e.target.value })}
                     className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
-                    <option value="FALL">Fall</option>
-                    <option value="SPRING">Spring</option>
-                    <option value="SUMMER">Summer</option>
+                    <option value="FALL">{t('admin.fall')}</option>
+                    <option value="SPRING">{t('admin.spring')}</option>
+                    <option value="SUMMER">{t('admin.summer')}</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Name (e.g., Fall 2024)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.nameExampleSemester')}</label>
                 <input
                   type="text"
                   value={semesterForm.name}
@@ -482,7 +484,7 @@ export default function AdminAcademicPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Start Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.startDate')}</label>
                   <input
                     type="date"
                     value={semesterForm.startDate}
@@ -492,7 +494,7 @@ export default function AdminAcademicPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">End Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.endDate')}</label>
                   <input
                     type="date"
                     value={semesterForm.endDate}
@@ -504,7 +506,7 @@ export default function AdminAcademicPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Registration Start</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.registrationStart')}</label>
                   <input
                     type="date"
                     value={semesterForm.registrationStart}
@@ -513,7 +515,7 @@ export default function AdminAcademicPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Registration End</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.registrationEnd')}</label>
                   <input
                     type="date"
                     value={semesterForm.registrationEnd}
@@ -523,14 +525,14 @@ export default function AdminAcademicPage() {
                 </div>
               </div>
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3 text-sm">
-                <div className="font-medium text-blue-800 dark:text-blue-300 mb-1">Add/Drop Period</div>
+                <div className="font-medium text-blue-800 dark:text-blue-300 mb-1">{t('admin.addDropPeriod')}</div>
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  Students can add courses they failed or drop courses during this period.
+                  {t('admin.addDropPeriodDesc')}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Add/Drop Start</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.addDropStart')}</label>
                   <input
                     type="date"
                     value={semesterForm.addDropStart}
@@ -539,7 +541,7 @@ export default function AdminAcademicPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Add/Drop End</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.addDropEnd')}</label>
                   <input
                     type="date"
                     value={semesterForm.addDropEnd}
@@ -550,7 +552,7 @@ export default function AdminAcademicPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Midterm Exam Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.midtermExamDate')}</label>
                   <input
                     type="date"
                     value={semesterForm.midtermExamDate}
@@ -559,7 +561,7 @@ export default function AdminAcademicPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Final Exam Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.finalExamDate')}</label>
                   <input
                     type="date"
                     value={semesterForm.finalExamDate}
@@ -569,13 +571,13 @@ export default function AdminAcademicPage() {
                 </div>
               </div>
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3 text-sm">
-                <div className="font-medium text-yellow-800 dark:text-yellow-300 mb-1">Official Exam Dates</div>
+                <div className="font-medium text-yellow-800 dark:text-yellow-300 mb-1">{t('admin.officialExamDates')}</div>
                 <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                  These are the official Midterm and Final exam dates for all courses. Teachers can propose early exams if all students agree.
+                  {t('admin.officialExamDatesDesc')}
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Grading Deadline</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.gradingDeadline')}</label>
                 <input
                   type="date"
                   value={semesterForm.gradingDeadline}
@@ -584,25 +586,25 @@ export default function AdminAcademicPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Registration Fee (ETB)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.registrationFeeETB')}</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="Leave empty for no fee"
+                  placeholder={t('admin.leaveEmptyForNoFee')}
                   value={semesterForm.registrationFee}
                   onChange={e => setSemesterForm({ ...semesterForm, registrationFee: e.target.value })}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">Set a fee to require Chapa payment before registration</p>
+                <p className="text-xs text-gray-500 mt-1">{t('admin.chapaPaymentDesc')}</p>
               </div>
               <div className="flex gap-2">
                 <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  {editingSemester ? 'Update' : 'Create'}
+                  {editingSemester ? t('common.update') : t('common.create')}
                 </button>
                 {editingSemester && (
                   <button type="button" onClick={() => { setEditingSemester(null); setSemesterForm({ academicYearId: '', type: 'FALL', name: '', startDate: '', endDate: '', registrationStart: '', registrationEnd: '', addDropStart: '', addDropEnd: '', midtermExamDate: '', finalExamDate: '', gradingDeadline: '', registrationFee: '' }); }} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 )}
               </div>
@@ -611,7 +613,7 @@ export default function AdminAcademicPage() {
 
           {/* List */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Semesters</h2>
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('admin.semesters')}</h2>
             <div className="space-y-4">
               {semesters.map(sem => (
                 <div key={sem.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-700">
@@ -625,33 +627,33 @@ export default function AdminAcademicPage() {
                       {/* Timeline */}
                       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                         <div className="bg-blue-50 dark:bg-blue-900/30 rounded p-2">
-                          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Semester Period</div>
+                          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">{t('admin.semesterPeriod')}</div>
                           <div className="text-gray-700 dark:text-gray-300">
                             {new Date(sem.startDate).toLocaleDateString()} - {new Date(sem.endDate).toLocaleDateString()}
                           </div>
                         </div>
                         <div className="bg-green-50 dark:bg-green-900/30 rounded p-2">
-                          <div className="text-xs text-green-600 dark:text-green-400 font-medium">Registration</div>
+                          <div className="text-xs text-green-600 dark:text-green-400 font-medium">{t('admin.registration')}</div>
                           <div className="text-gray-700 dark:text-gray-300">
                             {sem.registrationStart && sem.registrationEnd
                               ? `${new Date(sem.registrationStart).toLocaleDateString()} - ${new Date(sem.registrationEnd).toLocaleDateString()}`
-                              : 'Not set'}
+                              : t('admin.notSet')}
                           </div>
                         </div>
                         <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded p-2">
-                          <div className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Midterm Exam</div>
+                          <div className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">{t('admin.midtermExam')}</div>
                           <div className="text-gray-700 dark:text-gray-300">
                             {sem.midtermExamDate
                               ? new Date(sem.midtermExamDate).toLocaleDateString()
-                              : 'Not set'}
+                              : t('admin.notSet')}
                           </div>
                         </div>
                         <div className="bg-red-50 dark:bg-red-900/30 rounded p-2">
-                          <div className="text-xs text-red-600 dark:text-red-400 font-medium">Final Exam</div>
+                          <div className="text-xs text-red-600 dark:text-red-400 font-medium">{t('admin.finalExam')}</div>
                           <div className="text-gray-700 dark:text-gray-300">
                             {sem.finalExamDate
                               ? new Date(sem.finalExamDate).toLocaleDateString()
-                              : 'Not set'}
+                              : t('admin.notSet')}
                           </div>
                         </div>
                       </div>
@@ -659,14 +661,14 @@ export default function AdminAcademicPage() {
                       {/* Grading Deadline */}
                       {sem.gradingDeadline && (
                         <div className="mt-2 text-sm text-purple-600 dark:text-purple-400">
-                          Grading Deadline: {new Date(sem.gradingDeadline).toLocaleDateString()}
+                          {t('admin.gradingDeadline')}: {new Date(sem.gradingDeadline).toLocaleDateString()}
                         </div>
                       )}
 
                       {/* Registration Fee */}
                       {sem.registrationFee > 0 && (
                         <div className="mt-1 text-sm text-orange-600 dark:text-orange-400">
-                          Registration Fee: ETB {sem.registrationFee?.toLocaleString()}
+                          {t('admin.registrationFee')}: ETB {sem.registrationFee?.toLocaleString()}
                         </div>
                       )}
 
@@ -680,7 +682,7 @@ export default function AdminAcademicPage() {
                         }`}>
                           {sem.status.replace('_', ' ')}
                         </span>
-                        {sem.isCurrent && <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 rounded">Current</span>}
+                        {sem.isCurrent && <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 rounded">{t('admin.current')}</span>}
                       </div>
 
                       {/* Status Change Buttons */}
@@ -690,7 +692,7 @@ export default function AdminAcademicPage() {
                             onClick={() => handleChangeSemesterStatus(sem.id, 'REGISTRATION_OPEN')}
                             className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
                           >
-                            Open Registration
+                            {t('admin.openRegistration')}
                           </button>
                         )}
                         {sem.status === 'REGISTRATION_OPEN' && (
@@ -698,7 +700,7 @@ export default function AdminAcademicPage() {
                             onClick={() => handleChangeSemesterStatus(sem.id, 'IN_PROGRESS')}
                             className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
                           >
-                            Start Semester
+                            {t('admin.startSemester')}
                           </button>
                         )}
                         {sem.status === 'IN_PROGRESS' && (
@@ -706,7 +708,7 @@ export default function AdminAcademicPage() {
                             onClick={() => handleChangeSemesterStatus(sem.id, 'GRADING')}
                             className="text-xs bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700"
                           >
-                            Start Grading
+                            {t('admin.startGrading')}
                           </button>
                         )}
                         {sem.status === 'GRADING' && (
@@ -714,19 +716,19 @@ export default function AdminAcademicPage() {
                             onClick={() => handlePublishGrades(sem.id)}
                             className="text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700"
                           >
-                            Publish & Complete
+                            {t('admin.publishAndComplete')}
                           </button>
                         )}
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => startEditSemester(sem)} className="text-blue-600 hover:underline text-sm">Edit</button>
-                      <button onClick={() => handleDeleteSemester(sem.id)} className="text-red-600 hover:underline text-sm">Delete</button>
+                      <button onClick={() => startEditSemester(sem)} className="text-blue-600 hover:underline text-sm">{t('common.edit')}</button>
+                      <button onClick={() => handleDeleteSemester(sem.id)} className="text-red-600 hover:underline text-sm">{t('common.delete')}</button>
                     </div>
                   </div>
                 </div>
               ))}
-              {semesters.length === 0 && <p className="text-gray-500 dark:text-gray-400">No semesters yet.</p>}
+              {semesters.length === 0 && <p className="text-gray-500 dark:text-gray-400">{t('admin.noSemestersYet')}</p>}
             </div>
           </div>
         </div>
@@ -737,13 +739,13 @@ export default function AdminAcademicPage() {
         <div className="space-y-6">
           {/* Semester Selector */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Select Semester</h2>
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('admin.selectSemester')}</h2>
             <select
               value={selectedSemester}
               onChange={e => loadCourseSections(e.target.value)}
               className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
-              <option value="">-- Select a Semester --</option>
+              <option value="">-- {t('admin.selectSemester')} --</option>
               {semesters.map(sem => (
                 <option key={sem.id} value={sem.id}>
                   {sem.name} ({sem.academicYear?.name})
@@ -757,20 +759,20 @@ export default function AdminAcademicPage() {
               {/* Batch Course Section Form */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add Course Sections</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('admin.addCourseSections')}</h2>
                   <button
                     type="button"
                     onClick={addCourseSectionRow}
                     className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
                   >
-                    + Add Another Course
+                    + {t('admin.addAnotherCourse')}
                   </button>
                 </div>
 
                 <form onSubmit={handleCreateCourseSections} className="space-y-4">
                   {/* Class selector for all courses */}
                   <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded mb-4">
-                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Assign to Class (optional - applies to all courses)</label>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.assignToClassOptional')}</label>
                     <select
                       value={courseSectionRows[0]?.classId || ''}
                       onChange={e => {
@@ -779,41 +781,41 @@ export default function AdminAcademicPage() {
                       }}
                       className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
-                      <option value="">-- No Class (Individual Enrollment) --</option>
+                      <option value="">-- {t('admin.noClassIndividualEnrollment')} --</option>
                       {classes.map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.name} ({c.code}) - {c.year ? `Year ${c.year}` : ''} {c.section || ''}
+                          {c.name} ({c.code}) - {c.year ? t('admin.yearNum', { num: c.year }) : ''} {c.section || ''}
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All courses will be assigned to this class</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('admin.allCoursesAssignedToClass')}</p>
                   </div>
 
                   {/* Course rows */}
                   {courseSectionRows.map((row, index) => (
                     <div key={index} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-700">
                       <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Course #{index + 1}</span>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('admin.courseNum', { num: index + 1 })}</span>
                         {courseSectionRows.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeCourseSectionRow(index)}
                             className="text-red-600 hover:text-red-800 text-sm"
                           >
-                            Remove
+                            {t('admin.remove')}
                           </button>
                         )}
                       </div>
                       <div className="grid grid-cols-3 gap-3 mb-3">
                         <div>
-                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Course</label>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{t('nav.courses')}</label>
                           <select
                             value={row.courseId}
                             onChange={e => updateCourseSectionRow(index, 'courseId', e.target.value)}
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             required
                           >
-                            <option value="">-- Select --</option>
+                            <option value="">-- {t('admin.select')} --</option>
                             {courses.map(c => (
                               <option key={c.id} value={c.id}>
                                 {c.code} - {c.title}
@@ -822,14 +824,14 @@ export default function AdminAcademicPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Teacher</label>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{t('nav.teachers')}</label>
                           <select
                             value={row.teacherId}
                             onChange={e => updateCourseSectionRow(index, 'teacherId', e.target.value)}
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             required
                           >
-                            <option value="">-- Select --</option>
+                            <option value="">-- {t('admin.select')} --</option>
                             {teachers.map(t => (
                               <option key={t.id} value={t.id}>
                                 {t.fullName}
@@ -838,47 +840,47 @@ export default function AdminAcademicPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Section Code</label>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.sectionCode')}</label>
                           <input
                             type="text"
                             value={row.sectionCode}
                             onChange={e => updateCourseSectionRow(index, 'sectionCode', e.target.value)}
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            placeholder="e.g., CS101-A"
+                            placeholder={t('admin.sectionCodePlaceholder')}
                             required
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Delivery Mode</label>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.deliveryMode')}</label>
                           <select
                             value={row.deliveryMode || 'ONLINE'}
                             onChange={e => updateCourseSectionRow(index, 'deliveryMode', e.target.value)}
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           >
-                            <option value="ONLINE">Online</option>
-                            <option value="PAPER">Face to Face</option>
+                            <option value="ONLINE">{t('admin.online')}</option>
+                            <option value="PAPER">{t('admin.faceToFace')}</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Schedule</label>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.schedule')}</label>
                           <input
                             type="text"
                             value={row.schedule || ''}
                             onChange={e => updateCourseSectionRow(index, 'schedule', e.target.value)}
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            placeholder="e.g., Mon/Wed 9:00-10:30"
+                            placeholder={t('admin.schedulePlaceholder')}
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Room</label>
+                          <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.room')}</label>
                           <input
                             type="text"
                             value={row.room || ''}
                             onChange={e => updateCourseSectionRow(index, 'room', e.target.value)}
                             className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                            placeholder="e.g., Room 101"
+                            placeholder={t('admin.roomPlaceholder')}
                           />
                         </div>
                       </div>
@@ -890,14 +892,14 @@ export default function AdminAcademicPage() {
                       type="submit"
                       className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
                     >
-                      Create All Course Sections
+                      {t('admin.createAllCourseSections')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setCourseSectionRows([{ courseId: '', teacherId: '', classId: '', sectionCode: '' }])}
                       className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      Clear All
+                      {t('admin.clearAll')}
                     </button>
                   </div>
                 </form>
@@ -906,11 +908,11 @@ export default function AdminAcademicPage() {
               {/* Edit Course Section Form */}
               {editingCourseSection && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg shadow p-6 border border-yellow-200 dark:border-yellow-800">
-                  <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Course Section</h2>
+                  <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('admin.editCourseSection')}</h2>
                   <form onSubmit={handleUpdateCourseSection} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Course</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('nav.courses')}</label>
                         <input
                           type="text"
                           value={editingCourseSection.course?.title || ''}
@@ -919,7 +921,7 @@ export default function AdminAcademicPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Teacher</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('nav.teachers')}</label>
                         <select
                           value={editingCourseSection.teacherId}
                           onChange={e => setEditingCourseSection({ ...editingCourseSection, teacherId: e.target.value })}
@@ -931,7 +933,7 @@ export default function AdminAcademicPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Section Code</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.sectionCode')}</label>
                         <input
                           type="text"
                           value={editingCourseSection.sectionCode || ''}
@@ -940,60 +942,60 @@ export default function AdminAcademicPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Class (optional)</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.classOptional')}</label>
                         <select
                           value={editingCourseSection.classId || ''}
                           onChange={e => setEditingCourseSection({ ...editingCourseSection, classId: e.target.value || null })}
                           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
-                          <option value="">No Class</option>
+                          <option value="">{t('admin.noClass')}</option>
                           {classes.map(c => (
                             <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Delivery Mode</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.deliveryMode')}</label>
                         <select
                           value={editingCourseSection.deliveryMode || 'ONLINE'}
                           onChange={e => setEditingCourseSection({ ...editingCourseSection, deliveryMode: e.target.value })}
                           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
-                          <option value="ONLINE">Online</option>
-                          <option value="PAPER">Face to Face</option>
+                          <option value="ONLINE">{t('admin.online')}</option>
+                          <option value="PAPER">{t('admin.faceToFace')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Schedule</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.schedule')}</label>
                         <input
                           type="text"
                           value={editingCourseSection.schedule || ''}
                           onChange={e => setEditingCourseSection({ ...editingCourseSection, schedule: e.target.value })}
                           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          placeholder="e.g., Mon/Wed 9:00-10:30"
+                          placeholder={t('admin.schedulePlaceholder')}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Room</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('admin.room')}</label>
                         <input
                           type="text"
                           value={editingCourseSection.room || ''}
                           onChange={e => setEditingCourseSection({ ...editingCourseSection, room: e.target.value })}
                           className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          placeholder="e.g., Room 101"
+                          placeholder={t('admin.roomPlaceholder')}
                         />
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Update
+                        {t('common.update')}
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingCourseSection(null)}
                         className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </button>
                     </div>
                   </form>
@@ -1002,17 +1004,17 @@ export default function AdminAcademicPage() {
 
               {/* Course Sections List - Grouped by Class */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Course Sections by Class</h2>
+                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">{t('admin.courseSectionsByClass')}</h2>
                 
                 {courseSections.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">No course sections added yet.</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">{t('admin.noCourseSectionsYet')}</p>
                 ) : (
                   <div className="space-y-6">
                     {/* Group sections by class */}
                     {Object.entries(
                       courseSections.reduce((acc, section) => {
                         const classKey = section.classId || 'no-class';
-                        const className = section.class?.name || 'Unassigned (Individual Enrollment)';
+                        const className = section.class?.name || t('admin.unassignedIndividual');
                         const classCode = section.class?.code || '';
                         if (!acc[classKey]) {
                           acc[classKey] = {
@@ -1036,7 +1038,7 @@ export default function AdminAcademicPage() {
                               )}
                             </div>
                             <span className="text-sm bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 px-2 py-1 rounded">
-                              {classGroup.sections.length} course{classGroup.sections.length !== 1 ? 's' : ''}
+                              {t('admin.courseCount', { count: classGroup.sections.length })}
                             </span>
                           </div>
                         </div>
@@ -1045,13 +1047,13 @@ export default function AdminAcademicPage() {
                         <table className="w-full">
                           <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Course</th>
-                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Section</th>
-                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Teacher</th>
-                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Schedule</th>
-                              <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Students</th>
-                              <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('nav.courses')}</th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('admin.section')}</th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('nav.teachers')}</th>
+                              <th className="text-left px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('admin.schedule')}</th>
+                              <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('nav.students')}</th>
+                              <th className="text-center px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('common.status')}</th>
+                              <th className="text-right px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('common.actions')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1067,7 +1069,7 @@ export default function AdminAcademicPage() {
                                   <span className="text-gray-900 dark:text-white">{section.sectionCode}</span>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="text-gray-900 dark:text-white">{section.teacher?.fullName || 'Not assigned'}</span>
+                                  <span className="text-gray-900 dark:text-white">{section.teacher?.fullName || t('admin.notAssigned')}</span>
                                 </td>
                                 <td className="px-4 py-3">
                                   <span className="text-sm text-gray-500 dark:text-gray-400">{section.schedule || '-'}</span>
@@ -1080,9 +1082,9 @@ export default function AdminAcademicPage() {
                                 </td>
                                 <td className="px-4 py-3 text-center">
                                   {section.isPublished ? (
-                                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs rounded">Published</span>
+                                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs rounded">{t('admin.published')}</span>
                                   ) : (
-                                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded">Draft</span>
+                                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded">{t('admin.draft')}</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-3 text-right">
@@ -1091,13 +1093,13 @@ export default function AdminAcademicPage() {
                                       onClick={() => startEditCourseSection(section)}
                                       className="text-blue-600 hover:text-blue-800 text-sm"
                                     >
-                                      Edit
+                                      {t('common.edit')}
                                     </button>
                                     <button
                                       onClick={() => handleDeleteCourseSection(section.id)}
                                       className="text-red-600 hover:text-red-800 text-sm"
                                     >
-                                      Delete
+                                      {t('common.delete')}
                                     </button>
                                   </div>
                                 </td>

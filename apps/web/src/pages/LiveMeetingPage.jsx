@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
+import { useTranslation } from 'react-i18next';
 import { getLiveSession, updateLiveSession, joinLiveSession, leaveLiveSession, endLiveSession, getLiveSessionAttendance, getJaasToken } from '../api';
 import Layout from '../components/Layout';
 import LiveFaceTracker from '../components/LiveFaceTracker';
@@ -24,6 +25,7 @@ export default function LiveMeetingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,7 +49,7 @@ export default function LiveMeetingPage() {
           updateLiveSession(s.id, { status: 'LIVE' })
             .then(updated => setSession(updated))
             .catch(err => {
-              toast.error(err.message || 'Cannot start session yet');
+              toast.error(err.message || t('liveSession.cannotStartEarly'));
             });
         }
         // Fetch JaaS token
@@ -55,7 +57,7 @@ export default function LiveMeetingPage() {
           .then(config => setJaasConfig(config))
           .catch(err => console.error('Failed to get JaaS token:', err));
       })
-      .catch(err => setError(err.message || 'Session not found'))
+      .catch(err => setError(err.message || t('liveSession.title')))
       .finally(() => setLoading(false));
   }, [sessionId, user]);
 
@@ -85,7 +87,7 @@ export default function LiveMeetingPage() {
           prejoinPageEnabled: false,
           startWithAudioMuted: false,
           startWithVideoMuted: false,
-          subject: session.title || 'Live Class',
+          subject: session.title || t('nav.liveClasses'),
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
@@ -171,7 +173,7 @@ export default function LiveMeetingPage() {
       setAttendanceData(data);
       setShowAttendance(true);
     } catch (err) {
-      toast.error('Failed to fetch attendance');
+      toast.error(t('attendance.syncAttendance'));
     }
   };
 
@@ -207,12 +209,12 @@ export default function LiveMeetingPage() {
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'ATTENDED': return 'Attended';
-      case 'PARTIAL': return 'Partial';
-      case 'ABSENT': return 'Absent';
-      case 'JOINED': return 'In Session';
-      case 'LEFT': return 'Left Early';
-      default: return 'Not Joined';
+      case 'ATTENDED': return t('liveSession.present');
+      case 'PARTIAL': return t('liveSession.partial');
+      case 'ABSENT': return t('liveSession.absent');
+      case 'JOINED': return t('liveSession.inSession');
+      case 'LEFT': return t('liveSession.leftEarly');
+      default: return t('liveSession.notJoined');
     }
   };
 
@@ -326,21 +328,21 @@ export default function LiveMeetingPage() {
                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-1"
               >
                 <Users className="w-4 h-4" />
-                Attendance
+                {t('attendance.title')}
               </button>
               <button
                 onClick={handleEndCall}
                 disabled={endingSession}
                 className="px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm font-medium rounded-lg"
               >
-                {endingSession ? 'Ending...' : 'End Class'}
+                {endingSession ? t('liveSession.ending') : t('liveSession.endClass')}
               </button>
             </>
           )}
           {user?.role === 'STUDENT' && (
             <span className="flex items-center gap-1 px-2 py-1 bg-green-600/20 text-green-400 text-xs font-medium rounded">
               <UserCheck className="w-3 h-3" />
-              Attendance tracked
+              {t('liveSession.attendanceTracked')}
             </span>
           )}
           {user?.role === 'STUDENT' && faceAlerts > 0 && (
@@ -416,7 +418,7 @@ export default function LiveMeetingPage() {
                   <div>
                     <p className="text-white text-sm font-medium">{att.student?.fullName}</p>
                     <p className="text-gray-500 text-xs">
-                      {att.duration ? `${att.duration} min` : 'In session'}
+                      {att.duration ? `${att.duration} min` : t('liveSession.inSession')}
                     </p>
                   </div>
                 </div>

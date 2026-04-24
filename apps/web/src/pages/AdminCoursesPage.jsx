@@ -4,10 +4,12 @@ import { useToast } from '../ToastContext';
 import { getCourses, createCourse, deleteCourse, updateCourse } from '../api';
 import Layout from '../components/Layout';
 import { Plus, BookOpen, X, Edit2, Trash2, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminCoursesPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -42,7 +44,7 @@ export default function AdminCoursesPage() {
         creditHours: 3,
         ectsCredits: 5
       });
-      toast.success('Course created!');
+      toast.success(t('admin.courseCreated'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -55,18 +57,18 @@ export default function AdminCoursesPage() {
       const updated = await updateCourse(editingCourse.id, editingCourse);
       setCourses(courses.map(c => c.id === updated.id ? updated : c));
       setEditingCourse(null);
-      toast.success('Course updated!');
+      toast.success(t('admin.courseUpdated'));
     } catch (err) {
       toast.error(err.message);
     }
   };
 
   const handleDeleteCourse = async (courseId) => {
-    if (!window.confirm('Are you sure you want to delete this course?')) return;
+    if (!window.confirm(t('admin.confirmDeleteCourse'))) return;
     try {
       await deleteCourse(courseId);
       setCourses(courses.filter(c => c.id !== courseId));
-      toast.success('Course deleted!');
+      toast.success(t('admin.courseDeleted'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -77,8 +79,8 @@ export default function AdminCoursesPage() {
     c.code?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">Access denied</div>;
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">{t('common.accessDenied')}</div>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
@@ -86,15 +88,15 @@ export default function AdminCoursesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Course Catalog</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Manage all courses available in the university</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.courseCatalog')}</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">{t('admin.manageCoursesDesc')}</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Create Course
+            {t('admin.createCourse')}
           </button>
         </div>
 
@@ -106,7 +108,7 @@ export default function AdminCoursesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search courses by title or code..."
+              placeholder={t('admin.searchCourses')}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
@@ -117,10 +119,10 @@ export default function AdminCoursesPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
             <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {searchQuery ? 'No courses found' : 'No courses yet'}
+              {searchQuery ? t('admin.noCoursesFound') : t('admin.noCoursesYet')}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {searchQuery ? 'Try a different search term' : 'Create courses that can be used when setting up semesters'}
+              {searchQuery ? t('admin.tryDifferentSearch') : t('admin.createCoursesDesc')}
             </p>
             {!searchQuery && (
               <button
@@ -128,7 +130,7 @@ export default function AdminCoursesPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg"
               >
                 <Plus className="w-5 h-5" />
-                Create First Course
+                {t('admin.createFirstCourse')}
               </button>
             )}
           </div>
@@ -137,12 +139,12 @@ export default function AdminCoursesPage() {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Course</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stream</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Credits</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('nav.courses')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('admin.code')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('admin.stream')}</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('admin.credits')}</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ECTS</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -176,7 +178,7 @@ export default function AdminCoursesPage() {
                           {course.stream === 'Natural Science' ? 'NS' : 'SS'}
                         </span>
                       ) : (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">Common</span>
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded">{t('admin.common')}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -212,7 +214,7 @@ export default function AdminCoursesPage() {
 
         {/* Stats */}
         <div className="mt-6 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <p>{courses.length} course{courses.length !== 1 ? 's' : ''} in catalog</p>
+          <p>{courses.length} {t('admin.coursesInCatalog')}</p>
         </div>
       </div>
 
@@ -221,14 +223,14 @@ export default function AdminCoursesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Create New Course</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('admin.createNewCourse')}</h2>
               <button onClick={() => setShowCreateModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateCourse} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Title</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.courseTitle')}</label>
                 <input
                   type="text"
                   value={newCourse.title}
@@ -239,7 +241,7 @@ export default function AdminCoursesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Code</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.courseCode')}</label>
                 <input
                   type="text"
                   value={newCourse.code}
@@ -250,18 +252,18 @@ export default function AdminCoursesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.description')} ({t('common.optional')})</label>
                 <textarea
                   value={newCourse.description}
                   onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Brief description of the course..."
+                  placeholder={t('admin.courseDescriptionPlaceholder')}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Hours</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.creditHours')}</label>
                   <input
                     type="number"
                     value={newCourse.creditHours}
@@ -271,10 +273,10 @@ export default function AdminCoursesPage() {
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="e.g., 3"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">US Credit Hours</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('admin.usCreditHours')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ECTS Credits</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.ectsCredits')}</label>
                   <input
                     type="number"
                     value={newCourse.ectsCredits}
@@ -284,7 +286,7 @@ export default function AdminCoursesPage() {
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="e.g., 5"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">European Credits</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('admin.europeanCredits')}</p>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
@@ -293,13 +295,13 @@ export default function AdminCoursesPage() {
                   onClick={() => setShowCreateModal(false)}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                 >
-                  Create
+                  {t('admin.create')}
                 </button>
               </div>
             </form>
@@ -312,14 +314,14 @@ export default function AdminCoursesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Course</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('admin.editCourse')}</h2>
               <button onClick={() => setEditingCourse(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-500 dark:text-gray-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleUpdateCourse} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Title</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.courseTitle')}</label>
                 <input
                   type="text"
                   value={editingCourse.title}
@@ -329,7 +331,7 @@ export default function AdminCoursesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Code</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.courseCode')}</label>
                 <input
                   type="text"
                   value={editingCourse.code}
@@ -339,7 +341,7 @@ export default function AdminCoursesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.description')}</label>
                 <textarea
                   value={editingCourse.description || ''}
                   onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
@@ -349,7 +351,7 @@ export default function AdminCoursesPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Hours</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.creditHours')}</label>
                   <input
                     type="number"
                     value={editingCourse.creditHours}
@@ -360,7 +362,7 @@ export default function AdminCoursesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ECTS Credits</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.ectsCredits')}</label>
                   <input
                     type="number"
                     value={editingCourse.ectsCredits}
@@ -372,17 +374,17 @@ export default function AdminCoursesPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stream (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.stream')} ({t('common.optional')})</label>
                 <select
                   value={editingCourse.stream || ''}
                   onChange={(e) => setEditingCourse({ ...editingCourse, stream: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
-                  <option value="">Common Course (all streams)</option>
-                  <option value="Natural Science">Natural Science</option>
-                  <option value="Social Science">Social Science</option>
+                  <option value="">{t('admin.commonCourseAllStreams')}</option>
+                  <option value="Natural Science">{t('admin.naturalScience')}</option>
+                  <option value="Social Science">{t('admin.socialScience')}</option>
                 </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty for courses available to all students</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('admin.leaveEmptyForAll')}</p>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -390,13 +392,13 @@ export default function AdminCoursesPage() {
                   onClick={() => setEditingCourse(null)}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                 >
-                  Save Changes
+                  {t('gradebook.saveChanges')}
                 </button>
               </div>
             </form>

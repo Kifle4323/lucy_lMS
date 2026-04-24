@@ -6,6 +6,7 @@ import {
   User, MapPin, FileText, GraduationCap, Upload, Trash2, Save, Send, 
   CheckCircle, AlertCircle, Clock, X, ChevronDown, ChevronUp, Camera
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const DOCUMENT_TYPES = [
   'Elementary Completion Certificate',
@@ -25,6 +26,7 @@ const SPONSOR_CATEGORIES = ['Govt', 'Private', 'NGO', 'Self'];
 
 export default function StudentProfilePage() {
   const { user, refreshUser } = useAuth();
+  const { t } = useTranslation();
   const fileInputRef = useRef(null);
   const profileImageInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -111,7 +113,7 @@ export default function StudentProfilePage() {
         documents: data.documents || [],
       });
     } catch (err) {
-      setError('Failed to load profile');
+      setError(t('studentProfile.failedLoadProfile'));
     } finally {
       setLoading(false);
     }
@@ -177,11 +179,11 @@ export default function StudentProfilePage() {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
+      setError(t('settings.selectImageFile'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be less than 5MB');
+      setError(t('settings.imageSizeLimit'));
       return;
     }
     const reader = new FileReader();
@@ -191,9 +193,9 @@ export default function StudentProfilePage() {
       try {
         await updateMyProfile({ profileImage: base64 });
         await refreshUser();
-        setSuccess('Profile picture updated!');
+        setSuccess(t('studentProfile.profilePictureUpdated'));
       } catch (err) {
-        setError('Failed to update profile picture');
+        setError(t('studentProfile.failedUpdateProfilePicture'));
       }
     };
     reader.readAsDataURL(file);
@@ -219,16 +221,16 @@ export default function StudentProfilePage() {
         checkedInDate: updated.checkedInDate ? updated.checkedInDate.split('T')[0] : '',
         documents: updated.documents || [],
       }));
-      setSuccess(submitForApproval ? 'Profile submitted for approval!' : 'Profile saved successfully!');
+      setSuccess(submitForApproval ? t('studentProfile.submittedForApproval') : t('studentProfile.profileSaved'));
     } catch (err) {
       // Handle validation errors with missing fields - show inline
       if (err.missingFields && err.missingFields.length > 0) {
         const errors = {};
         err.missingFields.forEach(field => {
-          errors[field] = `${fieldLabels[field] || field} is required`;
+          errors[field] = `${fieldLabels[field] || field} ${t('studentProfile.isRequired')}`;
         });
         setFieldErrors(errors);
-        setError('Please fill in all required fields');
+        setError(t('studentProfile.fillRequiredFields'));
       } else if (err.details) {
         // Zod validation errors - show inline
         const errors = {};
@@ -237,9 +239,9 @@ export default function StudentProfilePage() {
           errors[field] = d.message;
         });
         setFieldErrors(errors);
-        setError('Please correct the errors below');
+        setError(t('studentProfile.correctErrors'));
       } else {
-        setError(err.message || 'Failed to save profile');
+        setError(err.message || t('studentProfile.failedSaveProfile'));
       }
     } finally {
       setSaving(false);
@@ -265,12 +267,12 @@ export default function StudentProfilePage() {
           }
           return { ...prev, documents: [...prev.documents, doc] };
         });
-        setSuccess('Document uploaded successfully!');
+        setSuccess(t('studentProfile.documentUploaded'));
         setUploadingDoc(null);
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      setError('Failed to upload document');
+      setError(t('studentProfile.failedUploadDocument'));
       setUploadingDoc(null);
     }
   };
@@ -282,9 +284,9 @@ export default function StudentProfilePage() {
         ...prev,
         documents: prev.documents.filter(d => d.id !== documentId),
       }));
-      setSuccess('Document removed successfully!');
+      setSuccess(t('studentProfile.documentRemoved'));
     } catch (err) {
-      setError('Failed to delete document');
+      setError(t('studentProfile.failedDeleteDocument'));
     }
   };
 
@@ -296,19 +298,19 @@ export default function StudentProfilePage() {
   const getStatusBadge = () => {
     switch (profile.status) {
       case 'DRAFT':
-        return <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium">Draft</span>;
+        return <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium">{t('studentProfile.draft')}</span>;
       case 'PENDING_APPROVAL':
-        return <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 rounded-full text-sm font-medium flex items-center gap-1"><Clock className="w-4 h-4" /> Pending Approval</span>;
+        return <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 rounded-full text-sm font-medium flex items-center gap-1"><Clock className="w-4 h-4" /> {t('studentProfile.pendingApproval')}</span>;
       case 'APPROVED':
-        return <span className="px-3 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-full text-sm font-medium flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Approved</span>;
+        return <span className="px-3 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-full text-sm font-medium flex items-center gap-1"><CheckCircle className="w-4 h-4" /> {t('studentProfile.approved')}</span>;
       case 'REJECTED':
-        return <span className="px-3 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-full text-sm font-medium">Rejected</span>;
+        return <span className="px-3 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-full text-sm font-medium">{t('studentProfile.rejected')}</span>;
       default:
         return null;
     }
   };
 
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
@@ -316,15 +318,15 @@ export default function StudentProfilePage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Student Profile</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Complete your profile information</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('studentProfile.title')}</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">{t('studentProfile.completeProfile')}</p>
           </div>
           {getStatusBadge()}
         </div>
 
         {profile.status === 'REJECTED' && profile.rejectionReason && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-red-700 dark:text-red-400 font-medium">Rejection Reason:</p>
+            <p className="text-red-700 dark:text-red-400 font-medium">{t('studentProfile.rejectionReason')}:</p>
             <p className="text-red-600 dark:text-red-300">{profile.rejectionReason}</p>
           </div>
         )}
@@ -346,10 +348,10 @@ export default function StudentProfilePage() {
         {/* Section Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {[
-            { id: 'personal', label: 'Personal', icon: User },
-            { id: 'location', label: 'Location & Address', icon: MapPin },
-            { id: 'educational', label: 'Educational', icon: GraduationCap },
-            { id: 'documents', label: 'Documents', icon: FileText },
+            { id: 'personal', label: t('studentProfile.personal'), icon: User },
+            { id: 'location', label: t('studentProfile.locationAddress'), icon: MapPin },
+            { id: 'educational', label: t('studentProfile.educational'), icon: GraduationCap },
+            { id: 'documents', label: t('studentProfile.documents'), icon: FileText },
           ].map(tab => (
             <button
               key={tab.id}
@@ -373,7 +375,7 @@ export default function StudentProfilePage() {
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <User className="w-5 h-5" />
-                Basic Information
+                {t('studentProfile.basicInformation')}
               </h2>
 
               {/* Profile Picture */}
@@ -394,7 +396,7 @@ export default function StudentProfilePage() {
                 <div className="flex flex-col gap-2">
                   <label className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer">
                     <Upload className="w-4 h-4" />
-                    Upload Photo
+                    {t('settings.uploadImage')}
                     <input
                       type="file"
                       ref={profileImageInputRef}
@@ -412,12 +414,12 @@ export default function StudentProfilePage() {
                           await updateMyProfile({ profileImage: null });
                           await refreshUser();
                         } catch (err) {
-                          setError('Failed to remove profile picture');
+                          setError(t('studentProfile.failedRemoveProfilePicture'));
                         }
                       }}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors"
                     >
-                      Remove
+                      {t('settings.remove')}
                     </button>
                   )}
                 </div>
@@ -537,7 +539,7 @@ export default function StudentProfilePage() {
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                Location and Address
+                {t('studentProfile.locationAndAddress')}
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -600,7 +602,7 @@ export default function StudentProfilePage() {
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <GraduationCap className="w-5 h-5" />
-                Campus Related Information
+                {t('studentProfile.campusRelatedInfo')}
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -681,7 +683,7 @@ export default function StudentProfilePage() {
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Required Documents
+                {t('studentProfile.requiredDocuments')}
               </h2>
 
               <div className="space-y-4">
@@ -705,7 +707,7 @@ export default function StudentProfilePage() {
                           </button>
                         )}
                         <label className={`px-4 py-2 rounded-lg cursor-pointer font-medium transition-colors ${uploadingDoc === docType ? 'bg-gray-100 dark:bg-gray-700 text-gray-400' : 'bg-primary-900 hover:bg-primary-800 text-white'}`}>
-                          {uploadingDoc === docType ? 'Uploading...' : doc ? 'Replace' : 'Upload'}
+                          {uploadingDoc === docType ? t('studentProfile.uploading') : doc ? t('studentProfile.replace') : t('common.upload')}
                           <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleFileUpload(e, docType)} disabled={uploadingDoc === docType} />
                         </label>
                       </div>
@@ -720,12 +722,12 @@ export default function StudentProfilePage() {
           <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button onClick={() => handleSave(false)} disabled={saving || profile.status === 'APPROVED'} className="flex-1 py-3 px-4 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               <Save className="w-5 h-5" />
-              Save Draft
+              {t('studentProfile.saveDraft')}
             </button>
             {profile.status !== 'APPROVED' && (
               <button onClick={() => handleSave(true)} disabled={saving} className="flex-1 py-3 px-4 bg-primary-900 hover:bg-primary-800 dark:bg-primary-700 dark:hover:bg-primary-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 <Send className="w-5 h-5" />
-                Submit for Approval
+                {t('studentProfile.submitForApproval')}
               </button>
             )}
           </div>

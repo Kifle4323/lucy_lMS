@@ -5,10 +5,12 @@ import { updateProfile, getProfileStatus } from '../api';
 import Layout from '../components/Layout';
 import { Camera, User, CheckCircle, AlertCircle, Upload } from 'lucide-react';
 import lucyLogo from '../assets/lucy_logobg.png';
+import { useTranslation } from 'react-i18next';
 
 export default function CompleteProfilePage() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [stream, setStream] = useState(null);
@@ -43,7 +45,7 @@ export default function CompleteProfilePage() {
         }
       }, 100);
     } catch (err) {
-      setError('Could not access camera. Please allow camera permissions.');
+      setError(t('settings.cameraAccessError'));
     }
   };
 
@@ -78,11 +80,11 @@ export default function CompleteProfilePage() {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
+      setError(t('settings.selectImageFile'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be less than 5MB');
+      setError(t('settings.imageSizeLimit'));
       return;
     }
     const reader = new FileReader();
@@ -97,11 +99,11 @@ export default function CompleteProfilePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!capturedImage) {
-      setError('Please capture a profile photo');
+      setError(t('completeProfile.captureProfilePhoto'));
       return;
     }
     if (!fullName.trim()) {
-      setError('Please enter your full name');
+      setError(t('completeProfile.enterFullName'));
       return;
     }
 
@@ -116,7 +118,7 @@ export default function CompleteProfilePage() {
       await refreshUser();
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Failed to save profile');
+      setError(err.message || t('studentProfile.failedSaveProfile'));
     } finally {
       setLoading(false);
     }
@@ -130,9 +132,9 @@ export default function CompleteProfilePage() {
             <div className="w-16 h-16 bg-primary-900 rounded-full flex items-center justify-center mx-auto mb-4 p-2">
               <img src={lucyLogo} alt="Lucy College" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl font-bold text-primary-900">Complete Your Profile</h1>
+            <h1 className="text-2xl font-bold text-primary-900">{t('completeProfile.title')}</h1>
             <p className="text-gray-500 mt-2">
-              Please provide your profile photo for exam verification
+              {t('completeProfile.subtitle')}
             </p>
           </div>
 
@@ -147,21 +149,21 @@ export default function CompleteProfilePage() {
             {/* Full Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
+                {t('register.fullName')}
               </label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Enter your full name"
+                placeholder={t('settings.enterFullName')}
               />
             </div>
 
             {/* Profile Photo */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Profile Photo
+                {t('settings.profilePicture')}
               </label>
               
               {capturedImage ? (
@@ -179,7 +181,7 @@ export default function CompleteProfilePage() {
                     onClick={() => setCapturedImage(null)}
                     className="mt-4 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
                   >
-                    Change Photo
+                    {t('completeProfile.changePhoto')}
                   </button>
                 </div>
               ) : (
@@ -199,14 +201,14 @@ export default function CompleteProfilePage() {
                         className="mt-4 w-full inline-flex items-center justify-center gap-2 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg"
                       >
                         <Camera className="w-5 h-5" />
-                        Capture Photo
+                        {t('settings.capture')}
                       </button>
                     </div>
                   ) : (
                     <div className="text-center">
                       <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-500 mb-4">
-                        Take a clear photo of your face for verification
+                        {t('completeProfile.takeClearPhoto')}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <button
@@ -215,11 +217,11 @@ export default function CompleteProfilePage() {
                           className="px-6 py-3 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg inline-flex items-center justify-center gap-2"
                         >
                           <Camera className="w-5 h-5" />
-                          Start Camera
+                          {t('settings.takePhoto')}
                         </button>
                         <label className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer inline-flex items-center justify-center gap-2">
                           <Upload className="w-5 h-5" />
-                          Upload Image
+                          {t('settings.uploadImage')}
                           <input
                             type="file"
                             ref={fileInputRef}
@@ -238,12 +240,12 @@ export default function CompleteProfilePage() {
 
             {/* Instructions */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-medium text-blue-900 mb-2">Photo Requirements</h3>
+              <h3 className="font-medium text-blue-900 mb-2">{t('completeProfile.photoRequirements')}</h3>
               <ul className="text-sm text-blue-700 space-y-1">
-                <li>Ensure good lighting on your face</li>
-                <li>Face the camera directly</li>
-                <li>Remove glasses or hats if possible</li>
-                <li>Keep a neutral expression</li>
+                <li>{t('completeProfile.goodLighting')}</li>
+                <li>{t('completeProfile.faceCameraDirectly')}</li>
+                <li>{t('completeProfile.removeGlasses')}</li>
+                <li>{t('completeProfile.neutralExpression')}</li>
               </ul>
             </div>
 
@@ -253,7 +255,7 @@ export default function CompleteProfilePage() {
               disabled={loading || !capturedImage}
               className="w-full py-3 bg-primary-900 hover:bg-primary-800 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
             >
-              {loading ? 'Saving...' : 'Complete Profile'}
+              {loading ? t('settings.saving') : t('completeProfile.completeProfile')}
             </button>
           </form>
         </div>

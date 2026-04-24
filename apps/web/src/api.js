@@ -856,3 +856,28 @@ export async function getJaasToken(sessionId) {
 export async function getStudentRegistrationFee() {
   return apiFetch('/student/registration-fee');
 }
+
+// ==================== ML PERFORMANCE ====================
+
+export async function trainMLModel() {
+  return apiFetch('/ml/train', { method: 'POST' });
+}
+
+export async function getMLAnalytics() {
+  return apiFetch('/ml/analytics');
+}
+
+export async function getMLFeatureImportance() {
+  return apiFetch('/ml/feature-importance');
+}
+
+export async function predictStudentPerformance(features) {
+  return apiFetch('/ml/predict', {
+    method: 'POST',
+    body: JSON.stringify(features),
+  });
+}
+
+export async function predictStudentById(studentId) {
+  return apiFetch(`/ml/predict-student/${studentId}`);
+}

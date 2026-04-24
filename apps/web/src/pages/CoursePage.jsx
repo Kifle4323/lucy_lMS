@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../AuthContext';
 import { useToast } from '../ToastContext';
 import { useConfirm } from '../ConfirmContext';
@@ -41,6 +42,7 @@ import {
 
 export default function CoursePage() {
   const { courseId } = useParams();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
@@ -126,13 +128,13 @@ export default function CoursePage() {
   async function handleReportQuestion() {
     if (!reportingQuestion) return;
     if (reportReason.trim().length < 10) {
-      toast.error('Please provide a reason (at least 10 characters)');
+      toast.error(t('course.reportReasonMinLength'));
       return;
     }
     setSubmittingReport(true);
     try {
       await reportQuestion(reportingQuestion.id, reportReason);
-      toast.success('Question reported successfully');
+      toast.success(t('course.questionReported'));
       setShowReportModal(false);
       setReportingQuestion(null);
       setReportReason('');
@@ -212,9 +214,9 @@ export default function CoursePage() {
       setAssessments([...assessments, assessment]);
       setNewAssessment({ title: '', examType: 'QUIZ', timeLimit: '', maxScore: '100', componentId: '' });
       setShowCreateAssessment(false);
-      toast.success('Assessment created!');
+      toast.success(t('course.assessmentCreated'));
     } catch (err) {
-      toast.error('Failed to create assessment: ' + err.message);
+      toast.error(t('course.failedCreateAssessment') + ': ' + err.message);
     }
   };
 
@@ -230,10 +232,10 @@ export default function CoursePage() {
 
   const handleDeleteAssessment = async (assessment) => {
     const confirmed = await confirm({
-      title: 'Delete Assessment',
-      message: `Delete "${assessment.title}"? This will also delete all questions and student attempts. This cannot be undone.`,
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('course.deleteAssessment'),
+      message: `${t('course.deleteAssessmentConfirm', { title: assessment.title })}`,
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
@@ -241,9 +243,9 @@ export default function CoursePage() {
     try {
       await deleteAssessment(assessment.id);
       setAssessments(assessments.filter(a => a.id !== assessment.id));
-      toast.success('Assessment deleted!');
+      toast.success(t('course.assessmentDeleted'));
     } catch (err) {
-      toast.error('Failed to delete assessment: ' + err.message);
+      toast.error(t('course.failedDeleteAssessment') + ': ' + err.message);
     }
   };
 
@@ -278,9 +280,9 @@ export default function CoursePage() {
       setAssessments(assessments.map(a => a.id === assessmentId ? updated : a));
       setEditingAssessmentId(null);
       setEditingAssessmentData({ title: '', timeLimit: '', maxScore: '' });
-      toast.success('Assessment updated!');
+      toast.success(t('course.assessmentUpdated'));
     } catch (err) {
-      toast.error('Failed to update assessment: ' + err.message);
+      toast.error(t('course.failedUpdateAssessment') + ': ' + err.message);
     }
   };
 
@@ -308,7 +310,7 @@ export default function CoursePage() {
       setSelectedAssessment(assessment);
       resetQuestionForm('MCQ');
     } catch (err) {
-      toast.error('Failed to load questions: ' + err.message);
+      toast.error(t('course.failedLoadQuestions') + ': ' + err.message);
     }
   };
 
@@ -346,10 +348,10 @@ export default function CoursePage() {
     try {
       if (editingQuestion) {
         await updateQuestion(editingQuestion.id, questionForm);
-        toast.success('Question updated!');
+        toast.success(t('course.questionUpdated'));
       } else {
         await createQuestion(selectedAssessment.id, questionForm);
-        toast.success('Question added!');
+        toast.success(t('course.questionAdded'));
       }
       const questions = await getAssessmentQuestions(selectedAssessment.id);
       setSelectedAssessmentQuestions(questions);
@@ -361,10 +363,10 @@ export default function CoursePage() {
 
   const handleDeleteQuestion = async (question) => {
     const confirmed = await confirm({
-      title: 'Delete Question',
-      message: 'Delete this question? This action cannot be undone.',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('course.deleteQuestion'),
+      message: t('course.deleteQuestionConfirm'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
@@ -372,7 +374,7 @@ export default function CoursePage() {
     try {
       await deleteQuestion(question.id);
       setSelectedAssessmentQuestions(selectedAssessmentQuestions.filter((q) => q.id !== question.id));
-      toast.success('Question deleted!');
+      toast.success(t('course.questionDeleted'));
       if (editingQuestion?.id === question.id) {
         resetQuestionForm(questionType);
       }
@@ -408,9 +410,9 @@ export default function CoursePage() {
     
     try {
       await setManualGrade(showGradeModal.id, studentId, parseInt(grade.score), grade.feedback || undefined);
-      toast.success('Grade saved!');
+      toast.success(t('grade.gradeSaved'));
     } catch (err) {
-      toast.error('Failed to save grade: ' + err.message);
+      toast.error(t('course.failedSaveGrade') + ': ' + err.message);
     }
   };
 
@@ -423,10 +425,10 @@ export default function CoursePage() {
         .map(([studentId, g]) => setManualGrade(showGradeModal.id, studentId, parseInt(g.score), g.feedback || undefined));
       
       await Promise.all(promises);
-      toast.success('All grades saved!');
+      toast.success(t('course.allGradesSaved'));
       setShowGradeModal(null);
     } catch (err) {
-      toast.error('Failed to save some grades: ' + err.message);
+      toast.error(t('course.failedSaveSomeGrades') + ': ' + err.message);
     }
   };
 
@@ -436,7 +438,7 @@ export default function CoursePage() {
     
     // Check file size (max 20MB)
     if (file.size > 20 * 1024 * 1024) {
-      toast.warning('File must be less than 20MB');
+      toast.warning(t('course.fileSizeLimit'));
       return;
     }
     
@@ -456,7 +458,7 @@ export default function CoursePage() {
       setUploadingFile(false);
     };
     reader.onerror = () => {
-      toast.error('Failed to read file');
+      toast.error(t('course.failedReadFile'));
       setUploadingFile(false);
     };
     reader.readAsDataURL(file);
@@ -475,24 +477,24 @@ export default function CoursePage() {
       setMaterials([...materials, material]);
       setNewMaterial({ title: '', content: '', fileUrl: '', fileType: 'text', fileName: '' });
       setShowCreateMaterial(false);
-      toast.success('Material created!');
+      toast.success(t('course.materialCreated'));
     } catch (err) {
-      toast.error('Failed to create material: ' + err.message);
+      toast.error(t('course.failedCreateMaterial') + ': ' + err.message);
     }
   };
 
   const handleDeleteMaterial = async (materialId) => {
     const confirmed = await confirm({
-      title: 'Delete Material',
-      message: 'Delete this material? This cannot be undone.',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('course.deleteMaterial'),
+      message: t('course.deleteMaterialConfirm'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
     await deleteMaterial(materialId);
     setMaterials(materials.filter(m => m.id !== materialId));
-    toast.success('Material deleted!');
+    toast.success(t('course.materialDeleted'));
   };
 
   const handleOpenPreview = async (material) => {
@@ -618,11 +620,11 @@ export default function CoursePage() {
       setFaceMismatchDetected(false);
     } catch (err) {
       if (err.message?.includes('already_submitted')) {
-        toast.warning('You have already submitted this exam.');
+        toast.warning(t('course.alreadySubmitted'));
         // Refresh attempts list
         getStudentAttempts(courseId).then(setStudentAttempts);
       } else {
-        toast.error('Failed to start exam: ' + err.message);
+        toast.error(t('course.failedStartExam') + ': ' + err.message);
       }
     }
   };
@@ -664,10 +666,10 @@ export default function CoursePage() {
       // mark that user is in the manual confirmation flow to avoid race with auto-submit
       confirmingSubmitRef.current = true;
       const confirmed = await confirm({
-        title: 'Submit Exam',
-        message: 'Are you sure you want to submit this attempt? You cannot change your answers after submission.',
-        confirmText: 'Submit',
-        cancelText: 'Cancel',
+        title: t('course.submitExam'),
+        message: t('course.submitExamConfirm'),
+        confirmText: t('common.submit'),
+        cancelText: t('common.cancel'),
         type: 'info',
       });
       // leave confirmation flow
@@ -682,12 +684,12 @@ export default function CoursePage() {
       // Refresh attempts list
       getStudentAttempts(courseId).then(setStudentAttempts);
       if (autoSubmit) {
-        toast.success('Time is up! Your answers have been submitted automatically.');
+        toast.success(t('course.timeUpAutoSubmitted'));
       } else {
-        toast.success('Exam submitted successfully!');
+        toast.success(t('course.examSubmittedSuccess'));
       }
     } catch (err) {
-      toast.error('Failed to submit: ' + err.message);
+      toast.error(t('course.failedSubmit') + ': ' + err.message);
       setExamSubmitted(false);
       examSubmittedRef.current = false; // allow retry on error
     }
@@ -706,15 +708,15 @@ export default function CoursePage() {
 
   const handleGradeSubmit = async () => {
     const confirmed = await confirm({
-      title: 'Submit Grades',
-      message: 'Are you sure you want to submit these grades?',
-      confirmText: 'Submit',
-      cancelText: 'Cancel',
+      title: t('course.submitGrades'),
+      message: t('course.submitGradesConfirm'),
+      confirmText: t('common.submit'),
+      cancelText: t('common.cancel'),
       type: 'success',
     });
     if (!confirmed) return;
     await gradeAttempt(gradingAttempt.id, gradingAnswers);
-    toast.success('Grades submitted!');
+    toast.success(t('course.gradesSubmitted'));
     setGradingAttempt(null);
     setGradingAnswers([]);
   };
@@ -725,11 +727,11 @@ export default function CoursePage() {
       setSubmissions(attempts);
       setSubmissionsAssessment(assessment);
     } catch (err) {
-      toast.error('Failed to load submissions: ' + err.message);
+      toast.error(t('course.failedLoadSubmissions') + ': ' + err.message);
     }
   };
 
-  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (loading) return <Layout><div className="p-8 text-center">{t('common.loading')}</div></Layout>;
 
   // Teacher grading view
   if (gradingAttempt) {
@@ -742,12 +744,12 @@ export default function CoursePage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
           >
             <ChevronLeft className="w-5 h-5" />
-            Back to Course
+            {t('course.backToCourse')}
           </button>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Grading: {gradingAttempt.assessment?.title}</h2>
-            <p className="text-gray-500">Student: {gradingAttempt.student?.fullName || gradingAttempt.studentId}</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{t('course.grading')}: {gradingAttempt.assessment?.title}</h2>
+            <p className="text-gray-500">{t('nav.students')}: {gradingAttempt.student?.fullName || gradingAttempt.studentId}</p>
           </div>
 
           <div className="space-y-4">
@@ -770,22 +772,22 @@ export default function CoursePage() {
                     <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
                       <span className={`flex items-center gap-2 ${answer?.selected === q.correct ? 'text-green-600' : 'text-red-600'}`}>
                         {answer?.selected === q.correct ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                        Student: {answer?.selected || 'Not answered'}
+                        {t('course.student')}: {answer?.selected || t('course.notAnswered')}
                       </span>
-                      <span className="text-gray-500">Correct: {q.correct}</span>
+                      <span className="text-gray-500">{t('course.correct')}: {q.correct}</span>
                     </div>
                   )}
 
                   {q.type === 'FITB' && (
                     <div className="p-3 bg-gray-50 rounded-lg space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-600">Student:</span>
+                        <span className="text-gray-600">{t('course.student')}:</span>
                         <span className={answer?.textAnswer?.toLowerCase().trim() === q.correctAnswer?.toLowerCase().trim() ? 'text-green-600 font-medium' : 'text-red-600'}>
-                          {answer?.textAnswer || 'Not answered'}
+                          {answer?.textAnswer || t('course.notAnswered')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-600">Correct:</span>
+                        <span className="text-gray-600">{t('course.correct')}:</span>
                         <span className="text-gray-900">{q.correctAnswer}</span>
                       </div>
                     </div>
@@ -794,11 +796,11 @@ export default function CoursePage() {
                   {q.type === 'SHORT_ANSWER' && (
                     <div className="space-y-3">
                       <div className="p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-500 mb-1">Student Answer:</p>
-                        <p className="text-gray-900 whitespace-pre-wrap">{answer?.textAnswer || 'Not answered'}</p>
+                        <p className="text-sm text-gray-500 mb-1">{t('course.studentAnswer')}:</p>
+                        <p className="text-gray-900 whitespace-pre-wrap">{answer?.textAnswer || t('course.notAnswered')}</p>
                       </div>
                       <div className="p-3 bg-green-50 rounded-lg">
-                        <p className="text-sm text-green-600 mb-1">Model Answer:</p>
+                        <p className="text-sm text-green-600 mb-1">{t('course.modelAnswer')}:</p>
                         <p className="text-gray-900 whitespace-pre-wrap">{q.modelAnswer}</p>
                       </div>
                     </div>
@@ -806,7 +808,7 @@ export default function CoursePage() {
 
                   <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
                     <div>
-                      <label className="text-sm text-gray-600">Score:</label>
+                      <label className="text-sm text-gray-600">{t('grade.score')}:</label>
                       <input
                         type="number"
                         min="0"
@@ -825,7 +827,7 @@ export default function CoursePage() {
                     </div>
                     <input
                       type="text"
-                      placeholder="Add feedback..."
+                      placeholder={t('course.addFeedback')}
                       value={gradeIdx >= 0 ? gradingAnswers[gradeIdx].feedback : ''}
                       onChange={(e) => {
                         const updated = [...gradingAnswers];
@@ -847,13 +849,13 @@ export default function CoursePage() {
               onClick={handleGradeSubmit}
               className="px-6 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
             >
-              Submit Grades
+              {t('course.submitGrades')}
             </button>
             <button
               onClick={() => setGradingAttempt(null)}
               className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -885,9 +887,9 @@ export default function CoursePage() {
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600" />
                 <div>
-                  <p className="font-medium text-yellow-800">Face Verification Alert</p>
+                  <p className="font-medium text-yellow-800">{t('course.faceVerificationAlert')}</p>
                   <p className="text-sm text-yellow-700">
-                    A face mismatch was detected. An administrator will review this before your exam is graded.
+                    {t('course.faceMismatchDetected')}
                   </p>
                 </div>
               </div>
@@ -918,7 +920,7 @@ export default function CoursePage() {
             {/* Question Navigator - Left Sidebar */}
             <div className="w-20 flex-shrink-0">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sticky top-4">
-                <p className="text-xs text-gray-500 mb-2 text-center">Questions</p>
+                <p className="text-xs text-gray-500 mb-2 text-center">{t('course.questions')}</p>
                 <div className="grid grid-cols-2 gap-1">
                   {questions.map((q, idx) => {
                     const isAnswered = answers[q.id] && answers[q.id].length > 0;
@@ -964,7 +966,7 @@ export default function CoursePage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <span className="px-2 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded">
-                        Q{currentQuestionIdx + 1} of {questions.length} - {currentQuestion.type}
+                        Q{currentQuestionIdx + 1} {t('course.of')} {questions.length} - {currentQuestion.type}
                       </span>
                       <p className="mt-3 text-gray-900 font-medium text-lg">{currentQuestion.prompt}</p>
                     </div>
@@ -973,7 +975,7 @@ export default function CoursePage() {
                       <button
                         onClick={() => openReportModal(currentQuestion)}
                         className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded"
-                        title="Report this question"
+                        title={t('course.reportThisQuestion')}
                       >
                         <AlertTriangle className="w-4 h-4" />
                       </button>
@@ -1008,7 +1010,7 @@ export default function CoursePage() {
                   {currentQuestion.type === 'FITB' && (
                     <input
                       type="text"
-                      placeholder="Type your answer..."
+                      placeholder={t('course.typeYourAnswer')}
                       value={answers[currentQuestion.id] || ''}
                       onChange={(e) => handleTextAnswer(currentQuestion.id, e.target.value)}
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mt-4"
@@ -1017,7 +1019,7 @@ export default function CoursePage() {
 
                   {currentQuestion.type === 'SHORT_ANSWER' && (
                     <textarea
-                      placeholder="Write your answer..."
+                      placeholder={t('course.writeYourAnswer')}
                       value={answers[currentQuestion.id] || ''}
                       onChange={(e) => handleTextAnswer(currentQuestion.id, e.target.value)}
                       rows={6}
@@ -1033,7 +1035,7 @@ export default function CoursePage() {
                       className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ChevronLeft className="w-4 h-4" />
-                      Previous
+                      {t('course.previous')}
                     </button>
 
                     <div className="flex gap-2">
@@ -1047,7 +1049,7 @@ export default function CoursePage() {
                         className="flex items-center gap-2 px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-medium rounded-lg"
                       >
                         <SkipForward className="w-4 h-4" />
-                        Skip
+                        {t('course.skip')}
                       </button>
 
                       {currentQuestionIdx < questions.length - 1 ? (
@@ -1055,7 +1057,7 @@ export default function CoursePage() {
                           onClick={() => setCurrentQuestionIdx(currentQuestionIdx + 1)}
                           className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg"
                         >
-                          Next
+                          {t('course.next')}
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       ) : (
@@ -1064,7 +1066,7 @@ export default function CoursePage() {
                           className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
                         >
                           <Flag className="w-4 h-4" />
-                          Submit Exam
+                          {t('course.submitExam')}
                         </button>
                       )}
                     </div>
@@ -1076,9 +1078,9 @@ export default function CoursePage() {
               <div className="mt-6 bg-gray-50 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-600">
-                    <span className="font-medium">{answeredCount}</span> answered, {' '}
-                    <span className="font-medium">{skippedCount}</span> skipped, {' '}
-                    <span className="font-medium">{unansweredCount}</span> remaining
+                    <span className="font-medium">{answeredCount}</span> {t('course.answered')}, {' '}
+                    <span className="font-medium">{skippedCount}</span> {t('course.skipped')}, {' '}
+                    <span className="font-medium">{unansweredCount}</span> {t('course.remaining')}
                   </div>
                   <button
                     onClick={() => { 
@@ -1088,7 +1090,7 @@ export default function CoursePage() {
                     }}
                     className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg text-sm"
                   >
-                    Exit Exam
+                    {t('course.exitExam')}
                   </button>
                 </div>
               </div>
@@ -1106,10 +1108,10 @@ export default function CoursePage() {
         <div className="mb-8">
           <Link to="/my-classes" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
             <ChevronLeft className="w-5 h-5" />
-            Back to My Classes
+            {t('course.backToMyClasses')}
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Course</h1>
-          <p className="text-gray-500 mt-1">Course ID: {courseId}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('course.course')}</h1>
+          <p className="text-gray-500 mt-1">{t('course.courseId')}: {courseId}</p>
         </div>
 
         {/* Tabs */}
@@ -1123,7 +1125,7 @@ export default function CoursePage() {
             }`}
           >
             <ListChecks className="w-4 h-4 inline mr-2" />
-            Assessments
+            {t('nav.assessments')}
           </button>
           <button
             onClick={() => setActiveTab('materials')}
@@ -1134,7 +1136,7 @@ export default function CoursePage() {
             }`}
           >
             <FolderOpen className="w-4 h-4 inline mr-2" />
-            Materials
+            {t('course.materials')}
           </button>
           {user?.role === 'TEACHER' && (
             <button
@@ -1146,7 +1148,7 @@ export default function CoursePage() {
               }`}
             >
               <Users className="w-4 h-4 inline mr-2" />
-              Students
+              {t('nav.students')}
             </button>
           )}
         </div>
@@ -1161,57 +1163,57 @@ export default function CoursePage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg transition-colors"
                 >
                   <Plus className="w-5 h-5" />
-                  Add Material
+                  {t('course.addMaterial')}
                 </button>
               </div>
             )}
 
             {showCreateMaterial && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Course Material</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('course.addCourseMaterial')}</h3>
                 <form onSubmit={handleCreateMaterial} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.title')}</label>
                     <input
                       type="text"
                       value={newMaterial.title}
                       onChange={(e) => setNewMaterial({ ...newMaterial, title: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="e.g., Week 1 Lecture Notes"
+                      placeholder={t('course.weekLectureNotes')}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.type')}</label>
                     <select
                       value={newMaterial.fileType}
                       onChange={(e) => setNewMaterial({ ...newMaterial, fileType: e.target.value, fileUrl: '', fileName: '' })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                     >
-                      <option value="text">Text Content</option>
-                      <option value="link">External Link</option>
-                      <option value="pdf">PDF Document</option>
-                      <option value="doc">Word Document</option>
-                      <option value="ppt">PowerPoint</option>
-                      <option value="xls">Excel Spreadsheet</option>
-                      <option value="video">Video</option>
+                      <option value="text">{t('course.textContent')}</option>
+                      <option value="link">{t('course.externalLink')}</option>
+                      <option value="pdf">{t('course.pdfDocument')}</option>
+                      <option value="doc">{t('course.wordDocument')}</option>
+                      <option value="ppt">{t('course.powerPoint')}</option>
+                      <option value="xls">{t('course.excelSpreadsheet')}</option>
+                      <option value="video">{t('course.video')}</option>
                     </select>
                   </div>
                   {newMaterial.fileType === 'text' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.content')}</label>
                       <textarea
                         value={newMaterial.content}
                         onChange={(e) => setNewMaterial({ ...newMaterial, content: e.target.value })}
                         rows={6}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Enter the material content..."
+                        placeholder={t('course.enterMaterialContent')}
                       />
                     </div>
                   )}
                   {newMaterial.fileType === 'link' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.url')}</label>
                       <input
                         type="url"
                         value={newMaterial.fileUrl}
@@ -1224,7 +1226,7 @@ export default function CoursePage() {
                   )}
                   {newMaterial.fileType === 'video' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Video URL</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.videoUrl')}</label>
                       <input
                         type="url"
                         value={newMaterial.fileUrl}
@@ -1237,12 +1239,12 @@ export default function CoursePage() {
                   )}
                   {(newMaterial.fileType === 'pdf' || newMaterial.fileType === 'doc' || newMaterial.fileType === 'ppt' || newMaterial.fileType === 'xls') && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Upload File</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.uploadFile')}</label>
                       <div className="flex gap-3">
                         <label className="flex-1 px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 cursor-pointer flex flex-col items-center justify-center gap-2 transition-colors">
                           <Upload className="w-8 h-8 text-gray-400" />
                           <span className="text-sm text-gray-600">
-                            {uploadingFile ? 'Uploading...' : newMaterial.fileName ? `Selected: ${newMaterial.fileName}` : 'Click to upload file'}
+                            {uploadingFile ? t('course.uploading') : newMaterial.fileName ? `${t('course.selected')}: ${newMaterial.fileName}` : t('course.clickToUpload')}
                           </span>
                           <input
                             type="file"
@@ -1262,7 +1264,7 @@ export default function CoursePage() {
                           </button>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">Max file size: 20MB</p>
+                      <p className="mt-1 text-xs text-gray-500">{t('course.maxFileSize20MB')}</p>
                     </div>
                   )}
                   <div className="flex gap-3">
@@ -1270,14 +1272,14 @@ export default function CoursePage() {
                       type="submit"
                       className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                     >
-                      Add Material
+                      {t('course.addMaterial')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowCreateMaterial(false)}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </form>
@@ -1287,9 +1289,9 @@ export default function CoursePage() {
             {materials.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
                 <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No materials yet</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('course.noMaterialsYet')}</h3>
                 <p className="text-gray-500">
-                  {user?.role === 'TEACHER' ? 'Add course materials for your students' : 'No materials have been added yet'}
+                  {user?.role === 'TEACHER' ? t('course.addMaterialsForStudents') : t('course.noMaterialsAdded')}
                 </p>
               </div>
             ) : (
@@ -1328,7 +1330,7 @@ export default function CoursePage() {
                         return (
                           <span className="inline-block mt-2 ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
                             <Eye className="w-3 h-3 inline mr-1" />
-                            {stat.uniqueViewers}/{stat.totalStudents} viewed
+                            {stat.uniqueViewers}/{stat.totalStudents} {t('course.viewed')}
                           </span>
                         );
                       })()}
@@ -1345,7 +1347,7 @@ export default function CoursePage() {
                             className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
                           >
                             <Eye className="w-4 h-4" />
-                            Preview
+                            {t('course.preview')}
                           </button>
                         )}
                         {/* Read with Tracking button for all materials (students) */}
@@ -1355,7 +1357,7 @@ export default function CoursePage() {
                             className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium"
                           >
                             <ReadIcon className="w-4 h-4" />
-                            Read with Tracking
+                            {t('course.readWithTracking')}
                           </button>
                         )}
                         {m.fileUrl && m.fileType === 'link' && (
@@ -1366,12 +1368,12 @@ export default function CoursePage() {
                             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
                           >
                             <ExternalLink className="w-4 h-4" />
-                            Open Link
+                            {t('course.openLink')}
                           </a>
                         )}
                       </div>
                       <p className="text-xs text-gray-400 mt-3">
-                        Added by {m.author?.fullName || 'Unknown'} on {new Date(m.createdAt).toLocaleDateString()}
+                        {t('course.addedBy')} {m.author?.fullName || t('course.unknown')} {t('course.on')} {new Date(m.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -1392,14 +1394,14 @@ export default function CoursePage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg transition-colors"
                 >
                   <Plus className="w-5 h-5" />
-                  Create Assessment
+                  {t('course.createAssessment')}
                 </button>
                 <Link
                   to={`/courses/${courseId}/gradebook`}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
                 >
                   <BookOpen className="w-5 h-5" />
-                  Gradebook
+                  {t('nav.gradebook')}
                 </Link>
               </div>
             )}
@@ -1410,7 +1412,7 @@ export default function CoursePage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
                 >
                   <Award className="w-5 h-5" />
-                  View My Grades
+                  {t('course.viewMyGrades')}
                 </Link>
               </div>
             )}
@@ -1418,35 +1420,35 @@ export default function CoursePage() {
             {/* Create Assessment Form */}
             {showCreateAssessment && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Assessment</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('course.createNewAssessment')}</h3>
                 <form onSubmit={handleCreateAssessment} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.title')}</label>
                     <input
                       type="text"
                       value={newAssessment.title}
                       onChange={(e) => setNewAssessment({ ...newAssessment, title: e.target.value })}
                       required
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="e.g., Midterm Exam"
+                      placeholder={t('course.midtermExam')}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.type')}</label>
                       <select
                         value={newAssessment.examType}
                         onChange={(e) => setNewAssessment({ ...newAssessment, examType: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                       >
-                        <option value="QUIZ">Quiz</option>
-                        <option value="ASSIGNMENT">Assignment</option>
-                        <option value="MIDTERM">Midterm</option>
-                        <option value="FINAL">Final</option>
+                        <option value="QUIZ">{t('course.quiz')}</option>
+                        <option value="ASSIGNMENT">{t('course.assignment')}</option>
+                        <option value="MIDTERM">{t('course.midterm')}</option>
+                        <option value="FINAL">{t('course.final')}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Grade Component</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.gradeComponent')}</label>
                       <select
                         value={newAssessment.componentId}
                         onChange={(e) => {
@@ -1460,7 +1462,7 @@ export default function CoursePage() {
                         }}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                       >
-                        <option value="">None</option>
+                        <option value="">{t('course.none')}</option>
                         {gradeComponents.filter(c => c.name !== 'Attendance').map(comp => (
                           <option key={comp.id} value={comp.id}>{comp.name} ({comp.weight}%)</option>
                         ))}
@@ -1469,30 +1471,30 @@ export default function CoursePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Mode</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.deliveryMode')}</label>
                       <select
                         value={newAssessment.deliveryMode}
                         onChange={(e) => setNewAssessment({ ...newAssessment, deliveryMode: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                       >
-                        <option value="ONLINE">Online</option>
-                        <option value="PAPER">Paper</option>
+                        <option value="ONLINE">{t('course.online')}</option>
+                        <option value="PAPER">{t('course.paper')}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Time Limit (min)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.timeLimitMin')}</label>
                       <input
                         type="number"
                         min="1"
                         value={newAssessment.timeLimit}
                         onChange={(e) => setNewAssessment({ ...newAssessment, timeLimit: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="Optional"
+                        placeholder={t('course.optional')}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Score {newAssessment.componentId && <span className="text-gray-400">(auto-set from component weight)</span>}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.maxScore')} {newAssessment.componentId && <span className="text-gray-400">({t('course.autoSetFromComponent')})</span>}</label>
                     <input
                       type="number"
                       min="1"
@@ -1500,7 +1502,7 @@ export default function CoursePage() {
                       onChange={(e) => setNewAssessment({ ...newAssessment, maxScore: e.target.value })}
                       disabled={!!newAssessment.componentId}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="e.g., 100"
+                      placeholder={t('course.eg100')}
                     />
                   </div>
                   <div className="flex gap-3">
@@ -1508,14 +1510,14 @@ export default function CoursePage() {
                       type="submit"
                       className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                     >
-                      Create
+                      {t('course.create')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowCreateAssessment(false)}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </form>
@@ -1523,13 +1525,13 @@ export default function CoursePage() {
             )}
 
             {/* Assessments List */}
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Assessments</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('nav.assessments')}</h2>
             {assessments.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
                 <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments yet</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('course.noAssessmentsYet')}</h3>
                 <p className="text-gray-500">
-                  {user?.role === 'TEACHER' ? 'Create your first assessment to get started' : 'Wait for your teacher to create assessments'}
+                  {user?.role === 'TEACHER' ? t('course.createFirstAssessment') : t('course.waitTeacherAssessments')}
                 </p>
               </div>
             ) : (
@@ -1559,7 +1561,7 @@ export default function CoursePage() {
                               a.isOpen ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
                             }`}>
                               {a.isOpen ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                              {a.isOpen ? 'Active' : 'Inactive'}
+                              {a.isOpen ? t('course.active') : t('course.inactive')}
                             </span>
                           </div>
                         </div>
@@ -1567,10 +1569,10 @@ export default function CoursePage() {
                       </div>
                       {editingAssessmentId === a.id && (
                         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
-                          <h4 className="text-sm font-semibold text-gray-900">Edit Assessment</h4>
+                          <h4 className="text-sm font-semibold text-gray-900">{t('course.editAssessment')}</h4>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <div className="sm:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700">Title</label>
+                              <label className="block text-sm font-medium text-gray-700">{t('course.title')}</label>
                               <input
                                 type="text"
                                 value={editingAssessmentData.title}
@@ -1579,18 +1581,18 @@ export default function CoursePage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700">Time Limit</label>
+                              <label className="block text-sm font-medium text-gray-700">{t('course.timeLimit')}</label>
                               <input
                                 type="number"
                                 min="0"
                                 value={editingAssessmentData.timeLimit}
                                 onChange={(e) => setEditingAssessmentData({ ...editingAssessmentData, timeLimit: e.target.value })}
                                 className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg"
-                                placeholder="Minutes"
+                                placeholder={t('course.minutes')}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700">Max Score</label>
+                              <label className="block text-sm font-medium text-gray-700">{t('course.maxScore')}</label>
                               <input
                                 type="number"
                                 min="1"
@@ -1606,13 +1608,13 @@ export default function CoursePage() {
                               onClick={() => handleSaveAssessment(a.id)}
                               className="flex-1 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                             >
-                              Save Changes
+                              {t('course.saveChanges')}
                             </button>
                             <button
                               onClick={cancelEditAssessment}
                               className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
                             >
-                              Cancel
+                              {t('common.cancel')}
                             </button>
                           </div>
                         </div>
@@ -1620,19 +1622,19 @@ export default function CoursePage() {
                       {a.timeLimit && (
                         <div className="flex items-center gap-1 mt-2 text-sm text-gray-500">
                           <Clock className="w-4 h-4" />
-                          {a.timeLimit} min
+                          {a.timeLimit} {t('course.min')}
                         </div>
                       )}
                       <div className="flex items-center gap-1 mt-2 text-sm text-gray-500">
-                        <span className="font-medium">Max Score:</span> {a.maxScore || 100}
+                        <span className="font-medium">{t('course.maxScore')}:</span> {a.maxScore || 100}
                         {a.totalPoints !== undefined && a.totalPoints !== a.maxScore && (
                           <span className="ml-2 text-red-600 text-xs font-medium">
-                            (Questions total: {a.totalPoints} — must equal {a.maxScore} to open)
+                            ({t('course.questionsTotal')}: {a.totalPoints} — {t('course.mustEqual')} {a.maxScore} {t('course.toOpen')})
                           </span>
                         )}
                         {a.totalPoints !== undefined && a.totalPoints === a.maxScore && (
                           <span className="ml-2 text-green-600 text-xs font-medium">
-                            ✓ Points match
+                            ✓ {t('course.pointsMatch')}
                           </span>
                         )}
                       </div>
@@ -1650,28 +1652,28 @@ export default function CoursePage() {
                             }`}
                           >
                             {a.isOpen ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                            {a.isOpen ? 'Deactivate' : 'Activate'}
+                            {a.isOpen ? t('course.deactivate') : t('course.activate')}
                           </button>
                           <button
                             onClick={() => handleViewSubmissions(a)}
                             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium rounded-lg transition-colors"
                           >
                             <Users className="w-4 h-4" />
-                            View Submissions
+                            {t('course.viewSubmissions')}
                           </button>
                           <button
                             onClick={() => handleOpenGradeModal(a)}
                             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium rounded-lg transition-colors"
                           >
                             <Edit3 className="w-4 h-4" />
-                            Enter Grades
+                            {t('course.enterGrades')}
                           </button>
                           <button
                             onClick={() => toggleQuestionPanel(a)}
                             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-50 hover:bg-primary-100 text-primary-700 font-medium rounded-lg transition-colors"
                           >
                             <Plus className="w-4 h-4" />
-                            {selectedAssessment?.id === a.id ? 'Close' : 'Add Questions'}
+                            {selectedAssessment?.id === a.id ? t('course.close') : t('course.addQuestions')}
                           </button>
                           <div className="flex gap-2">
                             <button
@@ -1679,14 +1681,14 @@ export default function CoursePage() {
                               className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-medium rounded-lg transition-colors"
                             >
                               <Edit3 className="w-4 h-4" />
-                              Edit
+                              {t('course.edit')}
                             </button>
                             <button
                               onClick={() => handleDeleteAssessment(a)}
                               className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
-                              Delete
+                              {t('common.delete')}
                             </button>
                           </div>
                         </div>
@@ -1700,7 +1702,7 @@ export default function CoursePage() {
                               <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                                 <div className="flex items-center gap-2 text-red-700">
                                   <AlertTriangle className="w-4 h-4" />
-                                  <span className="text-sm font-medium">Rejected - Face verification failed</span>
+                                  <span className="text-sm font-medium">{t('course.rejectedFaceVerification')}</span>
                                 </div>
                               </div>
                             </div>
@@ -1709,11 +1711,11 @@ export default function CoursePage() {
                               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                                 <div className="flex items-center gap-2 text-green-700">
                                   <CheckCircle className="w-4 h-4" />
-                                  <span className="text-sm font-medium">Completed</span>
+                                  <span className="text-sm font-medium">{t('course.completed')}</span>
                                 </div>
                                 {existingAttempt.score !== null && (
                                   <span className="text-sm font-bold text-green-700">
-                                    Score: {existingAttempt.score}{existingAttempt.assessment?.maxScore ? `/${existingAttempt.assessment.maxScore}` : ' pts'}
+                                    {t('grade.score')}: {existingAttempt.score}{existingAttempt.assessment?.maxScore ? `/${existingAttempt.assessment.maxScore}` : ` ${t('course.pts')}`}
                                   </span>
                                 )}
                               </div>
@@ -1724,12 +1726,12 @@ export default function CoursePage() {
                               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg transition-colors"
                             >
                               <ListChecks className="w-4 h-4" />
-                              Start Exam
+                              {t('course.startExam')}
                             </button>
                           ) : (
                             <div className="flex items-center gap-2 text-red-500 text-sm">
                               <Lock className="w-4 h-4" />
-                              Assessment not yet activated
+                              {t('course.assessmentNotActivated')}
                             </div>
                           );
                         })()
@@ -1741,8 +1743,8 @@ export default function CoursePage() {
                       <div className="p-5 border-t border-gray-100 bg-gray-50 space-y-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-medium text-gray-900">Question Manager</h4>
-                            <p className="text-sm text-gray-500">Create, edit, or remove questions for this assessment.</p>
+                            <h4 className="font-medium text-gray-900">{t('course.questionManager')}</h4>
+                            <p className="text-sm text-gray-500">{t('course.questionManagerDesc')}</p>
                           </div>
                           {editingQuestion && (
                             <button
@@ -1750,7 +1752,7 @@ export default function CoursePage() {
                               onClick={handleCancelQuestionEdit}
                               className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm"
                             >
-                              Cancel edit
+                              {t('course.cancelEdit')}
                             </button>
                           )}
                         </div>
@@ -1766,7 +1768,7 @@ export default function CoursePage() {
                                       <span>{question.type}</span>
                                     </div>
                                     <p className="font-medium text-gray-900">{question.prompt}</p>
-                                    <p className="mt-2 text-sm text-gray-500">{question.points} point{question.points === 1 ? '' : 's'}</p>
+                                    <p className="mt-2 text-sm text-gray-500">{question.points} {question.points === 1 ? t('course.point') : t('course.points')}</p>
                                   </div>
                                   <div className="flex gap-2">
                                     <button
@@ -1775,7 +1777,7 @@ export default function CoursePage() {
                                       className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-sm"
                                     >
                                       <Edit3 className="w-4 h-4" />
-                                      Edit
+                                      {t('course.edit')}
                                     </button>
                                     <button
                                       type="button"
@@ -1783,7 +1785,7 @@ export default function CoursePage() {
                                       className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm"
                                     >
                                       <Trash2 className="w-4 h-4" />
-                                      Delete
+                                      {t('common.delete')}
                                     </button>
                                   </div>
                                 </div>
@@ -1794,11 +1796,11 @@ export default function CoursePage() {
 
                         <div className="rounded-xl border border-gray-200 bg-white p-5">
                           <h5 className="text-base font-semibold text-gray-900 mb-4">
-                            {editingQuestion ? 'Edit Question' : 'Add Question'}
+                            {editingQuestion ? t('course.editQuestion') : t('course.addQuestion')}
                           </h5>
                           <form onSubmit={handleSubmitQuestion} className="space-y-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.type')}</label>
                               <select
                                 value={questionType}
                                 onChange={(e) => {
@@ -1807,21 +1809,21 @@ export default function CoursePage() {
                                 }}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
                               >
-                                <option value="MCQ">Multiple Choice</option>
-                                <option value="FITB">Fill in the Blank</option>
-                                <option value="SHORT_ANSWER">Short Answer</option>
+                                <option value="MCQ">{t('course.multipleChoice')}</option>
+                                <option value="FITB">{t('course.fillInTheBlank')}</option>
+                                <option value="SHORT_ANSWER">{t('course.shortAnswer')}</option>
                               </select>
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.prompt')}</label>
                               <textarea
                                 value={questionForm.prompt}
                                 onChange={(e) => setQuestionForm({ ...questionForm, prompt: e.target.value })}
                                 required
                                 rows={2}
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                                placeholder="Enter the question..."
+                                placeholder={t('course.enterTheQuestion')}
                               />
                             </div>
 
@@ -1829,9 +1831,9 @@ export default function CoursePage() {
                               <div className="space-y-3">
                                 {['A', 'B', 'C', 'D'].map((opt) => (
                                   <div key={opt} className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_1fr] items-center">
-                                    <span className="text-sm font-medium text-gray-700">Option {opt}</span>
+                                    <span className="text-sm font-medium text-gray-700">{t('course.option')} {opt}</span>
                                     <input
-                                      placeholder={`Option ${opt}`}
+                                      placeholder={`${t('course.option')} ${opt}`}
                                       value={questionForm[`option${opt}`]}
                                       onChange={(e) => setQuestionForm({ ...questionForm, [`option${opt}`]: e.target.value })}
                                       required
@@ -1844,19 +1846,19 @@ export default function CoursePage() {
                                   onChange={(e) => setQuestionForm({ ...questionForm, correct: e.target.value })}
                                   className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
                                 >
-                                  <option value="A">Correct: A</option>
-                                  <option value="B">Correct: B</option>
-                                  <option value="C">Correct: C</option>
-                                  <option value="D">Correct: D</option>
+                                  <option value="A">{t('course.correct')}: A</option>
+                                  <option value="B">{t('course.correct')}: B</option>
+                                  <option value="C">{t('course.correct')}: C</option>
+                                  <option value="D">{t('course.correct')}: D</option>
                                 </select>
                               </div>
                             )}
 
                             {questionType === 'FITB' && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Correct answer</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.correctAnswer')}</label>
                                 <input
-                                  placeholder="Correct answer"
+                                  placeholder={t('course.correctAnswer')}
                                   value={questionForm.correctAnswer}
                                   onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
                                   required
@@ -1867,9 +1869,9 @@ export default function CoursePage() {
 
                             {questionType === 'SHORT_ANSWER' && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Model answer</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.modelAnswer')}</label>
                                 <textarea
-                                  placeholder="Model answer for grading reference"
+                                  placeholder={t('course.modelAnswerGradingRef')}
                                   value={questionForm.modelAnswer}
                                   onChange={(e) => setQuestionForm({ ...questionForm, modelAnswer: e.target.value })}
                                   required
@@ -1881,7 +1883,7 @@ export default function CoursePage() {
 
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                               <div className="sm:flex-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Points</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('course.points')}</label>
                                 <input
                                   type="number"
                                   min="1"
@@ -1894,7 +1896,7 @@ export default function CoursePage() {
                                 type="submit"
                                 className="w-full sm:w-auto px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
                               >
-                                {editingQuestion ? 'Update Question' : 'Add Question'}
+                                {editingQuestion ? t('course.updateQuestion') : t('course.addQuestion')}
                               </button>
                             </div>
                           </form>
@@ -1911,21 +1913,21 @@ export default function CoursePage() {
         {/* Students Tab (Teacher only) */}
         {activeTab === 'students' && user?.role === 'TEACHER' && (
           <>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Enrolled Students</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('course.enrolledStudents')}</h2>
             {students.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
                 <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No students enrolled</h3>
-                <p className="text-gray-500">Students will appear here once they are enrolled in your class</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('course.noStudentsEnrolled')}</h3>
+                <p className="text-gray-500">{t('course.studentsAppearHere')}</p>
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('nav.students')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('course.email')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('course.class')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -1961,8 +1963,8 @@ export default function CoursePage() {
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Enter Grades: {showGradeModal.title}</h2>
-                <p className="text-sm text-gray-500 mt-1">Max Score: {showGradeModal.maxScore || 100}</p>
+                <h2 className="text-xl font-bold text-gray-900">{t('course.enterGrades')}: {showGradeModal.title}</h2>
+                <p className="text-sm text-gray-500 mt-1">{t('course.maxScore')}: {showGradeModal.maxScore || 100}</p>
               </div>
               <button
                 onClick={() => setShowGradeModal(null)}
@@ -1976,16 +1978,16 @@ export default function CoursePage() {
               {students.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No students enrolled in this course</p>
+                  <p className="text-gray-500">{t('course.noStudentsInCourse')}</p>
                 </div>
               ) : (
                 <table className="w-full">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Score</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Feedback</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">Action</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('nav.students')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">{t('grade.score')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('course.feedback')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">{t('course.action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -2036,7 +2038,7 @@ export default function CoursePage() {
                               }
                             })}
                             className="w-full px-2 py-1 border border-gray-200 rounded"
-                            placeholder="Optional feedback..."
+                            placeholder={t('course.optionalFeedback')}
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -2045,7 +2047,7 @@ export default function CoursePage() {
                             disabled={!manualGrades[student.id]?.score}
                             className="px-3 py-1 bg-primary-900 hover:bg-primary-800 disabled:bg-gray-300 text-white text-sm font-medium rounded"
                           >
-                            Save
+                            {t('course.save')}
                           </button>
                         </td>
                       </tr>
@@ -2060,13 +2062,13 @@ export default function CoursePage() {
                 onClick={() => setShowGradeModal(null)}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSaveAllGrades}
                 className="px-4 py-2 bg-primary-900 hover:bg-primary-800 text-white font-medium rounded-lg"
               >
-                Save All Grades
+                {t('course.saveAllGrades')}
               </button>
             </div>
           </div>
@@ -2080,8 +2082,8 @@ export default function CoursePage() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Submissions: {submissionsAssessment.title}</h2>
-                  <p className="text-sm text-gray-500 mt-1">{submissions.length} submitted attempts</p>
+                  <h2 className="text-xl font-bold text-gray-900">{t('course.submissions')}: {submissionsAssessment.title}</h2>
+                  <p className="text-sm text-gray-500 mt-1">{submissions.length} {t('course.submittedAttempts')}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -2097,16 +2099,16 @@ export default function CoursePage() {
 
             <div className="p-6">
               {submissions.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No submissions yet</p>
+                <p className="text-center text-gray-500 py-8">{t('course.noSubmissionsYet')}</p>
               ) : (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Student</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700">Submitted</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-700">Score</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-700">Face Verified</th>
-                      <th className="text-center py-3 px-4 font-medium text-gray-700">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">{t('nav.students')}</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700">{t('course.submitted')}</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-700">{t('grade.score')}</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-700">{t('course.faceVerified')}</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-700">{t('course.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -2131,13 +2133,13 @@ export default function CoursePage() {
                         <td className="py-3 px-4 text-center">
                           {attempt.status === 'REJECTED' ? (
                             <span className="px-2 py-1 rounded text-sm font-medium bg-red-100 text-red-700">
-                              Rejected (0)
+                              {t('course.rejected')} (0)
                             </span>
                           ) : (
                             <span className={`px-2 py-1 rounded text-sm font-medium ${
                               attempt.score !== null ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                             }`}>
-                              {attempt.score !== null && submissionsAssessment?.maxScore ? `${attempt.score}/${submissionsAssessment.maxScore}` : attempt.score !== null ? `${attempt.score}` : 'Pending'}
+                              {attempt.score !== null && submissionsAssessment?.maxScore ? `${attempt.score}/${submissionsAssessment.maxScore}` : attempt.score !== null ? `${attempt.score}` : t('course.pending')}
                             </span>
                           )}
                         </td>
@@ -2146,28 +2148,28 @@ export default function CoursePage() {
                             attempt.faceVerified ? (
                               <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
                                 <CheckCircle className="w-3 h-3" />
-                                Verified
+                                {t('course.verified')}
                               </span>
                             ) : attempt.faceVerification.adminReviewed && !attempt.faceVerification.adminApproved ? (
                               <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
                                 <XCircle className="w-3 h-3" />
-                                Rejected
+                                {t('course.rejected')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded">
                                 <AlertCircle className="w-3 h-3" />
-                                Pending Review
+                                {t('course.pendingReview')}
                               </span>
                             )
                           ) : (
-                            <span className="text-gray-400 text-xs">No check</span>
+                            <span className="text-gray-400 text-xs">{t('course.noCheck')}</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           {attempt.faceVerification && !attempt.faceVerification.matchResult && (!attempt.faceVerification.adminReviewed || !attempt.faceVerification.adminApproved) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
                               <AlertCircle className="w-3 h-3" />
-                              {!attempt.faceVerification.adminReviewed ? 'Face mismatch - grading blocked' : 'Face rejected - grading blocked'}
+                              {!attempt.faceVerification.adminReviewed ? t('course.faceMismatchGradingBlocked') : t('course.faceRejectedGradingBlocked')}
                             </span>
                           ) : (
                             <button
@@ -2178,7 +2180,7 @@ export default function CoursePage() {
                               }}
                               className="px-3 py-1 bg-primary-900 hover:bg-primary-800 text-white text-sm font-medium rounded"
                             >
-                              Grade
+                              {t('course.grade')}
                             </button>
                           )}
                         </td>
@@ -2197,7 +2199,7 @@ export default function CoursePage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Report Question</h2>
+              <h2 className="text-lg font-semibold">{t('course.reportQuestion')}</h2>
               <button
                 onClick={() => {
                   setShowReportModal(false);
@@ -2214,12 +2216,12 @@ export default function CoursePage() {
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Why do you think this question is incorrect or has an issue?
+                  {t('course.whyIncorrectQuestion')}
                 </label>
                 <textarea
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  placeholder="Please explain the issue with this question (at least 10 characters)..."
+                  placeholder={t('course.explainIssueMin10')}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
@@ -2232,14 +2234,14 @@ export default function CoursePage() {
                   }}
                   className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleReportQuestion}
                   disabled={submittingReport || reportReason.trim().length < 10}
                   className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submittingReport ? 'Submitting...' : 'Submit Report'}
+                  {submittingReport ? t('course.submitting') : t('course.submitReport')}
                 </button>
               </div>
             </div>
@@ -2276,7 +2278,7 @@ export default function CoursePage() {
                 <button
                   onClick={toggleFullscreen}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
-                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                  title={isFullscreen ? t('course.exitFullscreen') : t('course.fullscreen')}
                 >
                   {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                 </button>
@@ -2295,14 +2297,14 @@ export default function CoursePage() {
                 <button
                   onClick={toggleFullscreen}
                   className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
-                  title="Exit Fullscreen"
+                  title={t('course.exitFullscreen')}
                 >
                   <Minimize2 className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => handleClosePreview()}
                   className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
-                  title="Close"
+                  title={t('course.close')}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2429,7 +2431,7 @@ export default function CoursePage() {
               {!previewMaterial.fileUrl && !previewMaterial.content && (
                 <div className="flex flex-col items-center justify-center py-16 gap-4">
                   <FileText className="w-16 h-16 text-gray-300" />
-                  <p className="text-gray-500">No preview available for this material</p>
+                  <p className="text-gray-500">{t('course.noPreviewAvailable')}</p>
                 </div>
               )}
             </div>
@@ -2437,7 +2439,7 @@ export default function CoursePage() {
             {/* Footer */}
             <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs text-gray-400">
-                Added by {previewMaterial.author?.fullName || 'Unknown'} on {new Date(previewMaterial.createdAt).toLocaleDateString()}
+                {t('course.addedBy')} {previewMaterial.author?.fullName || t('course.unknown')} {t('course.on')} {new Date(previewMaterial.createdAt).toLocaleDateString()}
               </p>
               <div className="flex gap-2">
                 {previewMaterial.fileUrl && (
@@ -2450,14 +2452,14 @@ export default function CoursePage() {
                     className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm inline-flex items-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Open in New Tab
+                    {t('course.openInNewTab')}
                   </a>
                 )}
                 <button
                   onClick={() => handleClosePreview()}
                   className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm"
                 >
-                  Close
+                  {t('course.close')}
                 </button>
               </div>
             </div>
@@ -2475,14 +2477,14 @@ export default function CoursePage() {
                 <ReadIcon className="w-5 h-5 text-green-500" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{htmlReaderMaterial.title}</h2>
                 <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">
-                  Tracked Reader
+                  {t('course.trackedReader')}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={toggleFullscreen}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
-                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                  title={isFullscreen ? t('course.exitFullscreen') : t('course.fullscreen')}
                 >
                   {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                 </button>
@@ -2501,14 +2503,14 @@ export default function CoursePage() {
                 <button
                   onClick={toggleFullscreen}
                   className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
-                  title="Exit Fullscreen"
+                  title={t('course.exitFullscreen')}
                 >
                   <Minimize2 className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => handleCloseHtmlReader()}
                   className="p-2 bg-white/90 hover:bg-white shadow-lg rounded-lg text-gray-700"
-                  title="Close Reader"
+                  title={t('course.closeReader')}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2521,7 +2523,7 @@ export default function CoursePage() {
                 <div className="flex items-center justify-center h-full">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
-                    <p className="text-gray-500">Loading reader...</p>
+                    <p className="text-gray-500">{t('course.loadingReader')}</p>
                   </div>
                 </div>
               ) : htmlContent ? (
@@ -2597,7 +2599,7 @@ export default function CoursePage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-red-500">No content available for this material.</p>
+                  <p className="text-red-500">{t('course.noContentAvailable')}</p>
                 </div>
               )}
             </div>
@@ -2605,13 +2607,13 @@ export default function CoursePage() {
             {/* Footer - hidden in fullscreen */}
             <div className={`flex items-center justify-between p-3 border-t border-gray-200 dark:border-gray-700 ${isFullscreen ? 'hidden' : ''}`}>
               <p className="text-xs text-gray-400">
-                Reading time is being tracked
+                {t('course.readingTimeTracked')}
               </p>
               <button
                 onClick={() => handleCloseHtmlReader()}
                 className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg text-sm"
               >
-                Close Reader
+                {t('course.closeReader')}
               </button>
             </div>
           </div>

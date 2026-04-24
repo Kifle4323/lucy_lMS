@@ -19,3 +19,21 @@ services:
         sync: false
       - key: PORT
         value: 10000
+      - key: ML_SERVICE_URL
+        fromService:
+          name: lucy-ml-service
+          type: web
+          property: hostport
+
+  - type: web
+    name: lucy-ml-service
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: cd apps/ml && pip install -r requirements.txt
+    startCommand: cd apps/ml && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: DATABASE_URL
+        sync: false

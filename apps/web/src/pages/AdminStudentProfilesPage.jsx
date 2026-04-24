@@ -8,10 +8,12 @@ import {
   FileText, MapPin, GraduationCap, AlertCircle, ChevronDown, ChevronUp,
   ExternalLink, Download
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminStudentProfilesPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('PENDING_APPROVAL');
@@ -47,7 +49,7 @@ export default function AdminStudentProfilesPage() {
         setSelectedProfile(null);
       }
     } catch (err) {
-      toast.error('Failed to approve profile');
+      toast.error(t('admin.failedApproveProfile'));
     } finally {
       setProcessing(false);
     }
@@ -57,11 +59,11 @@ export default function AdminStudentProfilesPage() {
     setProcessing(true);
     try {
       const cert = await generateCertificate(studentId);
-      toast.success(`Certificate generated! #: ${cert.certificateNumber}`);
+      toast.success(t('admin.certificateGenerated', { number: cert.certificateNumber }));
       setSelectedProfile(null);
       loadProfiles();
     } catch (err) {
-      toast.error(err.message || 'Failed to generate certificate');
+      toast.error(err.message || t('admin.failedGenerateCertificate'));
     } finally {
       setProcessing(false);
     }
@@ -69,7 +71,7 @@ export default function AdminStudentProfilesPage() {
 
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
-      toast.warning('Please provide a rejection reason');
+      toast.warning(t('admin.provideRejectionReason'));
       return;
     }
     setProcessing(true);
@@ -80,7 +82,7 @@ export default function AdminStudentProfilesPage() {
       setSelectedProfile(null);
       setRejectionReason('');
     } catch (err) {
-      toast.error('Failed to reject profile');
+      toast.error(t('admin.failedRejectProfile'));
     } finally {
       setProcessing(false);
     }
@@ -95,27 +97,27 @@ export default function AdminStudentProfilesPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'DRAFT':
-        return <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">Draft</span>;
+        return <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">{t('studentProfile.draft')}</span>;
       case 'PENDING_APPROVAL':
-        return <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 rounded-full text-xs font-medium flex items-center gap-1"><Clock className="w-3 h-3" /> Pending</span>;
+        return <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 rounded-full text-xs font-medium flex items-center gap-1"><Clock className="w-3 h-3" /> {t('reports.pending')}</span>;
       case 'APPROVED':
-        return <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-full text-xs font-medium flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Approved</span>;
+        return <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-full text-xs font-medium flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('studentProfile.approved')}</span>;
       case 'REJECTED':
-        return <span className="px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-full text-xs font-medium flex items-center gap-1"><XCircle className="w-3 h-3" /> Rejected</span>;
+        return <span className="px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded-full text-xs font-medium flex items-center gap-1"><XCircle className="w-3 h-3" /> {t('reports.rejected')}</span>;
       default:
         return null;
     }
   };
 
-  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">Access denied</div>;
+  if (user?.role !== 'ADMIN') return <div className="p-8 text-center">{t('common.accessDenied')}</div>;
 
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Student Profiles</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Review and approve student profile submissions</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.studentProfiles')}</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">{t('admin.reviewApproveProfiles')}</p>
         </div>
 
         {/* Filters */}
@@ -127,7 +129,7 @@ export default function AdminStudentProfilesPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or email..."
+                placeholder={t('admin.searchByNameOrEmail')}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500"
               />
             </div>
@@ -136,31 +138,31 @@ export default function AdminStudentProfilesPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500"
             >
-              <option value="PENDING_APPROVAL">Pending Approval</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="DRAFT">Draft</option>
-              <option value="">All</option>
+              <option value="PENDING_APPROVAL">{t('admin.pendingApproval')}</option>
+              <option value="APPROVED">{t('studentProfile.approved')}</option>
+              <option value="REJECTED">{t('reports.rejected')}</option>
+              <option value="DRAFT">{t('studentProfile.draft')}</option>
+              <option value="">{t('common.all')}</option>
             </select>
           </div>
         </div>
 
         {/* Profiles List */}
         {loading ? (
-          <div className="p-8 text-center">Loading...</div>
+          <div className="p-8 text-center">{t('common.loading')}</div>
         ) : filteredProfiles.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center text-gray-500 dark:text-gray-400">
-            No profiles found
+            {t('admin.noProfilesFound')}
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Student</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Updated</th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('gradebook.student')}</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('common.status')}</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('admin.updated')}</th>
+                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -234,59 +236,59 @@ export default function AdminStudentProfilesPage() {
               {/* Modal Content */}
               <div className="p-6 space-y-6">
                 {/* Personal Information */}
-                <Section title="Personal Information" icon={User}>
+                <Section title={t('admin.personalInformation')} icon={User}>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <Field label="First Name" value={selectedProfile.firstName} />
-                    <Field label="Father Name" value={selectedProfile.fatherName} />
-                    <Field label="Grandfather Name" value={selectedProfile.grandFatherName} />
-                    <Field label="First Name (Amharic)" value={selectedProfile.firstNameLocal} />
-                    <Field label="Father Name (Amharic)" value={selectedProfile.fatherNameLocal} />
-                    <Field label="Grandfather Name (Amharic)" value={selectedProfile.grandFatherNameLocal} />
-                    <Field label="Date of Birth (GC)" value={selectedProfile.dateOfBirthGC ? new Date(selectedProfile.dateOfBirthGC).toLocaleDateString() : null} />
-                    <Field label="Gender" value={selectedProfile.gender} />
-                    <Field label="Place of Birth" value={selectedProfile.placeOfBirth} />
-                    <Field label="Mother Tongue" value={selectedProfile.motherTongue} />
-                    <Field label="Health Status" value={selectedProfile.healthStatus} />
-                    <Field label="Marital Status" value={selectedProfile.maritalStatus} />
-                    <Field label="National ID (FAN)" value={selectedProfile.nationalIdFan} />
-                    <Field label="Economical Status" value={selectedProfile.economicalStatus} />
-                    <Field label="Area Type" value={selectedProfile.areaType} />
-                    <Field label="TIN Number" value={selectedProfile.tinNumber} />
-                    <Field label="Account Number" value={selectedProfile.accountNumber} />
+                    <Field label={t('admin.firstName')} value={selectedProfile.firstName} />
+                    <Field label={t('admin.fatherName')} value={selectedProfile.fatherName} />
+                    <Field label={t('admin.grandfatherName')} value={selectedProfile.grandFatherName} />
+                    <Field label={t('admin.firstNameAmharic')} value={selectedProfile.firstNameLocal} />
+                    <Field label={t('admin.fatherNameAmharic')} value={selectedProfile.fatherNameLocal} />
+                    <Field label={t('admin.grandfatherNameAmharic')} value={selectedProfile.grandFatherNameLocal} />
+                    <Field label={t('admin.dateOfBirthGC')} value={selectedProfile.dateOfBirthGC ? new Date(selectedProfile.dateOfBirthGC).toLocaleDateString() : null} />
+                    <Field label={t('admin.gender')} value={selectedProfile.gender} />
+                    <Field label={t('admin.placeOfBirth')} value={selectedProfile.placeOfBirth} />
+                    <Field label={t('admin.motherTongue')} value={selectedProfile.motherTongue} />
+                    <Field label={t('admin.healthStatus')} value={selectedProfile.healthStatus} />
+                    <Field label={t('admin.maritalStatus')} value={selectedProfile.maritalStatus} />
+                    <Field label={t('admin.nationalIdFan')} value={selectedProfile.nationalIdFan} />
+                    <Field label={t('admin.economicalStatus')} value={selectedProfile.economicalStatus} />
+                    <Field label={t('admin.areaType')} value={selectedProfile.areaType} />
+                    <Field label={t('admin.tinNumber')} value={selectedProfile.tinNumber} />
+                    <Field label={t('admin.accountNumber')} value={selectedProfile.accountNumber} />
                   </div>
                 </Section>
 
                 {/* Location and Address */}
-                <Section title="Location and Address" icon={MapPin}>
+                <Section title={t('admin.locationAndAddress')} icon={MapPin}>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <Field label="Citizenship" value={selectedProfile.citizenship} />
-                    <Field label="Country" value={selectedProfile.country} />
-                    <Field label="City" value={selectedProfile.city} />
-                    <Field label="Sub City" value={selectedProfile.subCity} />
-                    <Field label="Kebele" value={selectedProfile.kebele} />
-                    <Field label="Woreda" value={selectedProfile.woreda} />
-                    <Field label="House Number" value={selectedProfile.houseNumber} />
-                    <Field label="Phone" value={selectedProfile.phone} />
-                    <Field label="Email" value={selectedProfile.email} />
-                    <Field label="P.O. Box" value={selectedProfile.pobox} />
+                    <Field label={t('admin.citizenship')} value={selectedProfile.citizenship} />
+                    <Field label={t('admin.country')} value={selectedProfile.country} />
+                    <Field label={t('admin.city')} value={selectedProfile.city} />
+                    <Field label={t('admin.subCity')} value={selectedProfile.subCity} />
+                    <Field label={t('admin.kebele')} value={selectedProfile.kebele} />
+                    <Field label={t('admin.woreda')} value={selectedProfile.woreda} />
+                    <Field label={t('admin.houseNumber')} value={selectedProfile.houseNumber} />
+                    <Field label={t('common.phone')} value={selectedProfile.phone} />
+                    <Field label={t('common.email')} value={selectedProfile.email} />
+                    <Field label={t('admin.poBox')} value={selectedProfile.pobox} />
                   </div>
                 </Section>
 
                 {/* Educational Information */}
-                <Section title="Educational Information" icon={GraduationCap}>
+                <Section title={t('admin.educationalInformation')} icon={GraduationCap}>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <Field label="Stream" value={selectedProfile.stream} />
-                    <Field label="Entry Year" value={selectedProfile.entryYear} />
-                    <Field label="Sponsor Category" value={selectedProfile.sponsorCategory} />
-                    <Field label="Sponsored By" value={selectedProfile.sponsoredBy} />
-                    <Field label="National Exam Year (EC)" value={selectedProfile.nationalExamYearEC} />
-                    <Field label="Examination ID" value={selectedProfile.examinationId} />
-                    <Field label="Admission Date" value={selectedProfile.admissionDate ? new Date(selectedProfile.admissionDate).toLocaleDateString() : null} />
-                    <Field label="Checked In Date" value={selectedProfile.checkedInDate ? new Date(selectedProfile.checkedInDate).toLocaleDateString() : null} />
-                    <Field label="National Exam Result Total" value={selectedProfile.nationalExamResultTotal} />
+                    <Field label={t('admin.stream')} value={selectedProfile.stream} />
+                    <Field label={t('admin.entryYear')} value={selectedProfile.entryYear} />
+                    <Field label={t('admin.sponsorCategory')} value={selectedProfile.sponsorCategory} />
+                    <Field label={t('admin.sponsoredBy')} value={selectedProfile.sponsoredBy} />
+                    <Field label={t('admin.nationalExamYearEC')} value={selectedProfile.nationalExamYearEC} />
+                    <Field label={t('admin.examinationId')} value={selectedProfile.examinationId} />
+                    <Field label={t('admin.admissionDate')} value={selectedProfile.admissionDate ? new Date(selectedProfile.admissionDate).toLocaleDateString() : null} />
+                    <Field label={t('admin.checkedInDate')} value={selectedProfile.checkedInDate ? new Date(selectedProfile.checkedInDate).toLocaleDateString() : null} />
+                    <Field label={t('admin.nationalExamResultTotal')} value={selectedProfile.nationalExamResultTotal} />
                   </div>
 
-                  <h4 className="font-medium text-gray-900 dark:text-white mt-4 mb-2">National Exam Subject Results</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white mt-4 mb-2">{t('admin.nationalExamSubjectResults')}</h4>
                   <div className="grid grid-cols-4 md:grid-cols-7 gap-2">
                     {[
                       { label: 'English', value: selectedProfile.examEnglish },
@@ -306,7 +308,7 @@ export default function AdminStudentProfilesPage() {
                 </Section>
 
                 {/* Documents */}
-                <Section title="Documents" icon={FileText}>
+                <Section title={t('admin.documents')} icon={FileText}>
                   {selectedProfile.documents?.length > 0 ? (
                     <div className="space-y-2">
                       {selectedProfile.documents.map(doc => (
@@ -334,14 +336,14 @@ export default function AdminStudentProfilesPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 dark:text-gray-400">No documents uploaded</p>
+                    <p className="text-gray-500 dark:text-gray-400">{t('admin.noDocumentsUploaded')}</p>
                   )}
                 </Section>
 
                 {/* Rejection Reason */}
                 {selectedProfile.status === 'REJECTED' && selectedProfile.rejectionReason && (
                   <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-red-700 dark:text-red-400 font-medium">Rejection Reason:</p>
+                    <p className="text-red-700 dark:text-red-400 font-medium">{t('admin.rejectionReason')}:</p>
                     <p className="text-red-600 dark:text-red-300">{selectedProfile.rejectionReason}</p>
                   </div>
                 )}
@@ -355,7 +357,7 @@ export default function AdminStudentProfilesPage() {
                       className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <CheckCircle className="w-5 h-5" />
-                      Approve
+                      {t('faceVerification.approve')}
                     </button>
                     <button
                       onClick={() => setShowRejectModal(true)}
@@ -363,7 +365,7 @@ export default function AdminStudentProfilesPage() {
                       className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <XCircle className="w-5 h-5" />
-                      Reject
+                      {t('reports.rejected')}
                     </button>
                   </div>
                 )}
@@ -377,7 +379,7 @@ export default function AdminStudentProfilesPage() {
                       className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <GraduationCap className="w-5 h-5" />
-                      Generate Certificate
+                      {t('admin.generateCertificate')}
                     </button>
                   </div>
                 )}
@@ -399,7 +401,7 @@ export default function AdminStudentProfilesPage() {
                   href={previewDocument.fileUrl}
                   download={previewDocument.fileName || 'document'}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"
-                  title="Download"
+                  title={t('common.download')}
                 >
                   <Download className="w-5 h-5" />
                 </a>
@@ -427,14 +429,14 @@ export default function AdminStudentProfilesPage() {
               ) : (
                 <div className="text-center">
                   <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">Preview not available for this file type</p>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t('admin.previewNotAvailable')}</p>
                   <a
                     href={previewDocument.fileUrl}
                     download={previewDocument.fileName || 'document'}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg"
                   >
                     <Download className="w-4 h-4" />
-                    Download File
+                    {t('common.download')} {t('admin.file')}
                   </a>
                 </div>
               )}
@@ -446,28 +448,28 @@ export default function AdminStudentProfilesPage() {
         {showRejectModal && (
           <div className="fixed inset-0 bg-black/50 z-60 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Reject Profile</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">Please provide a reason for rejection:</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t('admin.rejectProfile')}</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{t('admin.provideRejectionReason')}:</p>
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={4}
                 className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500"
-                placeholder="Enter rejection reason..."
+                placeholder={t('admin.enterRejectionReason')}
               />
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={() => { setShowRejectModal(false); setRejectionReason(''); }}
                   className="flex-1 py-2 px-4 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-white font-medium rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleReject}
                   disabled={processing || !rejectionReason.trim()}
                   className="flex-1 py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg disabled:opacity-50"
                 >
-                  {processing ? 'Rejecting...' : 'Reject'}
+                  {processing ? t('admin.rejecting') : t('reports.rejected')}
                 </button>
               </div>
             </div>

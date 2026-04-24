@@ -22,7 +22,8 @@ import {
   ClipboardList,
   Award,
   CalendarClock,
-  Building2
+  Building2,
+  Brain
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -127,31 +128,32 @@ export default function Layout({ children }) {
   const navItems = [
     { path: '/', label: t('nav.dashboard'), icon: Home },
     ...(user?.role === 'ADMIN' ? [
-      { path: '/admin/classes', label: t('nav.courses'), icon: Users },
-      { path: '/admin/users', label: t('nav.students'), icon: UserCircle },
+      { path: '/admin/classes', label: t('nav.classes'), icon: Users },
+      { path: '/admin/users', label: t('nav.users'), icon: UserCircle },
       { path: '/admin/courses', label: t('nav.courses'), icon: BookOpen },
-      { path: '/admin/academic', label: t('nav.assessments'), icon: Calendar },
+      { path: '/admin/academic', label: t('nav.academic'), icon: Calendar },
       { path: '/admin/departments', label: t('nav.departments'), icon: Building2 },
-      { path: '/admin/face-verifications', label: 'Face Verification', icon: ScanFace },
-      { path: '/admin/student-profiles', label: t('nav.students'), icon: FileText },
-      { path: '/admin/add-drop-requests', label: 'Add/Drop Requests', icon: ClipboardList },
+      { path: '/admin/face-verifications', label: t('nav.faceVerification'), icon: ScanFace },
+      { path: '/admin/student-profiles', label: t('nav.studentProfiles'), icon: FileText },
+      { path: '/admin/add-drop-requests', label: t('nav.addDropRequests'), icon: ClipboardList },
     ] : []),
     ...(user?.role === 'TEACHER' ? [
-      { path: '/my-classes', label: t('nav.myCourses'), icon: Users },
-      { path: '/teacher/grades', label: t('nav.gradebook'), icon: ClipboardList },
-      { path: '/teacher/question-reports', label: 'Question Reports', icon: FileText },
-      { path: '/live-sessions', label: t('nav.liveSessions'), icon: Video },
+      { path: '/my-classes', label: t('nav.myClasses'), icon: Users },
+      { path: '/teacher/grades', label: t('nav.gradeManagement'), icon: ClipboardList },
+      { path: '/teacher/question-reports', label: t('nav.questionReports'), icon: FileText },
+      { path: '/live-sessions', label: t('nav.liveClasses'), icon: Video },
     ] : []),
     ...(user?.role === 'STUDENT' ? [
-      { path: '/my-classes', label: t('nav.myCourses'), icon: GraduationCap },
-      { path: '/student/registration', label: 'Registration', icon: ClipboardList },
-      { path: '/student/add-drop', label: 'Add/Drop', icon: ClipboardList },
-      { path: '/student/exams', label: 'Exam Schedule', icon: CalendarClock },
-      { path: '/student/results', label: t('nav.results'), icon: Award },
-      { path: '/student/my-reports', label: 'Reports', icon: FileText },
-      { path: '/live-sessions', label: t('nav.liveSessions'), icon: Video },
-      { path: '/student-profile', label: t('nav.profile'), icon: User },
+      { path: '/my-classes', label: t('nav.myClasses'), icon: GraduationCap },
+      { path: '/student/registration', label: t('nav.semesterRegistration'), icon: ClipboardList },
+      { path: '/student/add-drop', label: t('nav.addDropCourses'), icon: ClipboardList },
+      { path: '/student/exams', label: t('nav.examSchedule'), icon: CalendarClock },
+      { path: '/student/results', label: t('nav.myResults'), icon: Award },
+      { path: '/student/my-reports', label: t('nav.myReports'), icon: FileText },
+      { path: '/live-sessions', label: t('nav.liveClasses'), icon: Video },
+      { path: '/student-profile', label: t('nav.myProfile'), icon: User },
     ] : []),
+    { path: '/performance', label: t('nav.performance'), icon: Brain },
     { path: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
@@ -172,7 +174,7 @@ export default function Layout({ children }) {
             <div className="w-10 h-10 bg-white rounded-lg p-1 flex items-center justify-center">
               <img src={lucyLogo} alt="Lucy College" className="w-full h-full object-contain" />
             </div>
-            <span className="font-bold text-lg text-white">Lucy College</span>
+            <span className="font-bold text-lg text-white">{t('nav.lucyCollege')}</span>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 hover:bg-primary-800 dark:hover:bg-primary-900 rounded">
             <X className="w-5 h-5 text-white" />
@@ -223,7 +225,7 @@ export default function Layout({ children }) {
 
           <div className="hidden lg:flex items-center gap-2 text-primary-900 dark:text-primary-300 font-semibold">
             <GraduationCap className="w-5 h-5" />
-            <span>Learning Management System</span>
+            <span>{t('nav.lms')}</span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -244,7 +246,7 @@ export default function Layout({ children }) {
                 {showNotificationDropdown && (
                   <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-y-auto">
                     <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                      <h3 className="font-semibold text-sm">Notifications</h3>
+                      <h3 className="font-semibold text-sm">{t('nav.notifications')}</h3>
                       <button
                         onClick={async () => {
                           await markAllNotificationsRead();
@@ -253,7 +255,7 @@ export default function Layout({ children }) {
                         }}
                         className="text-xs text-blue-600 hover:underline"
                       >
-                        Mark all read
+                        {t('nav.markAllRead')}
                       </button>
                     </div>
                     <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -280,7 +282,7 @@ export default function Layout({ children }) {
                         </Link>
                       ))}
                       {studentNotifications.notifications.length === 0 && (
-                        <p className="p-4 text-center text-gray-500 text-sm">No notifications</p>
+                        <p className="p-4 text-center text-gray-500 text-sm">{t('nav.noNotifications')}</p>
                       )}
                     </div>
                   </div>
@@ -305,7 +307,7 @@ export default function Layout({ children }) {
                 {showNotificationDropdown && (
                   <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                     <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-                      <h3 className="font-semibold text-sm">Pending Actions</h3>
+                      <h3 className="font-semibold text-sm">{t('nav.pendingActions')}</h3>
                     </div>
                     <div className="divide-y divide-gray-100 dark:divide-gray-700">
                       {notifications.pendingUsers > 0 && (
@@ -318,7 +320,7 @@ export default function Layout({ children }) {
                             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                               <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <span className="text-sm">Pending Users</span>
+                            <span className="text-sm">{t('nav.pendingUsers')}</span>
                           </div>
                           <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.pendingUsers}</span>
                         </Link>
@@ -333,7 +335,7 @@ export default function Layout({ children }) {
                             <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
                               <ScanFace className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             </div>
-                            <span className="text-sm">Face Verifications</span>
+                            <span className="text-sm">{t('nav.faceVerifications')}</span>
                           </div>
                           <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.faceVerifications}</span>
                         </Link>
@@ -348,7 +350,7 @@ export default function Layout({ children }) {
                             <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
                               <User className="w-4 h-4 text-green-600 dark:text-green-400" />
                             </div>
-                            <span className="text-sm">Student Profiles</span>
+                            <span className="text-sm">{t('nav.studentProfiles')}</span>
                           </div>
                           <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.studentProfiles}</span>
                         </Link>
@@ -363,7 +365,7 @@ export default function Layout({ children }) {
                             <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
                               <ClipboardList className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                             </div>
-                            <span className="text-sm">Add/Drop Requests</span>
+                            <span className="text-sm">{t('nav.addDropRequests')}</span>
                           </div>
                           <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.pendingAddDropRequests}</span>
                         </Link>
@@ -378,7 +380,7 @@ export default function Layout({ children }) {
                             <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
                               <FileText className="w-4 h-4 text-red-600 dark:text-red-400" />
                             </div>
-                            <span className="text-sm">Question Reports</span>
+                            <span className="text-sm">{t('nav.questionReports')}</span>
                           </div>
                           <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{notifications.pendingQuestionReports}</span>
                         </Link>
@@ -393,7 +395,7 @@ export default function Layout({ children }) {
             <button
               onClick={toggleDarkMode}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white"
-              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              title={darkMode ? t('nav.switchToLight') : t('nav.switchToDark')}
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
@@ -421,7 +423,7 @@ export default function Layout({ children }) {
             <button
               onClick={handleLogout}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white"
-              title="Logout"
+              title={t('nav.logout')}
             >
               <LogOut className="w-5 h-5" />
             </button>

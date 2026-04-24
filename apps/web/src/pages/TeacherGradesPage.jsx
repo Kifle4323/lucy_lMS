@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   getTeacherSections, getSectionStudents, enterGrade, submitSectionGrades, syncAssessmentsToGrades,
   createExamSchedule, getSectionExamSchedules, updateExamSchedule, deleteExamSchedule,
@@ -14,6 +15,7 @@ import { useConfirm } from '../ConfirmContext';
 
 export default function TeacherGradesPage() {
   const [searchParams] = useSearchParams();
+  const { t } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
   const [sections, setSections] = useState([]);
@@ -140,7 +142,7 @@ export default function TeacherGradesPage() {
         feedback: student.grade?.feedback
       };
       await enterGrade(gradeData);
-      setSuccess('Grade saved successfully!');
+      setSuccess(t('grade.gradeSaved'));
       // Refresh data
       const data = await getSectionStudents(selectedSection.id);
       setStudents(data);
@@ -155,20 +157,20 @@ export default function TeacherGradesPage() {
     const comps = Array.isArray(gradeConfig) ? gradeConfig : [];
     const totalWeight = comps.reduce((s, c) => s + c.weight, 0);
     if (totalWeight !== 100) {
-      toast.error(`Grade components must total 100%. Current total: ${totalWeight}%. Please adjust weights before submitting.`);
+      toast.error(t('grade.componentsMustTotal100', { total: totalWeight }));
       return;
     }
     const confirmed = await confirm({
-      title: 'Submit All Grades',
-      message: 'Submit all grades? This will lock the grades and students will be able to see them once published by admin.',
-      confirmText: 'Submit',
-      cancelText: 'Cancel',
+      title: t('grade.submitAllGrades'),
+      message: t('grade.submitAllConfirm'),
+      confirmText: t('common.submit'),
+      cancelText: t('common.cancel'),
       type: 'success',
     });
     if (!confirmed) return;
     try {
       await submitSectionGrades(selectedSection.id);
-      toast.success('Grades submitted successfully!');
+      toast.success(t('grade.gradesSubmitted'));
       // Refresh
       const data = await getSectionStudents(selectedSection.id);
       setStudents(data);
@@ -181,14 +183,14 @@ export default function TeacherGradesPage() {
     const comps = Array.isArray(gradeConfig) ? gradeConfig : [];
     const totalWeight = comps.reduce((s, c) => s + c.weight, 0);
     if (totalWeight !== 100) {
-      toast.error(`Grade components must total 100%. Current total: ${totalWeight}%. Please adjust weights before syncing.`);
+      toast.error(t('grade.componentsMustTotal100Sync', { total: totalWeight }));
       return;
     }
     const confirmed = await confirm({
-      title: 'Sync from Assessments',
-      message: 'Sync assessment results to grades? This will overwrite existing quiz, midterm, and final scores with assessment data.',
-      confirmText: 'Sync',
-      cancelText: 'Cancel',
+      title: t('grade.syncFromAssessments'),
+      message: t('grade.syncAssessmentsConfirm'),
+      confirmText: t('grade.sync'),
+      cancelText: t('common.cancel'),
       type: 'info',
     });
     if (!confirmed) return;
@@ -244,8 +246,8 @@ export default function TeacherGradesPage() {
         proposalDeadlineTime: '23:59',
       });
       setSuccess(examForm.proposeEarly 
-        ? 'Exam schedule created with early exam proposal! Students will be notified.' 
-        : 'Exam schedule created!');
+        ? t('grade.examCreatedWithProposal') 
+        : t('grade.examScheduleCreated'));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -274,7 +276,7 @@ export default function TeacherGradesPage() {
         proposalDeadline: '',
         proposalDeadlineTime: '23:59',
       });
-      setSuccess('Exam schedule updated!');
+      setSuccess(t('grade.examScheduleUpdated'));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -284,17 +286,17 @@ export default function TeacherGradesPage() {
 
   async function handleDeleteExam(examId) {
     const confirmed = await confirm({
-      title: 'Delete Exam Schedule',
-      message: 'Delete this exam schedule?',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('grade.deleteExamSchedule'),
+      message: t('grade.deleteExamConfirm'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
     try {
       await deleteExamSchedule(examId);
       setExamSchedules(examSchedules.filter(ex => ex.id !== examId));
-      toast.success('Exam schedule deleted!');
+      toast.success(t('grade.examScheduleDeleted'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -318,7 +320,7 @@ export default function TeacherGradesPage() {
       setExamSchedules(examSchedules.map(ex => ex.id === updated.id ? updated : ex));
       setShowEarlyProposal(false);
       setEarlyProposalForm({ proposedDate: '', proposalDeadline: '' });
-      setSuccess('Early exam proposed! Students will be notified to respond.');
+      setSuccess(t('grade.earlyExamProposed'));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -328,10 +330,10 @@ export default function TeacherGradesPage() {
 
   async function handleCancelEarlyProposal(examId) {
     const confirmed = await confirm({
-      title: 'Cancel Early Exam Proposal',
-      message: 'Cancel early exam proposal?',
-      confirmText: 'Cancel Proposal',
-      cancelText: 'Keep',
+      title: t('grade.cancelEarlyExamProposal'),
+      message: t('grade.cancelEarlyExamConfirm'),
+      confirmText: t('grade.cancelProposal'),
+      cancelText: t('grade.keep'),
       type: 'warning',
     });
     if (!confirmed) return;
@@ -340,7 +342,7 @@ export default function TeacherGradesPage() {
       const examsData = await getSectionExamSchedules(selectedSection.id);
       setExamSchedules(examsData);
       setEarlyResponses(null);
-      toast.success('Early exam proposal cancelled.');
+      toast.success(t('grade.earlyExamCancelled'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -357,10 +359,10 @@ export default function TeacherGradesPage() {
 
   async function handleConfirmEarlyExam(examId) {
     const confirmed = await confirm({
-      title: 'Confirm Early Exam',
-      message: 'Confirm early exam? This will set the exam date to the proposed early date.',
-      confirmText: 'Confirm',
-      cancelText: 'Cancel',
+      title: t('grade.confirmEarlyExam'),
+      message: t('grade.confirmEarlyExamMessage'),
+      confirmText: t('common.confirm'),
+      cancelText: t('common.cancel'),
       type: 'success',
     });
     if (!confirmed) return;
@@ -369,7 +371,7 @@ export default function TeacherGradesPage() {
       const examsData = await getSectionExamSchedules(selectedSection.id);
       setExamSchedules(examsData);
       setEarlyResponses(null);
-      toast.success('Early exam confirmed! Exam will be held on the proposed date.');
+      toast.success(t('grade.earlyExamConfirmed'));
     } catch (err) {
       toast.error(err.message);
     }
@@ -391,17 +393,17 @@ export default function TeacherGradesPage() {
 
   async function handleSyncAttendance() {
     const confirmed = await confirm({
-      title: 'Sync Attendance to Grades',
-      message: 'This will auto-calculate attendance scores from live session data and update the attendance grade for each student. Existing attendance scores will be overwritten.',
-      confirmText: 'Sync',
-      cancelText: 'Cancel',
+      title: t('grade.syncAttendanceToGrades'),
+      message: t('grade.syncAttendanceConfirm'),
+      confirmText: t('grade.sync'),
+      cancelText: t('common.cancel'),
       type: 'info',
     });
     if (!confirmed) return;
     setSaving(true);
     try {
       const result = await syncAttendanceToGrades(selectedSection.id);
-      toast.success(`Attendance synced for ${result.synced} students!`);
+      toast.success(t('grade.attendanceSynced', { count: result.synced }));
       // Refresh students to show updated attendance scores
       const data = await getSectionStudents(selectedSection.id);
       setStudents(data);
@@ -427,7 +429,7 @@ export default function TeacherGradesPage() {
 
   async function handleSaveManualAttendance() {
     if (!manualForm.date) {
-      toast.error('Please select a date');
+      toast.error(t('grade.selectDate'));
       return;
     }
     setSaving(true);
@@ -441,7 +443,7 @@ export default function TeacherGradesPage() {
         date: manualForm.date + 'T09:00:00.000Z',
         records,
       });
-      toast.success('Manual attendance saved!');
+      toast.success(t('grade.manualAttendanceSaved'));
       setShowManualForm(false);
       setManualForm({ title: '', date: '' });
       setManualRecords({});
@@ -456,28 +458,28 @@ export default function TeacherGradesPage() {
 
   async function handleDeleteManualSession(sessionId) {
     const confirmed = await confirm({
-      title: 'Delete Attendance Session',
-      message: 'Delete this attendance session and all its records?',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('grade.deleteAttendanceSession'),
+      message: t('grade.deleteAttendanceConfirm'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger',
     });
     if (!confirmed) return;
     try {
       await deleteManualAttendanceSession(sessionId);
-      toast.success('Attendance session deleted');
+      toast.success(t('grade.attendanceSessionDeleted'));
       await loadLiveAttendance();
     } catch (err) {
       toast.error(err.message);
     }
   }
 
-  if (loading) return <Layout><div className="p-8">Loading...</div></Layout>;
+  if (loading) return <Layout><div className="p-8">{t('common.loading')}</div></Layout>;
 
   return (
     <Layout>
       <div className="p-6 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Grade Management</h1>
+        <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{t('grade.gradeManagement')}</h1>
 
       {error && <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4">{error}</div>}
       {success && <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-3 rounded mb-4">{success}</div>}
@@ -485,7 +487,7 @@ export default function TeacherGradesPage() {
       <div className="grid md:grid-cols-4 gap-6">
         {/* Sections List */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <h2 className="font-semibold mb-3 text-gray-900 dark:text-white">My Course Sections</h2>
+          <h2 className="font-semibold mb-3 text-gray-900 dark:text-white">{t('grade.myCourseSections')}</h2>
           <div className="space-y-2">
             {sections.map(section => (
               <button
@@ -502,12 +504,12 @@ export default function TeacherGradesPage() {
                   {section.class?.name} | {section.sectionCode}
                 </div>
                 <div className="text-xs text-gray-400 dark:text-gray-500">
-                  {section.semester?.name} | {section._count?.enrollments || 0} students
+                  {section.semester?.name} | {section._count?.enrollments || 0} {t('nav.students')}
                 </div>
               </button>
             ))}
             {sections.length === 0 && (
-              <p className="text-gray-500 text-sm">No course sections assigned.</p>
+              <p className="text-gray-500 text-sm">{t('grade.noSectionsAssigned')}</p>
             )}
           </div>
         </div>
@@ -531,19 +533,19 @@ export default function TeacherGradesPage() {
                   onClick={() => setActiveTab('grades')}
                   className={`pb-2 px-4 ${activeTab === 'grades' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
                 >
-                  Grades
+                  {t('grade.grades')}
                 </button>
                 <button
                   onClick={() => { setActiveTab('attendance'); loadLiveAttendance(); }}
                   className={`pb-2 px-4 ${activeTab === 'attendance' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
                 >
-                  Attendance
+                  {t('dashboard.attendance')}
                 </button>
                 <button
                   onClick={() => setActiveTab('exams')}
                   className={`pb-2 px-4 ${activeTab === 'exams' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
                 >
-                  Exam Schedules
+                  {t('grade.examSchedules')}
                 </button>
               </div>
 
@@ -556,13 +558,13 @@ export default function TeacherGradesPage() {
                       disabled={saving}
                       className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                     >
-                      {saving ? 'Syncing...' : 'Sync from Assessments'}
+                      {saving ? t('grade.syncing') : t('grade.syncFromAssessments')}
                     </button>
                     <button
                       onClick={submitAllGrades}
                       className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
                     >
-                      Submit All Grades
+                      {t('grade.submitAllGrades')}
                     </button>
                   </div>
 
@@ -570,16 +572,16 @@ export default function TeacherGradesPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                          <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
+                          <th className="text-left p-3 text-gray-700 dark:text-gray-300">{t('nav.students')}</th>
                           {(Array.isArray(gradeConfig) ? gradeConfig : []).map(comp => (
                             <th key={comp.id} className="text-center p-3 text-gray-700 dark:text-gray-300">
                               {comp.name}<br/><span className="text-xs text-gray-400">/{comp.weight}</span>
                             </th>
                           ))}
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Total</th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Grade</th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Status</th>
-                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">Action</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('common.total')}</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('grade.grade')}</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('common.status')}</th>
+                          <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('common.actions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -631,11 +633,11 @@ export default function TeacherGradesPage() {
                             </td>
                             <td className="p-3 text-center">
                               {student.grade?.isSubmitted ? (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Submitted</span>
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">{t('results.submitted')}</span>
                               ) : student.grade ? (
-                                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">Draft</span>
+                                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">{t('grade.draft')}</span>
                               ) : (
-                                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">No Grade</span>
+                                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">{t('grade.noGrade')}</span>
                               )}
                             </td>
                             <td className="p-3 text-center">
@@ -644,7 +646,7 @@ export default function TeacherGradesPage() {
                                 disabled={saving || student.grade?.isSubmitted}
                                 className="text-blue-600 hover:underline disabled:text-gray-400 text-sm"
                               >
-                                Save
+                                {t('common.save')}
                               </button>
                             </td>
                           </tr>
@@ -655,7 +657,7 @@ export default function TeacherGradesPage() {
                   </div>
 
                   {students.length === 0 && (
-                    <p className="text-gray-500 text-center py-8">No students enrolled in this section.</p>
+                    <p className="text-gray-500 text-center py-8">{t('grade.noStudentsEnrolled')}</p>
                   )}
                 </>
               )}
@@ -665,9 +667,9 @@ export default function TeacherGradesPage() {
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Attendance Tracking</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('grade.attendanceTracking')}</h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Combined attendance from live sessions (auto) and face-to-face classes (manual)
+                        {t('grade.attendanceDescription')}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -675,14 +677,14 @@ export default function TeacherGradesPage() {
                         onClick={openManualAttendanceForm}
                         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
                       >
-                        + Take Attendance
+                        + {t('grade.takeAttendance')}
                       </button>
                       <button
                         onClick={handleSyncAttendance}
                         disabled={saving || !liveAttendance?.endedSessions}
                         className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
-                        {saving ? 'Syncing...' : 'Sync to Grades'}
+                        {saving ? t('grade.syncing') : t('grade.syncToGrades')}
                       </button>
                     </div>
                   </div>
@@ -691,12 +693,12 @@ export default function TeacherGradesPage() {
                   {showManualForm && (
                     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
                       <div className="flex justify-between items-center mb-4">
-                        <h4 className="font-semibold text-gray-900 dark:text-white">Take Face-to-Face Attendance</h4>
+                        <h4 className="font-semibold text-gray-900 dark:text-white">{t('grade.takeFaceToFaceAttendance')}</h4>
                         <button onClick={() => setShowManualForm(false)} className="text-gray-400 hover:text-gray-600">✕</button>
                       </div>
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Session Title</label>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('grade.sessionTitle')}</label>
                           <input
                             type="text"
                             value={manualForm.title}
@@ -706,7 +708,7 @@ export default function TeacherGradesPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('common.date')}</label>
                           <input
                             type="date"
                             value={manualForm.date}
@@ -719,8 +721,8 @@ export default function TeacherGradesPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                              <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Status</th>
+                              <th className="text-left p-3 text-gray-700 dark:text-gray-300">{t('nav.students')}</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('common.status')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -759,9 +761,9 @@ export default function TeacherGradesPage() {
                         </table>
                       </div>
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setShowManualForm(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
+                        <button onClick={() => setShowManualForm(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{t('common.cancel')}</button>
                         <button onClick={handleSaveManualAttendance} disabled={saving || !manualForm.date} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-                          {saving ? 'Saving...' : 'Save Attendance'}
+                          {saving ? t('grade.saving') : t('grade.saveAttendance')}
                         </button>
                       </div>
                     </div>
@@ -769,12 +771,12 @@ export default function TeacherGradesPage() {
 
                   {!liveAttendance ? (
                     <div className="text-center py-8">
-                      <p className="text-gray-500">Loading attendance data...</p>
+                      <p className="text-gray-500">{t('grade.loadingAttendance')}</p>
                     </div>
                   ) : liveAttendance.totalSessions === 0 && manualSessions.length === 0 ? (
                     <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <p className="text-gray-500 dark:text-gray-400 text-lg">No attendance records yet</p>
-                      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Click "Take Attendance" to record face-to-face class attendance, or conduct a live session for automatic tracking</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-lg">{t('grade.noAttendanceRecords')}</p>
+                      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">{t('grade.noAttendanceRecordsDesc')}</p>
                     </div>
                   ) : (
                     <>
@@ -782,19 +784,19 @@ export default function TeacherGradesPage() {
                       <div className="grid grid-cols-4 gap-4 mb-6">
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
                           <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{liveAttendance.totalSessions || 0}</p>
-                          <p className="text-sm text-blue-600 dark:text-blue-300">Total Sessions</p>
+                          <p className="text-sm text-blue-600 dark:text-blue-300">{t('grade.totalSessions')}</p>
                         </div>
                         <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
                           <p className="text-3xl font-bold text-green-600 dark:text-green-400">{liveAttendance.endedLiveSessions || 0}</p>
-                          <p className="text-sm text-green-600 dark:text-green-300">Live Sessions</p>
+                          <p className="text-sm text-green-600 dark:text-green-300">{t('attendance.liveSessions')}</p>
                         </div>
                         <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4 text-center">
                           <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{liveAttendance.manualSessions || 0}</p>
-                          <p className="text-sm text-indigo-600 dark:text-indigo-300">In-Person</p>
+                          <p className="text-sm text-indigo-600 dark:text-indigo-300">{t('attendance.inPerson')}</p>
                         </div>
                         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 text-center">
                           <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">{liveAttendance.students?.length || 0}</p>
-                          <p className="text-sm text-purple-600 dark:text-purple-300">Students</p>
+                          <p className="text-sm text-purple-600 dark:text-purple-300">{t('nav.students')}</p>
                         </div>
                       </div>
 
@@ -808,17 +810,17 @@ export default function TeacherGradesPage() {
 
                       {/* Student Cumulative Attendance Table */}
                       <div className="overflow-x-auto mb-6">
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Cumulative Attendance</h4>
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">{t('grade.cumulativeAttendance')}</h4>
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                              <th className="text-left p-3 text-gray-700 dark:text-gray-300">Student</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Live Attended</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Live Partial</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">In-Person Present</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">In-Person Late</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Total Absent</th>
-                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">Score /100</th>
+                              <th className="text-left p-3 text-gray-700 dark:text-gray-300">{t('nav.students')}</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('grade.liveAttended')}</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('grade.livePartial')}</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('grade.inPersonPresent')}</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('grade.inPersonLate')}</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('grade.totalAbsent')}</th>
+                              <th className="text-center p-3 text-gray-700 dark:text-gray-300">{t('grade.score100')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -871,7 +873,7 @@ export default function TeacherGradesPage() {
                       {/* Manual Attendance History */}
                       {manualSessions.length > 0 && (
                         <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">In-Person Attendance History</h4>
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">{t('grade.inPersonAttendanceHistory')}</h4>
                           <div className="space-y-3">
                             {manualSessions.map(session => (
                               <div key={session.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
@@ -884,15 +886,15 @@ export default function TeacherGradesPage() {
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs text-gray-500">
-                                      {session.records.filter(r => r.status === 'PRESENT').length} present, {' '}
-                                      {session.records.filter(r => r.status === 'LATE').length} late, {' '}
-                                      {session.records.filter(r => r.status === 'ABSENT').length} absent
+                                      {session.records.filter(r => r.status === 'PRESENT').length} {t('attendance.present').toLowerCase()}, {' '}
+                                      {session.records.filter(r => r.status === 'LATE').length} {t('attendance.late').toLowerCase()}, {' '}
+                                      {session.records.filter(r => r.status === 'ABSENT').length} {t('attendance.absent').toLowerCase()}
                                     </span>
                                     <button
                                       onClick={() => handleDeleteManualSession(session.id)}
                                       className="text-red-500 hover:text-red-700 text-xs"
                                     >
-                                      Delete
+                                      {t('common.delete')}
                                     </button>
                                   </div>
                                 </div>
@@ -924,19 +926,19 @@ export default function TeacherGradesPage() {
                   {/* Exam Form */}
                   <div className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-800">
                     <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">
-                      {editingExam ? 'Edit Exam Details' : 'Create Exam Schedule'}
+                      {editingExam ? t('grade.editExamDetails') : t('grade.createExamSchedule')}
                     </h3>
                     {!editingExam && selectedSection?.semester?.midtermExamDate && (
                       <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4 text-sm">
-                        <p className="font-medium text-blue-800">Official Exam Dates (set by admin)</p>
-                        <p className="text-blue-700">Midterm: {new Date(selectedSection.semester.midtermExamDate).toLocaleString()}</p>
-                        <p className="text-blue-700">Final: {selectedSection?.semester?.finalExamDate ? new Date(selectedSection.semester.finalExamDate).toLocaleString() : 'Not set'}</p>
+                        <p className="font-medium text-blue-800">{t('grade.officialExamDates')}</p>
+                        <p className="text-blue-700">{t('results.midterm')}: {new Date(selectedSection.semester.midtermExamDate).toLocaleString()}</p>
+                        <p className="text-blue-700">{t('results.final')}: {selectedSection?.semester?.finalExamDate ? new Date(selectedSection.semester.finalExamDate).toLocaleString() : t('grade.notSet')}</p>
                       </div>
                     )}
                     <form onSubmit={editingExam ? handleUpdateExam : handleCreateExam} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Exam Type</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.examType')}</label>
                           <select
                             value={examForm.examType}
                             onChange={e => setExamForm({ ...examForm, examType: e.target.value })}
@@ -948,7 +950,7 @@ export default function TeacherGradesPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Weight (%)</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.weightPercent')}</label>
                           <input
                             type="number"
                             min="1"
@@ -962,7 +964,7 @@ export default function TeacherGradesPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Exam Date</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.examDate')}</label>
                           <input
                             type="date"
                             value={examForm.examDate}
@@ -972,7 +974,7 @@ export default function TeacherGradesPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Exam Time</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.examTime')}</label>
                           <input
                             type="time"
                             value={examForm.examTime}
@@ -984,7 +986,7 @@ export default function TeacherGradesPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Duration (min)</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.durationMin')}</label>
                           <input
                             type="number"
                             min="1"
@@ -994,7 +996,7 @@ export default function TeacherGradesPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Location</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.location')}</label>
                           <input
                             type="text"
                             value={examForm.location}
@@ -1005,7 +1007,7 @@ export default function TeacherGradesPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Instructions</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.examInstructions')}</label>
                         <textarea
                           value={examForm.instructions}
                           onChange={e => setExamForm({ ...examForm, instructions: e.target.value })}
@@ -1025,16 +1027,16 @@ export default function TeacherGradesPage() {
                               onChange={e => setExamForm({ ...examForm, proposeEarly: e.target.checked })}
                               className="w-4 h-4"
                             />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Propose Early Exam Date</span>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('grade.proposeEarlyExam')}</span>
                           </label>
                           {examForm.proposeEarly && (
                             <div className="mt-3 space-y-3 pl-6">
                               <p className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded">
-                                Students will be notified to accept or reject the early exam proposal.
+                                {t('grade.earlyExamProposalNotice')}
                               </p>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Date</label>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.proposedDate')}</label>
                                   <input
                                     type="date"
                                     value={examForm.proposedDate}
@@ -1044,7 +1046,7 @@ export default function TeacherGradesPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Time</label>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.proposedTime')}</label>
                                   <input
                                     type="time"
                                     value={examForm.proposedTime}
@@ -1056,7 +1058,7 @@ export default function TeacherGradesPage() {
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline Date</label>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.responseDeadlineDate')}</label>
                                   <input
                                     type="date"
                                     value={examForm.proposalDeadline}
@@ -1066,7 +1068,7 @@ export default function TeacherGradesPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Deadline Time</label>
+                                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.deadlineTime')}</label>
                                   <input
                                     type="time"
                                     value={examForm.proposalDeadlineTime}
@@ -1086,7 +1088,7 @@ export default function TeacherGradesPage() {
                           disabled={saving}
                           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
                         >
-                          {editingExam ? 'Update' : 'Create'}
+                          {editingExam ? t('common.edit') : t('common.add')}
                         </button>
                         {editingExam && (
                           <button
@@ -1102,7 +1104,7 @@ export default function TeacherGradesPage() {
                             }}
                             className="px-4 py-2 border rounded"
                           >
-                            Cancel
+                            {t('common.cancel')}
                           </button>
                         )}
                       </div>
@@ -1111,7 +1113,7 @@ export default function TeacherGradesPage() {
 
                   {/* Exam List */}
                   <div>
-                    <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Scheduled Exams</h3>
+                    <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">{t('grade.scheduledExams')}</h3>
                     <div className="space-y-4">
                       {examSchedules.map(exam => (
                         <div key={exam.id} className="border border-gray-200 dark:border-gray-700 rounded p-4 bg-gray-50 dark:bg-gray-800">
@@ -1126,16 +1128,16 @@ export default function TeacherGradesPage() {
 
                               {/* Show official date */}
                               <div className="mt-2">
-                                <p className="text-sm text-gray-500">Official Date:</p>
+                                <p className="text-sm text-gray-500">{t('grade.officialDate')}:</p>
                                 <p className="font-medium">
-                                  {exam.officialDate ? new Date(exam.officialDate).toLocaleDateString() : 'Not set'}
+                                  {exam.officialDate ? new Date(exam.officialDate).toLocaleDateString() : t('grade.notSet')}
                                 </p>
                               </div>
 
                               {/* Show proposed early date if any */}
                               {exam.earlyExamStatus !== 'NONE' && exam.proposedDate && (
                                 <div className="mt-2">
-                                  <p className="text-sm text-gray-500">Proposed Early Date:</p>
+                                  <p className="text-sm text-gray-500">{t('grade.proposedEarlyDate')}:</p>
                                   <p className="font-medium text-green-600">
                                     {new Date(exam.proposedDate).toLocaleDateString()}
                                   </p>
@@ -1143,7 +1145,7 @@ export default function TeacherGradesPage() {
                               )}
 
                               <p className="text-sm text-gray-500 mt-2">
-                                Duration: {exam.duration} min | {exam.location || 'Location TBD'}
+                                Duration: {exam.duration} min | {exam.location || t('grade.locationTBD')}
                               </p>
 
                               {/* Early exam status */}
@@ -1153,8 +1155,8 @@ export default function TeacherGradesPage() {
                                   exam.earlyExamStatus === 'PROPOSED' ? 'bg-yellow-100 text-yellow-700' :
                                   'bg-gray-100 text-gray-700'
                                 }`}>
-                                  {exam.earlyExamStatus === 'APPROVED' ? 'Early Exam Confirmed' :
-                                   exam.earlyExamStatus === 'PROPOSED' ? 'Early Exam Proposed' :
+                                  {exam.earlyExamStatus === 'APPROVED' ? t('grade.earlyExamConfirmedLabel') :
+                                   exam.earlyExamStatus === 'PROPOSED' ? t('grade.earlyExamProposedLabel') :
                                    exam.earlyExamStatus}
                                 </span>
                               )}
@@ -1164,13 +1166,13 @@ export default function TeacherGradesPage() {
                                 onClick={() => startEditExam(exam)}
                                 className="text-blue-600 hover:underline text-sm"
                               >
-                                Edit
+                                {t('common.edit')}
                               </button>
                               <button
                                 onClick={() => handleDeleteExam(exam.id)}
                                 className="text-red-600 hover:underline text-sm"
                               >
-                                Delete
+                                {t('common.delete')}
                               </button>
                             </div>
                           </div>
@@ -1182,17 +1184,17 @@ export default function TeacherGradesPage() {
                                 onClick={() => setShowEarlyProposal(showEarlyProposal === exam.id ? false : exam.id)}
                                 className="text-sm text-green-600 hover:underline"
                               >
-                                Propose Early Exam
+                                {t('grade.proposeEarlyExam')}
                               </button>
                               {showEarlyProposal === exam.id && (
                                 <form onSubmit={(e) => handleProposeEarlyExam(exam.id, e)} className="mt-3 space-y-3">
                                   {!exam.officialDate && (
                                     <p className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded">
-                                      Note: Official exam date not set by admin. You can still propose an early date.
+                                      {t('grade.officialDateNotSetNotice')}
                                     </p>
                                   )}
                                   <div>
-                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Proposed Early Date</label>
+                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.proposedEarlyDate')}</label>
                                     <input
                                       type="date"
                                       value={earlyProposalForm.proposedDate}
@@ -1202,7 +1204,7 @@ export default function TeacherGradesPage() {
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Response Deadline</label>
+                                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{t('grade.responseDeadline')}</label>
                                     <input
                                       type="date"
                                       value={earlyProposalForm.proposalDeadline}
@@ -1216,7 +1218,7 @@ export default function TeacherGradesPage() {
                                     disabled={saving}
                                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400 text-sm"
                                   >
-                                    Submit Proposal
+                                    {t('grade.submitProposal')}
                                   </button>
                                 </form>
                               )}
@@ -1231,13 +1233,13 @@ export default function TeacherGradesPage() {
                                   onClick={() => loadEarlyResponses(exam.id)}
                                   className="text-sm text-blue-600 hover:underline"
                                 >
-                                  View Student Responses
+                                  {t('grade.viewStudentResponses')}
                                 </button>
                                 <button
                                   onClick={() => handleCancelEarlyProposal(exam.id)}
                                   className="text-sm text-red-600 hover:underline"
                                 >
-                                  Cancel Proposal
+                                  {t('grade.cancelProposal')}
                                 </button>
                               </div>
                             </div>
@@ -1247,14 +1249,14 @@ export default function TeacherGradesPage() {
                           {exam.earlyExamStatus === 'APPROVED' && (
                             <div className="mt-3 pt-3 border-t">
                               <p className="text-sm text-green-600 font-medium">
-                                Exam will be held on {exam.proposedDate ? new Date(exam.proposedDate).toLocaleDateString() : 'proposed date'}
+                                {t('grade.examWillBeHeldOn')} {exam.proposedDate ? new Date(exam.proposedDate).toLocaleDateString() : t('grade.proposedDateLower')}
                               </p>
                             </div>
                           )}
                         </div>
                       ))}
                       {examSchedules.length === 0 && (
-                        <p className="text-gray-500 text-center py-4">No exams scheduled yet.</p>
+                        <p className="text-gray-500 text-center py-4">{t('grade.noExamsScheduled')}</p>
                       )}
                     </div>
 
@@ -1262,39 +1264,39 @@ export default function TeacherGradesPage() {
                     {earlyResponses && (
                       <div className="mt-4 border rounded p-4 bg-gray-50">
                         <div className="flex justify-between items-center mb-3">
-                          <h4 className="font-semibold">Student Responses</h4>
+                          <h4 className="font-semibold">{t('grade.studentResponses')}</h4>
                           <button
                             onClick={() => setEarlyResponses(null)}
                             className="text-gray-500 hover:text-gray-700"
                           >
-                            Close
+                            {t('common.close')}
                           </button>
                         </div>
                         <div className="mb-3 grid grid-cols-3 gap-2 text-center">
                           <div className="bg-green-100 rounded p-2">
                             <div className="text-lg font-bold text-green-700">{earlyResponses.agreedCount}</div>
-                            <div className="text-xs text-green-600">Agreed</div>
+                            <div className="text-xs text-green-600">{t('grade.agreed')}</div>
                           </div>
                           <div className="bg-red-100 rounded p-2">
                             <div className="text-lg font-bold text-red-700">{earlyResponses.disagreedCount}</div>
-                            <div className="text-xs text-red-600">Disagreed</div>
+                            <div className="text-xs text-red-600">{t('grade.disagreed')}</div>
                           </div>
                           <div className="bg-gray-100 rounded p-2">
                             <div className="text-lg font-bold text-gray-700">{earlyResponses.pendingCount}</div>
-                            <div className="text-xs text-gray-600">Pending</div>
+                            <div className="text-xs text-gray-600">{t('results.pending')}</div>
                           </div>
                         </div>
                         {earlyResponses.anyDisagreed ? (
                           <p className="text-sm text-red-600 font-medium mb-2">
-                            Some students disagreed. Exam will be held on official date.
+                            {t('grade.someStudentsDisagreed')}
                           </p>
                         ) : earlyResponses.allAgreed ? (
                           <p className="text-sm text-green-600 font-medium mb-2">
-                            All students agreed! You can confirm the early exam.
+                            {t('grade.allStudentsAgreed')}
                           </p>
                         ) : (
                           <p className="text-sm text-yellow-600 mb-2">
-                            Waiting for all students to respond.
+                            {t('grade.waitingForResponses')}
                           </p>
                         )}
                         <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1302,11 +1304,11 @@ export default function TeacherGradesPage() {
                             <div key={s.student.id} className="flex justify-between items-center text-sm">
                               <span>{s.student.fullName}</span>
                               {!s.hasResponded ? (
-                                <span className="text-gray-400">Pending</span>
+                                <span className="text-gray-400">{t('results.pending')}</span>
                               ) : s.agreed ? (
-                                <span className="text-green-600">Agreed</span>
+                                <span className="text-green-600">{t('grade.agreed')}</span>
                               ) : (
-                                <span className="text-red-600">Disagreed</span>
+                                <span className="text-red-600">{t('grade.disagreed')}</span>
                               )}
                             </div>
                           ))}
@@ -1316,7 +1318,7 @@ export default function TeacherGradesPage() {
                             onClick={() => handleConfirmEarlyExam(earlyResponses.exam.id)}
                             className="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
                           >
-                            Confirm Early Exam
+                            {t('grade.confirmEarlyExam')}
                           </button>
                         )}
                       </div>
@@ -1327,7 +1329,7 @@ export default function TeacherGradesPage() {
             </div>
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400">
-              Select a course section to manage grades and exams.
+              {t('grade.selectSectionToManage')}
             </div>
           )}
         </div>
