@@ -1,7 +1,8 @@
 import type { Request, Response, Router } from 'express';
 import { authRequired, requireRole, type AuthedRequest } from '../middleware';
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const ML_SERVICE_URL_RAW = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const ML_SERVICE_URL = ML_SERVICE_URL_RAW.startsWith('http') ? ML_SERVICE_URL_RAW : `https://${ML_SERVICE_URL_RAW}`;
 
 export function registerMLRoutes(router: Router) {
 
