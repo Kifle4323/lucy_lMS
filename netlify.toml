@@ -7,6 +7,12 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Permissions-Policy = "camera=*, microphone=*"
+    Content-Security-Policy = "frame-src 'self' https://meet.jit.si https://*.8x8.vc https://*.jit.si"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

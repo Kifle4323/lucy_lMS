@@ -356,7 +356,7 @@ export default function LiveMeetingPage() {
 
       {/* Jitsi Meeting Container */}
       <div className="flex-1 relative">
-        <div ref={jitsiContainerRef} style={{ height: '100%', width: '100%' }} />
+        <div ref={jitsiContainerRef} style={{ height: '100%', width: '100%' }} allow="camera; microphone; autoplay; fullscreen" />
         {/* Face tracker for students */}
         {user?.role === 'STUDENT' && joined && (
           <LiveFaceTracker
